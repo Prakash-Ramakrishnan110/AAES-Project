@@ -1,0 +1,68 @@
+# .gitignore for AAES Project
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment Variables
+.env
+.env.local
+.env.production
+
+# Build Outputs
+dist/
+build/
+*.log
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Uploads & Temp Files
+uploads/
+temp_scripts/
+temp_uploads/
+
+# Database
+*.db
+*.sqlite
+
+# Test Coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# MongoDB
+data/
+
+# Miscellaneous
+.cache/
+*.pid
+*.seed
+*.pid.lock
