@@ -1,1 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-display: 'Poppins', system-ui, sans-serif;
+
+    --color-primary: #2563EB;
+    /* Blue 600 */
+    --color-primary-dark: #1E40AF;
+    /* Blue 800 */
+    --color-secondary: #0D9488;
+    /* Teal 600 */
+    --color-accent: #6366F1;
+    /* Indigo 500 */
+
+    --color-bg-dark: #0F172A;
+    /* Slate 900 */
+    --color-bg-card: #1E293B;
+    /* Slate 800 */
+    --color-text-light: #F8FAFC;
+    /* Slate 50 */
+    --color-text-dim: #94A3B8;
+    /* Slate 400 */
+
+    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.5);
+}
+
+@layer base {
+    body {
+        font-family: var(--font-sans);
+        background-color: #F3F4F6;
+        /* Light Grey base for light mode */
+        color: #111827;
+        /* Dark Grey text */
+        @apply antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-display);
+    }
+}
+
+@layer components {
+    .glass-panel {
+        @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+    }
+
+    .glass-panel-dark {
+        @apply bg-slate-900/70 backdrop-blur-lg border border-white/10 shadow-xl text-white;
+    }
+
+    .btn-primary {
+        @apply bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-500/30;
+    }
+}

@@ -1,43 +1,71 @@
 import { useContext } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import DashboardLayout from './DashboardLayout';
+import { LayoutDashboard, BookOpen, ClipboardCheck, Users, BarChart3, Library, HeartHandshake, MessageSquare, UserCheck, Calculator } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 
 const StaffLayout = () => {
-    const { logout, user } = useContext(AuthContext)!;
+    const { user } = useContext(AuthContext)!;
+    const isAdvisor = user?.isAdvisor === true;
+
+    interface MenuItem {
+        icon: React.ReactNode;
+        label: string;
+        to: string;
+        items?: { label: string; to: string }[];
+    }
+
+    const menuItems: MenuItem[] = [
+        { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", to: "/staff/dashboard" },
+        { icon: <BookOpen className="w-5 h-5" />, label: "My Subjects", to: "/staff/my-subjects" },
+        { icon: <Library className="w-5 h-5" />, label: "Assignments", to: "/staff/assignments" },
+        { icon: <ClipboardCheck className="w-5 h-5" />, label: "Evaluation", to: "/staff/evaluation" },
+        { icon: <BarChart3 className="w-5 h-5" />, label: "Attendance", to: "/staff/attendance" },
+        {
+            icon: <HeartHandshake className="w-5 h-5" />, label: "Mentorship", to: "/staff/mentorship-governance", items: [
+                { label: "Governance Hub", to: "/staff/mentorship-governance" },
+                { label: "My Mentees", to: "/staff/mentorship/my-mentees" },
+            ]
+        },
+        { icon: <Calculator className="w-5 h-5" />, label: "Internal Assessment", to: "/staff/my-subjects" },
+    ];
+
+    if (isAdvisor) {
+        menuItems.push({
+            icon: <Users className="w-5 h-5" />,
+            label: "My Class",
+            to: "/staff/advisor-dashboard",
+            items: [
+                { label: "Governance Hub", to: "/staff/class-governance" },
+                { label: "Attendance Alerts", to: "/staff/attendance-alerts" },
+                { label: "Legacy Dashboard", to: "/staff/advisor-dashboard" },
+                { label: "Student List", to: "/staff/advisor/students" },
+                { label: "Attendance Overview", to: "/staff/advisor/attendance" },
+                { label: "Academic Performance", to: "/staff/advisor/performance" },
+                { label: "Mentorship Notes", to: "/staff/advisor/notes" },
+                { label: "Reports", to: "/staff/advisor/reports" },
+            ]
+        });
+
+        menuItems.push({
+            icon: <UserCheck className="w-5 h-5" />,
+            label: "Assign Mentor",
+            to: "/staff/mentor-assignment"
+        });
+
+
+
+        menuItems.push({
+            icon: <MessageSquare className="w-5 h-5" />,
+            label: "CCM Records",
+            to: "/staff/ccm"
+        });
+    }
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            {/* Sidebar */}
-            <div className="w-64 bg-indigo-900 text-white flex flex-col">
-                <div className="p-4 text-center font-bold text-xl border-b border-indigo-700">
-                    AAES Staff
-                </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    <Link to="/staff/dashboard" className="block px-4 py-2 hover:bg-indigo-700 rounded transition">Dashboard</Link>
-                    <Link to="/staff/my-subjects" className="block px-4 py-2 hover:bg-indigo-700 rounded transition">My Subjects</Link>
-                    <Link to="/staff/assignments" className="block px-4 py-2 hover:bg-indigo-700 rounded transition">Assignments</Link>
-                </nav>
-                <div className="p-4 border-t border-indigo-700">
-                    <div className="text-sm mb-2">Logged in as: {user?.username}</div>
-                    <button
-                        onClick={logout}
-                        className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded transition"
-                    >
-                        Logout
-                    </button>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="bg-white shadow p-4 flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-gray-800">Staff Portal</h2>
-                </header>
-                <main className="flex-1 overflow-y-auto p-6">
-                    <Outlet />
-                </main>
-            </div>
-        </div>
+        <DashboardLayout menuItems={menuItems} role="Faculty">
+            <Outlet />
+        </DashboardLayout>
     );
 };
 

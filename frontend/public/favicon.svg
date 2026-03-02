@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background Circle (Dark Blue) -->
+  <circle cx="50" cy="50" r="50" fill="#0047AB" />
+  
+  <!-- Graduation Cap -->
+  <path d="M15,35 L50,15 L85,35 L50,55 Z" fill="#FFFFFF" />
+  <!-- Cap Bottom -->
+  <path d="M85,35 L85,45 Q50,65 15,45 L15,35 Q50,55 85,35" fill="#E0E0E0" opacity="0.5" />
+  <!-- Tassel -->
+  <path d="M85,35 L85,60" stroke="#4ADE80" stroke-width="3" fill="none" />
+  <circle cx="85" cy="60" r="3" fill="#4ADE80" />
+
+  <!-- Letter A (White Serif-ish) -->
+  <path d="M30,85 L50,35 L70,85 H60 L57,75 H43 L40,85 Z" fill="#FFFFFF" />
+  <!-- Crossbar of A -->
+  <path d="M45,65 H55" stroke="#FFFFFF" stroke-width="0" />
+
+  <!-- Circuit Nodes (Teal/Green) -->
+  <circle cx="20" cy="60" r="3" fill="#2DD4BF" />
+  <line x1="20" y1="60" x2="35" y2="60" stroke="#2DD4BF" stroke-width="2" />
+  <circle cx="20" cy="75" r="3" fill="#2DD4BF" />
+  <line x1="20" y1="75" x2="30" y2="70" stroke="#2DD4BF" stroke-width="2" />
+  <line x1="30" y1="70" x2="40" y2="80" stroke="#2DD4BF" stroke-width="2" />
+  
+  <circle cx="80" cy="65" r="3" fill="#2DD4BF" />
+  <line x1="80" y1="65" x2="65" y2="70" stroke="#2DD4BF" stroke-width="2" />
+  <circle cx="85" cy="80" r="3" fill="#2DD4BF" />
+  <line x1="85" y1="80" x2="70" y2="80" stroke="#2DD4BF" stroke-width="2" />
+</svg>

@@ -1,12 +1,14 @@
 import { useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
+import { motion } from 'framer-motion';
 
 const BulkUpload = () => {
     const { token } = useContext(AuthContext)!;
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -18,7 +20,8 @@ const BulkUpload = () => {
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!file) {
-            alert('Please select a file');
+            setToastMessage({ text: 'Please select a file', type: 'error' });
+            setTimeout(() => setToastMessage(null), 3000);
             return;
         }
 
@@ -66,7 +69,22 @@ const BulkUpload = () => {
     };
 
     return (
-        <div>
+        <div className="relative">
+            {/* Custom Toast Notification */}
+            {toastMessage && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg font-medium border text-sm flex items-center gap-2
+                        ${toastMessage.type === 'success'
+                            ? 'bg-green-50 border-green-200 text-green-800'
+                            : 'bg-red-50 border-red-200 text-red-800'}`}
+                >
+                    {toastMessage.text}
+                </motion.div>
+            )}
+
             <h1 className="text-2xl font-bold mb-6">Bulk User Upload</h1>
 
             {/* Instructions */}

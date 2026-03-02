@@ -1,44 +1,101 @@
 const Assignment = require('../models/Assignment');
 const Subject = require('../models/Subject');
+const Submission = require('../models/Submission');
+const User = require('../models/User');
 
 // @desc    Create a new assignment
 // @route   POST /api/assignments
 // @access  Private/Staff
 const createAssignment = async (req, res) => {
-    const {
-        title, description, subjectId, maxMarks, deadline,
-        type, aiEnabled, modelAnswer, testCases
-    } = req.body;
+    try {
+        const {
+            title, description, subjectId, section, maxMarks, deadline,
+            submissionType, formatConfig
+        } = req.body;
 
-    // Verify subject ownership
-    const subject = await Subject.findById(subjectId);
-    if (!subject) {
-        return res.status(404).json({ message: 'Subject not found' });
-    }
+        if (!subjectId) return res.status(400).json({ message: 'Subject must be selected.' });
+        if (!submissionType || !formatConfig) {
+            return res.status(400).json({ message: 'Submission type and format configuration are required.' });
+        }
 
-    // Ensure the requesting staff is assigned to this subject
-    // Note: req.user.id is string, subject.staff is array of ObjectIds
-    if (!subject.staff.some(staffId => staffId.toString() === req.user.id)) {
-        return res.status(403).json({ message: 'Not authorized to create assignments for this subject' });
-    }
+        // Verify subject ownership
+        const subject = await Subject.findById(subjectId);
+        if (!subject) {
+            return res.status(404).json({ message: 'Subject not found' });
+        }
 
-    const assignment = await Assignment.create({
-        title,
-        description,
-        subject: subjectId,
-        createdBy: req.user.id,
-        maxMarks,
-        deadline,
-        type,
-        aiEnabled,
-        modelAnswer,
-        testCases
-    });
+        // Ensure the requesting staff is assigned to this subject
+        if (!subject.staff.some(staffId => staffId.toString() === req.user.id)) {
+            return res.status(403).json({ message: 'Not authorized to create assignments for this subject' });
+        }
 
-    if (assignment) {
+        // Type-specific validation inside formatConfig
+        if (submissionType === 'quiz') {
+            const questions = formatConfig.questions || [];
+            const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+            if (totalMarks !== maxMarks) {
+                return res.status(400).json({ message: `Quiz total marks (${totalMarks}) must match assignment max marks (${maxMarks}).` });
+            }
+        }
+
+        if (submissionType === 'code') {
+            const testCases = formatConfig.testCases || [];
+            const totalMarks = testCases.reduce((sum, tc) => sum + (tc.marks || 0), 0);
+            if (totalMarks !== maxMarks) {
+                return res.status(400).json({ message: `Programming test cases total marks (${totalMarks}) must match assignment max marks (${maxMarks}).` });
+            }
+        }
+
+        const assignment = await Assignment.create({
+            title,
+            description,
+            subject: subjectId,
+            section: section || 'All',
+            createdBy: req.user.id,
+            maxMarks,
+            deadline,
+            submissionType,
+            formatConfig
+        });
+
         res.status(201).json(assignment);
-    } else {
-        res.status(400).json({ message: 'Invalid assignment data' });
+    } catch (error) {
+        console.error("Assignment Creation Error:", error);
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// @desc    Update assignment (Extend deadline, Enable/Disable submissions)
+// @route   PUT /api/assignments/:id
+// @access  Private/Staff
+const updateAssignment = async (req, res) => {
+    try {
+        const { deadline, submissionsEnabled } = req.body;
+        const assignment = await Assignment.findById(req.params.id);
+
+        if (!assignment) {
+            return res.status(404).json({ message: 'Assignment not found' });
+        }
+
+        // Verify ownership or admin/hod role
+        if (
+            req.user.role !== 'admin' &&
+            req.user.role !== 'hod' &&
+            assignment.createdBy.toString() !== req.user.id
+        ) {
+            return res.status(403).json({ message: 'Not authorized to update this assignment.' });
+        }
+
+        if (deadline) assignment.deadline = deadline;
+        if (typeof submissionsEnabled === 'boolean') {
+            assignment.submissionsEnabled = submissionsEnabled;
+        }
+
+        const updatedAssignment = await assignment.save();
+        res.json(updatedAssignment);
+    } catch (error) {
+        console.error("Assignment Update Error:", error);
+        res.status(500).json({ message: error.message || 'Server error while updating assignment.' });
     }
 };
 
@@ -73,19 +130,39 @@ const getMyCreatedAssignments = async (req, res) => {
 // @access  Private/Student
 const getStudentAssignments = async (req, res) => {
     try {
-        const student = req.user;
+        const student = await User.findById(req.user.id);
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
 
-        // Find subjects matching student's enrollment (department, semester, academicYear)
-        const subjects = await Subject.find({
+        // Find subjects matching student's enrollment
+        // Priority 1: Exact Match (Dept, Sem, Academic Year)
+        let subjects = await Subject.find({
             department: student.department,
             semester: student.semester,
             academicYear: student.academicYear
         });
 
+        // Priority 2: Fallback (Dept, Sem only) - Handles descriptive labels like "3rd Year" vs "2023-24"
+        if (subjects.length === 0) {
+            subjects = await Subject.find({
+                department: student.department,
+                semester: student.semester
+            });
+        }
+
         const subjectIds = subjects.map(s => s._id);
 
-        // Fetch assignments for these subjects
-        const assignments = await Assignment.find({ subject: { $in: subjectIds } })
+        // Fetch assignments for these subjects AND matching student's section
+        // Assignments marked 'All' are visible to everyone in that subject
+        const assignments = await Assignment.find({
+            subject: { $in: subjectIds },
+            $or: [
+                { section: 'All' },
+                { section: student.section },
+                { section: { $exists: false } } // Handle legacy assignments
+            ]
+        })
             .populate('subject', 'name code')
             .sort({ createdAt: -1 });
 
@@ -114,16 +191,89 @@ const getAssignmentById = async (req, res) => {
 // @route   DELETE /api/assignments/:id
 // @access  Private/Staff
 const deleteAssignment = async (req, res) => {
-    const assignment = await Assignment.findById(req.params.id);
+    try {
+        const assignment = await Assignment.findById(req.params.id);
 
-    if (assignment) {
-        if (assignment.createdBy.toString() !== req.user.id) {
+        if (!assignment) {
+            return res.status(404).json({ message: 'Assignment not found' });
+        }
+
+        if (
+            req.user.role !== 'admin' &&
+            req.user.role !== 'hod' &&
+            assignment.createdBy.toString() !== req.user.id
+        ) {
+            return res.status(403).json({ message: 'Not authorized to delete this assignment.' });
+        }
+
+        // Clean up related submissions
+        await Submission.deleteMany({ assignment: assignment._id });
+
+        // Delete the assignment itself
+        await assignment.deleteOne();
+
+        res.json({ message: 'Assignment eliminated completely.' });
+    } catch (error) {
+        console.error("Delete Assignment Error:", error);
+        res.status(500).json({ message: error.message || 'Server error while deleting assignment.' });
+    }
+};
+
+// @desc    Get assignment gradebook (student list + status + marks)
+// @route   GET /api/assignments/:id/gradebook
+// @access  Private/Staff
+const getAssignmentGradebook = async (req, res) => {
+    try {
+        const assignment = await Assignment.findById(req.params.id).populate('subject');
+        if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+        // Ensure authorization (Owner of assignment or HOD/Admin)
+        if (req.user.role !== 'admin' && req.user.role !== 'hod' && assignment.createdBy.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized' });
         }
-        await assignment.deleteOne();
-        res.json({ message: 'Assignment removed' });
-    } else {
-        res.status(404).json({ message: 'Assignment not found' });
+
+        const subject = assignment.subject;
+        if (!subject) return res.status(404).json({ message: 'Subject context not found' });
+
+        // Find students in this subject/context
+        const studentFilter = {
+            role: 'student',
+            department: subject.department,
+            semester: subject.semester
+        };
+
+        // Section filter - Case insensitive to be safe
+        if (assignment.section && assignment.section !== 'All') {
+            studentFilter.section = { $regex: new RegExp(`^${assignment.section}$`, 'i') };
+        }
+
+        const students = await User.find(studentFilter).select('_id fullName registerNumber section semester department');
+        const submissions = await Submission.find({ assignment: assignment._id });
+
+        // Merge data
+        const gradebook = students.map(student => {
+            const submission = submissions.find(s => s.student.toString() === student._id.toString());
+            return {
+                studentId: student._id,
+                fullName: student.fullName,
+                registerNumber: student.registerNumber,
+                section: student.section,
+                status: submission ? submission.status : 'pending',
+                marks: submission ? submission.marks : 0,
+                submittedAt: submission ? submission.submittedAt : null,
+                submissionId: submission ? submission._id : null
+            };
+        });
+
+        res.json({
+            assignmentTitle: assignment.title,
+            maxMarks: assignment.maxMarks,
+            gradebook
+        });
+
+    } catch (error) {
+        console.error("Gradebook Error:", error);
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -168,10 +318,12 @@ const getStaffStats = async (req, res) => {
 
 module.exports = {
     createAssignment,
+    updateAssignment,
     getAssignments,
     getMyCreatedAssignments,
     getStudentAssignments,
     getAssignmentById,
     deleteAssignment,
+    getAssignmentGradebook,
     getStaffStats
 };

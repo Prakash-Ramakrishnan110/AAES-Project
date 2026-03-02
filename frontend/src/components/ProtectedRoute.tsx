@@ -17,6 +17,8 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
         return <Navigate to="/unauthorized" replace />;
     }
 
+    // Student onboarding enforcement removed as per user request
+
     return <Outlet />;
 };
 

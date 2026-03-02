@@ -17,6 +17,10 @@ const submissionSchema = new mongoose.Schema({
         default: ''
     },
     // For Theory assignments (could be text or file URL in future)
+    fileUrl: {
+        type: String,
+        default: ''
+    },
     answers: {
         type: String,
         default: ''
@@ -33,6 +37,19 @@ const submissionSchema = new mongoose.Schema({
     feedback: {
         type: String,
         default: ''
+    },
+    plagiarismScore: {
+        type: Number,
+        default: 0
+    },
+    isFlaggedForPlagiarism: {
+        type: Boolean,
+        default: false
+    },
+    flaggedSource: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Submission',
+        default: null
     },
     // Detailed AI analysis
     aiAnalysis: {
@@ -53,7 +70,36 @@ const submissionSchema = new mongoose.Schema({
     submittedAt: {
         type: Date,
         default: Date.now
-    }
+    },
+    resubmissionStatus: {
+        type: String,
+        enum: ['none', 'requested', 'approved', 'rejected'],
+        default: 'none'
+    },
+    resubmissionReason: {
+        type: String,
+        default: ''
+    },
+    // Mark Lock System
+    marksLocked: {
+        type: Boolean,
+        default: false
+    },
+    lockedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    lockedAt: {
+        type: Date,
+        default: null
+    },
+    // AI Confidence
+    needsManualReview: {
+        type: Boolean,
+        default: false
+    },
+    confidenceScores: [Number]
 });
 
 // Prevent multiple submissions for same assignment by same student (optional, but good for now)

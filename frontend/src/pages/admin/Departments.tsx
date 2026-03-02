@@ -1,11 +1,17 @@
 import { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
+import { motion } from 'framer-motion';
 
 interface Department {
     _id: string;
     name: string;
-    code: string;
+    description?: string;
+    hod?: {
+        _id: string;
+        username: string;
+        email: string;
+    };
 }
 
 const Departments = () => {
@@ -14,7 +20,8 @@ const Departments = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingDept, setEditingDept] = useState<Department | null>(null);
-    const [formData, setFormData] = useState({ name: '', code: '' });
+    const [formData, setFormData] = useState({ name: '', description: '' });
+    const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
         fetchDepartments();
@@ -50,17 +57,20 @@ const Departments = () => {
             }
 
             setShowModal(false);
-            setFormData({ name: '', code: '' });
+            setFormData({ name: '', description: '' });
             setEditingDept(null);
             fetchDepartments();
+            setToastMessage({ text: 'Department saved successfully!', type: 'success' });
+            setTimeout(() => setToastMessage(null), 3000);
         } catch (error: any) {
-            alert(error.response?.data?.message || 'Operation failed');
+            setToastMessage({ text: error.response?.data?.message || 'Operation failed', type: 'error' });
+            setTimeout(() => setToastMessage(null), 3000);
         }
     };
 
     const handleEdit = (dept: Department) => {
         setEditingDept(dept);
-        setFormData({ name: dept.name, code: dept.code });
+        setFormData({ name: dept.name, description: dept.description || '' });
         setShowModal(true);
     };
 
@@ -71,21 +81,39 @@ const Departments = () => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             await axios.delete(`http://localhost:5000/api/departments/${id}`, config);
             fetchDepartments();
+            setToastMessage({ text: 'Department deleted', type: 'success' });
+            setTimeout(() => setToastMessage(null), 3000);
         } catch (error: any) {
-            alert(error.response?.data?.message || 'Delete failed');
+            setToastMessage({ text: error.response?.data?.message || 'Delete failed', type: 'error' });
+            setTimeout(() => setToastMessage(null), 3000);
         }
     };
 
     const openCreateModal = () => {
         setEditingDept(null);
-        setFormData({ name: '', code: '' });
+        setFormData({ name: '', description: '' });
         setShowModal(true);
     };
 
     if (loading) return <div>Loading...</div>;
 
     return (
-        <div>
+        <div className="relative">
+            {/* Custom Toast Notification */}
+            {toastMessage && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg font-medium border text-sm flex items-center gap-2
+                        ${toastMessage.type === 'success'
+                            ? 'bg-green-50 border-green-200 text-green-800'
+                            : 'bg-red-50 border-red-200 text-red-800'}`}
+                >
+                    {toastMessage.text}
+                </motion.div>
+            )}
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Departments</h1>
                 <button
@@ -101,20 +129,22 @@ const Departments = () => {
                     <thead className="bg-gray-100">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">HOD</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                         {departments.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="px-6 py-4 text-center text-gray-500">No departments found</td>
+                                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">No departments found</td>
                             </tr>
                         ) : (
                             departments.map(dept => (
                                 <tr key={dept._id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4">{dept.name}</td>
-                                    <td className="px-6 py-4">{dept.code}</td>
+                                    <td className="px-6 py-4">{dept.description || '-'}</td>
+                                    <td className="px-6 py-4">{dept.hod?.username || <span className="text-gray-400">Not Assigned</span>}</td>
                                     <td className="px-6 py-4 text-right space-x-2">
                                         <button
                                             onClick={() => handleEdit(dept)}
@@ -158,14 +188,13 @@ const Departments = () => {
                             </div>
                             <div className="mb-6">
                                 <label className="block text-gray-700 font-medium mb-2">
-                                    Department Code
+                                    Description
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.code}
-                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    required
                                 />
                             </div>
                             <div className="flex justify-end space-x-3">

@@ -6,22 +6,27 @@ const {
     updateUser,
     deleteUser,
     getSystemStats,
-    promoteStudents
+    promoteStudents,
+    getStaffProfile,
+    bulkUpdateStudents
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+const upload = require('../middleware/uploadMiddleware');
+
 router.use(protect);
-router.use(authorize('admin')); // All routes restricted to Admin
 
 router.route('/')
-    .get(getUsers)
-    .post(createUser);
+    .get(authorize('admin', 'hod', 'staff'), getUsers)
+    .post(authorize('admin', 'hod'), upload.single('profileImage'), createUser);
 
 router.get('/stats/system', protect, authorize('admin', 'hod'), getSystemStats);
-router.post('/promote', promoteStudents);
+router.post('/bulk-update', authorize('admin', 'hod'), bulkUpdateStudents);
+router.post('/promote', authorize('admin', 'hod'), promoteStudents);
+router.get('/staff/:id', authorize('admin', 'hod', 'staff'), getStaffProfile);
 
 router.route('/:id')
-    .put(updateUser)
-    .delete(deleteUser);
+    .put(authorize('admin', 'hod'), upload.single('profileImage'), updateUser)
+    .delete(authorize('admin', 'hod'), deleteUser);
 
 module.exports = router;

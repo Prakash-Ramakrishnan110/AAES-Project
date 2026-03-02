@@ -15,6 +15,10 @@ const assignmentSchema = new mongoose.Schema({
         ref: 'Subject',
         required: true
     },
+    section: {
+        type: String,
+        default: 'All' // 'All' or specific section like 'A', 'B'
+    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -28,24 +32,20 @@ const assignmentSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
-    type: {
+    submissionType: {
         type: String,
-        enum: ['theory', 'python'],
+        enum: ['handwritten', 'document', 'ppt', 'quiz', 'code', 'seminar'],
         required: true
     },
-    aiEnabled: {
+    formatConfig: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    submissionsEnabled: {
         type: Boolean,
-        default: false
+        default: true
     },
-    modelAnswer: {
-        type: String,
-        default: ''
-    },
-    testCases: [{
-        input: String,
-        output: String,
-        marks: Number
-    }],
+
     createdAt: {
         type: Date,
         default: Date.now

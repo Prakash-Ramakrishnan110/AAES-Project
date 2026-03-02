@@ -7,33 +7,33 @@ dotenv.config();
 
 const seedUsers = async () => {
     try {
-        await mongoose.connect('mongodb://localhost:27017/aaes');
+        await mongoose.connect('mongodb://127.0.0.1:27017/aaes');
         console.log('MongoDB Connected');
 
         await User.deleteMany();
 
         const salt = await bcrypt.genSalt(10);
-        const password = await bcrypt.hash('123456', salt);
+        const defaultPasswordHash = await bcrypt.hash('password123', salt);
 
         const users = [
             {
                 username: 'Admin User',
                 email: 'admin@aaes.com',
-                password: 'password123', // Will be hashed by pre-save hook
+                password: defaultPasswordHash,
                 role: 'admin',
                 department: 'Administration'
             },
             {
                 username: 'HOD CSE',
                 email: 'hod.cse@aaes.com',
-                password: 'password123',
+                password: defaultPasswordHash,
                 role: 'hod',
                 department: 'CSE'
             },
             {
                 username: 'Staff User',
                 email: 'staff@aaes.com',
-                password: 'password123',
+                password: defaultPasswordHash,
                 role: 'staff',
                 department: 'CSE',
                 academicYear: '2023-2024'
@@ -41,18 +41,23 @@ const seedUsers = async () => {
             {
                 username: 'Student User',
                 email: 'student@aaes.com',
-                password: 'password123',
+                password: defaultPasswordHash,
                 role: 'student',
                 department: 'CSE',
                 academicYear: '2023-2024',
                 semester: '6'
+            },
+            {
+                username: 'Dr. James Wilson',
+                fullName: 'Dr. James Wilson',
+                email: 'principal@aaes.com',
+                password: defaultPasswordHash,
+                role: 'principal',
+                department: 'Administration'
             }
         ];
 
-        // We use create instead of insertMany to trigger the pre-save hook for password hashing
-        for (const user of users) {
-            await User.create(user);
-        }
+        await User.insertMany(users);
 
         console.log('Data Imported!');
         process.exit();

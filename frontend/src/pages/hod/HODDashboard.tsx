@@ -1,62 +1,650 @@
-import { useEffect, useState, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-// Recharts unused for now, placeholders used.
-// import {
-//     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-// } from 'recharts';
+import { motion } from 'framer-motion';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    BarChart, Bar, Cell
+} from 'recharts';
+import {
+    Users, GraduationCap, TrendingUp, AlertTriangle,
+    UserPlus, BookOpen, Activity, Star, Zap, FileText, MessageSquare, Download
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import AssignAdvisorModal from './AssignAdvisorModal';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const HODDashboard = () => {
-    const { token, user } = useContext(AuthContext)!;
+    const { user, token } = useContext(AuthContext)!;
+    const navigate = useNavigate();
+
     const [stats, setStats] = useState({
         staffCount: 0,
         studentCount: 0,
-        avgMarks: 0
+        avgMarks: 0,
     });
 
+    const [trendData, setTrendData] = useState([]);
+    const [subjectData, setSubjectData] = useState([]);
+    const [advisors, setAdvisors] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showAdvisorModal, setShowAdvisorModal] = useState(false);
+    const [workloadData, setWorkloadData] = useState<any[]>([]);
+    const [comparisonData, setComparisonData] = useState<any[]>([]);
+    const [ccmData, setCcmData] = useState<any[]>([]);
+    const [queriesData, setQueriesData] = useState<any[]>([]);
+    const [mentorshipOversight, setMentorshipOversight] = useState<any[]>([]);
+    const [ccmOversight, setCcmOversight] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'workload' | 'comparison' | 'ccm' | 'mentorship'>('overview');
+
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchDashboardData = async () => {
+            setLoading(true);
             try {
-                // Placeholder: In a real app, fetch from specific HOD stats endpoint
-                // For now, we might need to create a new endpoint or reuse existing with filtering
-                // Let's assume we'll create /api/analytics/hod/stats
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await axios.get('http://localhost:5000/api/analytics/hod/stats', config);
-                setStats(res.data);
+
+                const [statsRes, semRes, subjRes, advisorRes, workloadRes, comparisonRes, ccmRes, queriesRes, oversightRes, ccmOversightRes] = await Promise.all([
+                    axios.get(`${API}/api/analytics/hod/stats`, config),
+                    axios.get(`${API}/api/analytics/semester`, config),
+                    axios.get(`${API}/api/analytics/subject`, config),
+                    axios.get(`${API}/api/advisor/assignments`, config),
+                    axios.get(`${API}/api/analytics/hod/workload`, config),
+                    axios.get(`${API}/api/analytics/hod/comparison`, config),
+                    axios.get(`${API}/api/ccm`, config),
+                    axios.get(`${API}/api/mentorship`, config),
+                    axios.get(`${API}/api/analytics/hod/mentorship-oversight`, config),
+                    axios.get(`${API}/api/analytics/hod/ccm-oversight`, config)
+                ]);
+
+                setStats(statsRes.data);
+                setTrendData(semRes.data);
+                setSubjectData(subjRes.data.map((s: any) => ({ name: s.subject, score: s.avgMarks })));
+                setAdvisors(advisorRes.data);
+                setWorkloadData(workloadRes.data);
+                setComparisonData(comparisonRes.data);
+                setCcmData(ccmRes.data);
+                setQueriesData(queriesRes.data);
+                setMentorshipOversight(oversightRes.data);
+                setCcmOversight(ccmOversightRes.data);
+
             } catch (error) {
-                console.error("Error fetching HOD stats:", error);
-                // Fallback for demo if endpoint doesn't exist yet
-                setStats({ staffCount: 5, studentCount: 120, avgMarks: 78 });
+                console.error("Failed to fetch HOD stats", error);
+            } finally {
+                setLoading(false);
             }
         };
-        fetchStats();
+        if (token) fetchDashboardData();
     }, [token]);
 
+    const kpis = [
+        { label: 'Total Faculty', value: stats.staffCount, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', link: '/hod/staff' },
+        { label: 'Total Students', value: stats.studentCount, icon: GraduationCap, color: 'text-blue-600', bg: 'bg-blue-50', link: '/hod/students' },
+        { label: 'Avg Performance', value: `${stats.avgMarks}%`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/hod/analytics' },
+        { label: 'Active Advisors', value: advisors.length, icon: Star, color: 'text-purple-600', bg: 'bg-purple-50', link: '/hod/advisors' },
+    ];
+
+    const exportToPDF = () => {
+        try {
+            const doc = new jsPDF();
+            const deptName = user?.department || 'Department';
+
+            doc.setFontSize(18);
+            doc.text(`${deptName} - HOD Dashboard Report`, 14, 20);
+
+            doc.setFontSize(12);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 30);
+            doc.text(`Generated by: ${(user as any)?.fullName || user?.username || 'HOD'}`, 14, 38);
+
+            // Overview Stats
+            autoTable(doc, {
+                startY: 45,
+                head: [['Key Metric', 'Value']],
+                body: [
+                    ['Total Faculty', stats.staffCount.toString()],
+                    ['Total Students', stats.studentCount.toString()],
+                    ['Average Performance', `${stats.avgMarks}%`],
+                    ['Active Advisors', advisors.length.toString()]
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+
+            // Workload summary if available
+            if (workloadData.length > 0) {
+                const workloadBody = workloadData.map((w: any) => [
+                    w.staffName || 'N/A',
+                    (w.subjectCount || 0).toString(),
+                    (w.activeAssignments || 0).toString(),
+                    (w.totalStudentLoad || 0).toString()
+                ]);
+
+                autoTable(doc, {
+                    startY: (doc as any).lastAutoTable.finalY + 15,
+                    head: [['Faculty Name', 'Subjects', 'Active Assignments', 'Student Load']],
+                    body: workloadBody,
+                    theme: 'striped',
+                    headStyles: { fillColor: [79, 70, 229] }
+                });
+            }
+
+            // Subject Comparison
+            if (comparisonData.length > 0) {
+                const comparisonBody = comparisonData.map((c: any) => [
+                    `${c.subjectCode || ''} - ${c.subjectName || ''}`,
+                    `${c.avgMarks || 0}%`,
+                    `${c.submissionRate || 0}%`,
+                    c.avgMarks >= 75 ? 'Excellent' : c.avgMarks >= 50 ? 'Stable' : 'Critical'
+                ]);
+
+                autoTable(doc, {
+                    startY: (doc as any).lastAutoTable.finalY + 15,
+                    head: [['Subject', 'Avg Marks', 'Submission Rate', 'Health']],
+                    body: comparisonBody,
+                    theme: 'striped',
+                    headStyles: { fillColor: [79, 70, 229] }
+                });
+            }
+
+            doc.save(`HOD_Report_${deptName.replace(/\s+/g, '_')}.pdf`);
+        } catch (error) {
+            console.error('Failed to generate PDF:', error);
+        }
+    };
+
+    const quickActions = [
+        { icon: UserPlus, label: 'Add Student', desc: 'Enroll new students to dept', color: 'from-blue-500 to-blue-600', link: '/hod/students' },
+        { icon: Star, label: 'Assign Advisors', desc: 'Manage class responsibilities', color: 'from-purple-500 to-purple-600', action: () => setShowAdvisorModal(true) },
+        { icon: BookOpen, label: 'Department Directory', desc: 'View all staff and student list', color: 'from-indigo-500 to-indigo-600', link: '/hod/directory' },
+        { icon: Activity, label: 'Detailed Analytics', desc: 'Deep dive into performance', color: 'from-teal-500 to-teal-600', link: '/hod/analytics' },
+    ];
+
     return (
-        <div>
-            <h1 className="text-2xl font-bold mb-6">Welcome, HOD {user?.department}</h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded shadow border-l-4 border-teal-500">
-                    <h3 className="text-gray-500 text-sm uppercase">Total Staff</h3>
-                    <div className="text-3xl font-bold">{stats.staffCount}</div>
+        <div className="space-y-6 pb-10">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 font-display">
+                        {user?.department || 'Department'} Dashboard
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-0.5">Welcome back, Head of Department. Here is your overview.</p>
                 </div>
-                <div className="bg-white p-6 rounded shadow border-l-4 border-blue-500">
-                    <h3 className="text-gray-500 text-sm uppercase">Total Students</h3>
-                    <div className="text-3xl font-bold">{stats.studentCount}</div>
-                </div>
-                <div className="bg-white p-6 rounded shadow border-l-4 border-purple-500">
-                    <h3 className="text-gray-500 text-sm uppercase">Avg Department Performance</h3>
-                    <div className="text-3xl font-bold">{stats.avgMarks}%</div>
+                <div className="flex gap-3">
+                    <button onClick={exportToPDF}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        <Download className="w-4 h-4" /> Export PDF
+                    </button>
+                    <button onClick={() => navigate('/hod/staff')}
+                        className="px-4 py-2 border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        Manage Faculty
+                    </button>
+                    <button onClick={() => navigate('/hod/analytics')}
+                        className="px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+                    >
+                        Detailed Report
+                    </button>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded shadow mb-8">
-                <h3 className="text-lg font-bold mb-4">Department Performance Overview</h3>
-                <p className="text-gray-600">Detailed analytics are available in the <a href="/hod/analytics" className="text-teal-600 hover:underline">Analytics</a> section.</p>
-            </div>
+            {loading ? (
+                <div className="flex justify-center items-center h-64">
+                    <div className="w-10 h-10 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            ) : (
+                <>
+                    {/* KPI Grid */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {kpis.map((kpi, i) => (
+                            <motion.div key={kpi.label}
+                                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                            >
+                                <div onClick={() => navigate(kpi.link)} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group">
+                                    <div className={`p-4 rounded-xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
+                                        <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
+                                        <h3 className="text-2xl font-bold text-gray-900">{kpi.value}</h3>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* Tab Navigation */}
+                    <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-2xl w-fit mb-6">
+                        {[
+                            { id: 'overview', label: 'Overview', icon: TrendingUp },
+                            { id: 'workload', label: 'Staff Workload', icon: Users },
+                            { id: 'comparison', label: 'Subject Comparisons', icon: BookOpen },
+                            { id: 'ccm', label: 'CCM Details', icon: FileText },
+                            { id: 'mentorship', label: 'Mentorship Queries', icon: MessageSquare }
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
+                                    ? 'bg-white text-indigo-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                                    }`}
+                            >
+                                <tab.icon className="w-4 h-4" />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {activeTab === 'overview' && (
+                        <>
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Area Chart: Performance Trend */}
+                                <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                                        <TrendingUp className="w-4 h-4 text-teal-600" />
+                                        <h2 className="font-semibold text-gray-800">Performance Trend (Semester)</h2>
+                                    </div>
+                                    <div className="p-6 h-80">
+                                        {trendData.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={trendData}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                                    <XAxis dataKey="semester" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} dy={10} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} domain={[0, 100]} />
+                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
+                                                    <Line
+                                                        type="monotone"
+                                                        dataKey="avgMarks"
+                                                        stroke="#0D9488"
+                                                        strokeWidth={4}
+                                                        dot={{ r: 5, fill: '#0D9488', strokeWidth: 3, stroke: '#fff' }}
+                                                        activeDot={{ r: 7 }}
+                                                        name="Avg Marks"
+                                                    />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-gray-400 text-sm">No benchmark data yet</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Bar Chart: Subject Performance */}
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                                        <BarChart2 className="w-4 h-4 text-indigo-600" />
+                                        <h2 className="font-semibold text-gray-800">Subject Averages</h2>
+                                    </div>
+                                    <div className="p-5 h-80">
+                                        {subjectData.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={subjectData} layout="vertical" margin={{ left: 10 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                                                    <XAxis type="number" domain={[0, 100]} hide />
+                                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} width={80} />
+                                                    <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '10px' }} />
+                                                    <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={20} name="Score">
+                                                        {subjectData.map((entry: any, index: number) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.score < 50 ? '#EF4444' : '#6366F1'} fillOpacity={0.9} />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-gray-400 text-sm">No subject metrics</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Attention Required & Quick Actions */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                                {/* Alerts Card */}
+                                <div className="bg-white rounded-2xl border border-l-4 border-l-red-500 border-gray-100 shadow-sm p-5">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                                        <h2 className="font-semibold text-gray-800">Attention Required</h2>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {subjectData.filter((s: any) => s.score > 0 && s.score < 50).length > 0 ? (
+                                            subjectData.filter((s: any) => s.score > 0 && s.score < 50).slice(0, 3).map((subj: any, i: number) => (
+                                                <div key={i} className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                                                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                                                        <TrendingUp className="w-4 h-4 text-red-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-red-900 text-sm">{subj.name}</h4>
+                                                        <p className="text-red-700 text-xs">Averaging {subj.score}% — below department targets.</p>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex items-center gap-4 p-5 bg-green-50 rounded-2xl border border-green-100 text-green-700">
+                                                <Zap className="w-8 h-8 text-green-500" />
+                                                <div>
+                                                    <p className="font-bold">All Disciplines Healthy</p>
+                                                    <p className="text-sm">No subjects are currently flagging performance alerts.</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Visual Quick Actions Grid */}
+                                <div className="space-y-4">
+                                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                                        <Activity className="w-4 h-4" /> Operations
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {quickActions.map((action, i) => (
+                                            <motion.div key={action.label}
+                                                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ delay: 0.3 + i * 0.05 }}
+                                            >
+                                                <div
+                                                    onClick={() => action.action ? action.action() : navigate(action.link || '#')}
+                                                    className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md hover:-translate-y-1 transition-all group cursor-pointer h-full"
+                                                >
+                                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-100`}>
+                                                        <action.icon className="w-5 h-5 text-white" />
+                                                    </div>
+                                                    <p className="text-sm font-bold text-gray-800">{action.label}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{action.desc}</p>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'workload' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-100">
+                                <h2 className="font-bold text-gray-900">Faculty Workload Monitoring</h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                        <tr>
+                                            <th className="px-5 py-3">Staff Member</th>
+                                            <th className="px-5 py-3 text-center">Subjects</th>
+                                            <th className="px-5 py-3 text-center">Active Assignments</th>
+                                            <th className="px-5 py-3 text-center">Total Student Load</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {workloadData.map((staff: any, i: number) => (
+                                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-5 py-4 font-semibold text-gray-900">{staff.staffName}</td>
+                                                <td className="px-5 py-4 text-center">{staff.subjectCount}</td>
+                                                <td className="px-5 py-4 text-center">
+                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-bold">
+                                                        {staff.activeAssignments}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4 text-center text-gray-600 font-medium">
+                                                    {staff.totalStudentLoad} students
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'comparison' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-100">
+                                <h2 className="font-bold text-gray-900">Subject Performance Comparison</h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                        <tr>
+                                            <th className="px-5 py-3">Subject Name</th>
+                                            <th className="px-5 py-3 text-center">Avg Marks</th>
+                                            <th className="px-5 py-3 text-center">Submission Rate</th>
+                                            <th className="px-5 py-3 text-center">Health Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {comparisonData.map((subject: any, i: number) => (
+                                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-5 py-4 font-semibold text-gray-900">{subject.subjectCode} - {subject.subjectName}</td>
+                                                <td className="px-5 py-4 text-center font-bold text-indigo-600">{subject.avgMarks}%</td>
+                                                <td className="px-5 py-4 text-center font-medium">{subject.submissionRate}%</td>
+                                                <td className="px-5 py-4 text-center">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${subject.avgMarks >= 75 ? 'bg-green-100 text-green-700' : subject.avgMarks >= 50 ? 'bg-indigo-100 text-indigo-700' : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                        {subject.avgMarks >= 75 ? 'Excellent' : subject.avgMarks >= 50 ? 'Stable' : 'Critical'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'ccm' && (
+                        <div className="space-y-6">
+                            {/* Oversight Stats */}
+                            {ccmOversight && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                        <div className="p-3 bg-indigo-50 rounded-xl"><Users className="w-5 h-5 text-indigo-600" /></div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">Total CCMs</p>
+                                            <h3 className="text-2xl font-bold text-gray-900">{ccmOversight.totalCCMs}</h3>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                        <div className="p-3 bg-blue-50 rounded-xl"><FileText className="w-5 h-5 text-blue-600" /></div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">Total Action Items</p>
+                                            <h3 className="text-2xl font-bold text-gray-900">{ccmOversight.totalActionItems}</h3>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4">
+                                        <div className="p-3 bg-red-50 rounded-xl"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">Overdue Actions</p>
+                                            <h3 className={`text-2xl font-bold ${ccmOversight.totalOverdue > 0 ? 'text-red-600' : 'text-gray-900'}`}>{ccmOversight.totalOverdue}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                                    <h2 className="font-bold text-gray-900">Class Committee Meetings (Department Overview)</h2>
+                                    <button
+                                        onClick={() => alert("Semester CCM Summary Export (PDF) Download initiated.")}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-semibold"
+                                    >
+                                        <FileText className="w-3 h-3" /> Export Summary
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                            <tr>
+                                                <th className="px-5 py-3">Date</th>
+                                                <th className="px-5 py-3">Academic Year</th>
+                                                <th className="px-5 py-3">Category</th>
+                                                <th className="px-5 py-3">Advisor</th>
+                                                <th className="px-5 py-3 max-w-xs">Agenda</th>
+                                                <th className="px-5 py-3 text-center">Action Items</th>
+                                                <th className="px-5 py-3 text-center">Minutes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {ccmData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={7} className="px-5 py-8 text-center text-gray-500 text-sm">No CCM records found for this department.</td>
+                                                </tr>
+                                            ) : (
+                                                ccmData.map((ccm: any) => (
+                                                    <tr key={ccm._id} className="hover:bg-gray-50/50 transition-colors">
+                                                        <td className="px-5 py-4 font-semibold text-gray-900">{new Date(ccm.meetingDate).toLocaleDateString()}</td>
+                                                        <td className="px-5 py-4 text-gray-600 font-medium">{ccm.academicYear}</td>
+                                                        <td className="px-5 py-4"><span className="text-[10px] uppercase font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded">{ccm.category || 'Academic'}</span></td>
+                                                        <td className="px-5 py-4 font-medium text-indigo-600">{ccm.createdBy?.username || 'Unknown'}</td>
+                                                        <td className="px-5 py-4 text-xs text-gray-600 max-w-xs truncate" title={ccm.agenda}>{ccm.agenda}</td>
+                                                        <td className="px-5 py-4 text-center whitespace-nowrap">
+                                                            <span className="text-xs font-bold text-gray-600">{ccm.actionItems?.length || 0} Total</span>
+                                                            {ccm.actionItems?.filter((a: any) => a.status === 'Pending' || a.status === 'In Progress').length > 0 && (
+                                                                <span className="ml-2 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                                                                    {ccm.actionItems.filter((a: any) => a.status === 'Pending' || a.status === 'In Progress').length} Pending
+                                                                </span>
+                                                            )}
+                                                            {ccm.actionItems?.filter((a: any) => a.status === 'Overdue').length > 0 && (
+                                                                <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                                                                    {ccm.actionItems.filter((a: any) => a.status === 'Overdue').length} Overdue
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            {ccm.minutesPDF ? (
+                                                                <a href={`${API}${ccm.minutesPDF}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors">
+                                                                    <FileText className="w-3 h-3" /> View PDF
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-3 py-1 rounded-full">Not Uploaded</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'mentorship' && (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <h2 className="font-bold text-gray-900">Mentor Performance Overview</h2>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-indigo-50/50 text-indigo-800 uppercase text-[10px] font-bold">
+                                            <tr>
+                                                <th className="px-5 py-3">Mentor</th>
+                                                <th className="px-5 py-3 text-center">Total Mentees</th>
+                                                <th className="px-5 py-3 text-center">Open Queries</th>
+                                                <th className="px-5 py-3 text-center">Avg Response Time</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {mentorshipOversight.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={4} className="px-5 py-8 text-center text-gray-500 text-sm">No mentorship data available.</td>
+                                                </tr>
+                                            ) : (
+                                                mentorshipOversight.map((mentorItem: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                                        <td className="px-5 py-4 font-semibold text-gray-900">{mentorItem.mentor.fullName || mentorItem.mentor.username}</td>
+                                                        <td className="px-5 py-4 text-center font-bold text-gray-700">{mentorItem.totalMentees}</td>
+                                                        <td className="px-5 py-4 text-center text-red-600 font-bold">{mentorItem.openQueries}</td>
+                                                        <td className="px-5 py-4 text-center text-gray-500 font-medium">{mentorItem.avgResponseTimeHours > 0 ? `${mentorItem.avgResponseTimeHours} hrs` : 'N/A'}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                                    <h2 className="font-bold text-gray-900">Mentorship Queries Oversight</h2>
+                                    <div className="flex gap-4 text-xs font-bold">
+                                        <span className="text-red-600 bg-red-50 px-3 py-1 rounded-full">Open: {queriesData.filter(q => q.status === 'Open').length}</span>
+                                        <span className="text-green-600 bg-green-50 px-3 py-1 rounded-full">Resolved: {queriesData.filter(q => q.status === 'Resolved').length}</span>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                            <tr>
+                                                <th className="px-5 py-3">Date</th>
+                                                <th className="px-5 py-3">Student</th>
+                                                <th className="px-5 py-3">Assigned Mentor</th>
+                                                <th className="px-5 py-3">Type</th>
+                                                <th className="px-5 py-3 max-w-[200px]">Issue</th>
+                                                <th className="px-5 py-3 max-w-[200px]">Mentor Reply</th>
+                                                <th className="px-5 py-3 text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {queriesData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="px-5 py-8 text-center text-gray-500 text-sm">No mentorship queries found in this department.</td>
+                                                </tr>
+                                            ) : (
+                                                queriesData.map((query: any) => (
+                                                    <tr key={query._id} className="hover:bg-gray-50/50 transition-colors">
+                                                        <td className="px-5 py-4 font-semibold text-gray-900">{new Date(query.createdAt).toLocaleDateString()}</td>
+                                                        <td className="px-5 py-4 text-gray-900 font-medium whitespace-nowrap">
+                                                            {query.student?.fullName || query.student?.username || 'Unknown'}
+                                                            <span className="block text-[10px] text-gray-400 font-normal">{query.student?.registerNumber || query.student?.username}</span>
+                                                        </td>
+                                                        <td className="px-5 py-4 font-medium text-indigo-600">{query.mentor?.username || 'Not Assigned'}</td>
+                                                        <td className="px-5 py-4">
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 uppercase">
+                                                                {query.queryType}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-5 py-4 text-xs text-gray-600 max-w-[200px] truncate" title={query.message}>{query.message}</td>
+                                                        <td className="px-5 py-4 text-xs text-gray-600 max-w-[200px] truncate" title={query.reply || 'No reply yet'}>
+                                                            {query.reply ? query.reply : <span className="italic text-gray-400">Waiting for reply</span>}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${query.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                {query.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {showAdvisorModal && (
+                <AssignAdvisorModal
+                    onClose={() => setShowAdvisorModal(false)}
+                    advisors={advisors}
+                    refreshData={() => {
+                        const config = { headers: { Authorization: `Bearer ${token}` } };
+                        axios.get(`${API}/api/advisor/assignments`, config)
+                            .then(res => setAdvisors(res.data));
+                    }}
+                />
+            )}
         </div>
     );
 };
+
+const BarChart2 = ({ className }: { className?: string }) => (
+    <Activity className={className} />
+);
 
 export default HODDashboard;

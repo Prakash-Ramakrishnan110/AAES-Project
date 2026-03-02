@@ -2,6 +2,9 @@ const Assignment = require('../models/Assignment');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
 const Subject = require('../models/Subject');
+const MentorshipQuery = require('../models/MentorshipQuery');
+const MentorStudentMap = require('../models/MentorStudentMap');
+const CCM = require('../models/CCM');
 
 // @desc    Get aggregated performance stats by Department
 // @route   GET /api/analytics/department
@@ -47,58 +50,7 @@ const getDepartmentPerformance = async (req, res) => {
     }
 };
 
-// @desc    Get HOD specific stats
-// @route   GET /api/analytics/hod/stats
-// @access  Private/HOD
-const getHODStats = async (req, res) => {
-    try {
-        const department = req.user.department;
 
-        if (!department) {
-            return res.status(400).json({ message: 'User does not have a department assigned' });
-        }
-
-        // 1. Counts
-        const staffCount = await User.countDocuments({ role: 'staff', department });
-        const studentCount = await User.countDocuments({ role: 'student', department });
-
-        // 2. Avg Performance (Aggregated from Submissions -> Student.department)
-        const perfStats = await Submission.aggregate([
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentInfo'
-                }
-            },
-            { $unwind: '$studentInfo' },
-            {
-                $match: {
-                    'studentInfo.department': department,
-                    status: 'graded'
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    avgMarks: { $avg: '$marks' }
-                }
-            }
-        ]);
-
-        const avgMarks = perfStats.length > 0 ? Math.round(perfStats[0].avgMarks * 10) / 10 : 0;
-
-        res.json({
-            staffCount,
-            studentCount,
-            avgMarks
-        });
-
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
 
 // @desc    Get aggregated performance stats by Semester (Optional Dept Filter)
 // @route   GET /api/analytics/semester
@@ -189,6 +141,12 @@ const getSubjectPerformance = async (req, res) => {
             });
         }
 
+        if (req.user.role === 'staff') {
+            pipeline.push({
+                $match: { 'subjectInfo.staff': req.user._id }
+            });
+        }
+
         pipeline.push(
             {
                 $group: {
@@ -260,9 +218,346 @@ const getHODStats = async (req, res) => {
     }
 };
 
+// @desc    Get aggregated performance stats by Staff (Optional Dept Filter)
+// @route   GET /api/analytics/staff/performance
+// @access  Private/Admin/HOD
+const getStaffPerformance = async (req, res) => {
+    try {
+        const filterDepartment = (req.user.role === 'hod') ? req.user.department : null;
+
+        const pipeline = [
+            {
+                $lookup: {
+                    from: 'assignments',
+                    localField: 'assignment',
+                    foreignField: '_id',
+                    as: 'assignmentInfo'
+                }
+            },
+            { $unwind: '$assignmentInfo' },
+            {
+                $lookup: {
+                    from: 'subjects',
+                    localField: 'assignmentInfo.subject',
+                    foreignField: '_id',
+                    as: 'subjectInfo'
+                }
+            },
+            { $unwind: '$subjectInfo' },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'subjectInfo.staff',
+                    foreignField: '_id',
+                    as: 'staffInfo'
+                }
+            },
+            { $unwind: '$staffInfo' },
+            { $match: { status: 'graded' } }
+        ];
+
+        if (filterDepartment) {
+            pipeline.push({
+                $match: { 'staffInfo.department': filterDepartment }
+            });
+        }
+
+        pipeline.push(
+            {
+                $group: {
+                    _id: '$staffInfo.username',
+                    avgMarks: { $avg: '$marks' },
+                    totalSubmissions: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    staff: '$_id',
+                    avgMarks: { $round: ['$avgMarks', 1] },
+                    totalSubmissions: 1,
+                    _id: 0
+                }
+            }
+        );
+
+        const stats = await Submission.aggregate(pipeline);
+
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get aggregated performance stats by Student (Top Performers, Optional Dept Filter)
+// @route   GET /api/analytics/student/performance
+// @access  Private/Admin/HOD
+const getStudentPerformance = async (req, res) => {
+    try {
+        const filterDepartment = (req.user.role === 'hod') ? req.user.department : null;
+
+        const pipeline = [
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'student',
+                    foreignField: '_id',
+                    as: 'studentInfo'
+                }
+            },
+            { $unwind: '$studentInfo' },
+            { $match: { status: 'graded' } }
+        ];
+
+        if (filterDepartment) {
+            pipeline.push({
+                $match: { 'studentInfo.department': filterDepartment }
+            });
+        }
+
+        pipeline.push(
+            {
+                $group: {
+                    _id: '$studentInfo.username',
+                    avgMarks: { $avg: '$marks' },
+                    totalSubmissions: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { avgMarks: -1 }
+            },
+            {
+                $limit: 10
+            },
+            {
+                $project: {
+                    student: '$_id',
+                    avgMarks: { $round: ['$avgMarks', 1] },
+                    totalSubmissions: 1,
+                    _id: 0
+                }
+            }
+        );
+
+        const stats = await Submission.aggregate(pipeline);
+
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get Staff Workload Overview (HOD Panel)
+// @route   GET /api/analytics/hod/workload
+// @access  Private/HOD
+const getStaffWorkload = async (req, res) => {
+    try {
+        const hodDepartment = req.user.department;
+
+        // Find all staff in the department
+        const staffList = await User.find({ role: 'staff', department: hodDepartment }).select('fullName username');
+
+        const workload = await Promise.all(staffList.map(async (staff) => {
+            // Count subjects
+            const subjects = await Subject.find({ staff: staff._id });
+
+            // Count active assignments for these subjects
+            const subjectIds = subjects.map(s => s._id);
+            const activeAssignments = await Assignment.countDocuments({
+                subject: { $in: subjectIds },
+                deadline: { $gte: new Date() }
+            });
+
+            // Sum total students across all subjects
+            // (Note: Students might be the same across subjects, but "load" is per subject enrolment)
+            let totalStudentLoad = 0;
+            for (const subject of subjects) {
+                const count = await User.countDocuments({
+                    role: 'student',
+                    department: hodDepartment,
+                    semester: subject.semester,
+                    academicYear: subject.academicYear
+                });
+                totalStudentLoad += count;
+            }
+
+            return {
+                staffName: staff.fullName || staff.username,
+                subjectCount: subjects.length,
+                activeAssignments,
+                totalStudentLoad
+            };
+        }));
+
+        res.json(workload);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get Assignment Performance Comparison
+// @route   GET /api/analytics/hod/comparison
+// @access  Private/HOD
+const getAssignmentPerformanceComparison = async (req, res) => {
+    try {
+        const hodDepartment = req.user.department;
+
+        const subjects = await Subject.find({ department: hodDepartment });
+
+        const comparison = await Promise.all(subjects.map(async (subject) => {
+            const submissions = await Submission.find({ status: 'graded' })
+                .populate({
+                    path: 'assignment',
+                    match: { subject: subject._id }
+                });
+
+            const subjectSubmissions = submissions.filter(s => s.assignment);
+
+            let avgMarks = 0;
+            if (subjectSubmissions.length > 0) {
+                const marks = subjectSubmissions.map(s => (s.marks / s.assignment.maxMarks) * 100);
+                avgMarks = Math.round(marks.reduce((a, b) => a + b, 0) / marks.length);
+            }
+
+            // Calculate submission rate
+            const totalStudents = await User.countDocuments({
+                role: 'student',
+                department: hodDepartment,
+                semester: subject.semester,
+                academicYear: subject.academicYear
+            });
+
+            const assignments = await Assignment.find({ subject: subject._id });
+            let avgSubmissionRate = 0;
+            if (assignments.length > 0 && totalStudents > 0) {
+                const totalPossibleSubmissions = assignments.length * totalStudents;
+                const actualSubmissions = await Submission.countDocuments({
+                    assignment: { $in: assignments.map(a => a._id) }
+                });
+                avgSubmissionRate = Math.round((actualSubmissions / totalPossibleSubmissions) * 100);
+            }
+
+            return {
+                subjectName: subject.name,
+                avgMarks,
+                submissionRate: avgSubmissionRate,
+                attendanceAvg: 0 // Placeholder for now
+            };
+        }));
+
+        res.json(comparison);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get Mentorship Oversight Stats
+// @route   GET /api/analytics/hod/mentorship-oversight
+// @access  Private/HOD
+const getMentorshipOversight = async (req, res) => {
+    try {
+        const hodDepartment = req.user.department;
+
+        // Group mentors and count mentees
+        const mentoredStudents = await User.find({ role: 'student', department: hodDepartment, mentor: { $ne: null } })
+            .populate({ path: 'mentor', select: 'username fullName' });
+
+        // Group queries by mentor
+        const queries = await MentorshipQuery.find({ department: hodDepartment });
+
+        const mentorStats = {};
+
+        // Aggregate mentee count
+        mentoredStudents.forEach(student => {
+            if (!student.mentor) return;
+            const mId = student.mentor._id.toString();
+            if (!mentorStats[mId]) {
+                mentorStats[mId] = {
+                    mentorName: student.mentor.fullName || student.mentor.username,
+                    totalMentees: 0,
+                    openQueries: 0,
+                    criticalCases: 0, // Placeholder if we don't calculate on the fly here
+                    totalResponseTimeMs: 0,
+                    resolvedCount: 0
+                };
+            }
+            mentorStats[mId].totalMentees++;
+        });
+
+        // Loop through queries to calculate Open count and Response Times
+        queries.forEach(q => {
+            const mId = q.mentor.toString();
+            if (mentorStats[mId]) {
+                if (q.status === 'Open') {
+                    mentorStats[mId].openQueries++;
+                } else if (q.status === 'Resolved' && q.resolvedAt && q.createdAt) {
+                    const diff = new Date(q.resolvedAt) - new Date(q.createdAt);
+                    if (diff > 0) {
+                        mentorStats[mId].totalResponseTimeMs += diff;
+                        mentorStats[mId].resolvedCount++;
+                    }
+                }
+            }
+        });
+
+        const oversightData = Object.keys(mentorStats).map(key => {
+            const stat = mentorStats[key];
+            const avgResponseTimeMs = stat.resolvedCount > 0 ? stat.totalResponseTimeMs / stat.resolvedCount : 0;
+            const avgResponseHours = (avgResponseTimeMs / (1000 * 60 * 60)).toFixed(1);
+            return {
+                mentorName: stat.mentorName,
+                totalMentees: stat.totalMentees,
+                openQueries: stat.openQueries,
+                criticalCases: stat.criticalCases,
+                avgResponseHours
+            };
+        });
+
+        res.json(oversightData);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get CCM Oversight Stats
+// @route   GET /api/analytics/hod/ccm-oversight
+// @access  Private/HOD
+const getCCMOversight = async (req, res) => {
+    try {
+        const hodDepartment = req.user.department;
+
+        const ccms = await CCM.find({ department: hodDepartment })
+            .populate('createdBy', 'username fullName');
+
+        let totalCCMs = ccms.length;
+        let totalActionItems = 0;
+        let totalOverdue = 0;
+
+        ccms.forEach(ccm => {
+            if (ccm.actionItems) {
+                totalActionItems += ccm.actionItems.length;
+                totalOverdue += ccm.actionItems.filter(a => a.status === 'Overdue' || (a.status === 'Pending' && new Date(a.targetDate || a.deadline) < new Date())).length;
+            }
+        });
+
+        res.json({
+            totalCCMs,
+            totalActionItems,
+            totalOverdue
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getDepartmentPerformance,
-    getSemesterTrends, // Kept original name as getSemesterTrends function is not removed
+    getSemesterTrends,
     getSubjectPerformance,
-    getHODStats
+    getHODStats,
+    getStaffPerformance,
+    getStudentPerformance,
+    getStaffWorkload,
+    getAssignmentPerformanceComparison,
+    getMentorshipOversight,
+    getCCMOversight
 };

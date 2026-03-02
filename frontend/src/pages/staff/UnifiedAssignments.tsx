@@ -1,0 +1,899 @@
+import { useState, useEffect, useContext, useCallback } from 'react';
+import axios from 'axios';
+import { AuthContext } from '../../context/AuthContext';
+import {
+    Trash2, BookOpen, Clock, ChevronRight, ChevronLeft, Bot,
+    Save, Eye, Library, FileEdit, CheckCircle, AlertCircle, X, Download, Settings
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+
+// Builders
+import BaseConfig from '../../components/assignments/BaseConfig';
+import HandwrittenBuilder from '../../components/assignments/HandwrittenBuilder';
+import DocumentBuilder from '../../components/assignments/DocumentBuilder';
+import PPTBuilder from '../../components/assignments/PPTBuilder';
+import QuizBuilder from '../../components/assignments/QuizBuilder';
+import ProgrammingBuilder from '../../components/assignments/ProgrammingBuilder';
+import SeminarBuilder from '../../components/assignments/SeminarBuilder';
+
+const API = 'http://localhost:5000';
+const ML_API = 'http://localhost:8000';
+
+interface Subject {
+    _id: string;
+    name: string;
+    code: string;
+    department: string;
+    academicYear: string;
+    semester: string;
+}
+
+const UnifiedAssignments = () => {
+    const { user, token } = useContext(AuthContext)!;
+    const [step, setStep] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
+    const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
+    const [selectedAssignmentGradebook, setSelectedAssignmentGradebook] = useState<any | null>(null);
+    const [gradebookData, setGradebookData] = useState<any[]>([]);
+    const [isGradebookLoading, setIsGradebookLoading] = useState(false);
+    const [mySubjects, setMySubjects] = useState<Subject[]>([]);
+    const [toast, setToast] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+    // Edit Modal State
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingAssignment, setEditingAssignment] = useState<any>(null);
+    const [editFormData, setEditFormData] = useState({
+        deadline: '',
+        submissionsEnabled: true
+    });
+
+    // Form Data
+    const [formData, setFormData] = useState({
+        // Step 1: Context
+        department: '',
+        academicYear: '',
+        semester: '',
+
+        // Step 2: Config
+        title: '',
+        description: '',
+        subjectId: '',
+        section: 'All',
+        maxMarks: 10,
+        deadline: '',
+        submissionType: 'Handwritten', // Handwritten / Document / PPT / Quiz / Programming / Seminar
+
+        // Format Specific Configs
+        quizConfig: {
+            timeLimitMinutes: 60,
+            randomizeQuestions: false,
+            attemptsAllowed: 1
+        },
+        programmingConfig: {
+            problemStatement: '',
+            inputFormat: '',
+            outputFormat: '',
+            sampleInput: '',
+            sampleOutput: '',
+            timeLimit: 2,
+            allowedLanguages: ['python', 'c', 'cpp', 'java']
+        },
+        seminarConfig: {
+            presentationDate: '',
+            isGroup: false,
+            rubric: {
+                contentMarks: 0,
+                presentationMarks: 0,
+                communicationMarks: 0,
+                qaMarks: 0
+            }
+        },
+        pptConfig: {
+            topicDescription: '',
+            minSlides: 10,
+            rubric: {
+                contentMarks: 0,
+                designMarks: 0,
+                explanationMarks: 0,
+                qaMarks: 0
+            }
+        },
+
+        // Questions / Content
+        questions: [] as any[],
+        testCases: [] as any[],
+        modelAnswer: '',
+
+        // Step 3: Question Mode (Used by AI helper)
+        creationMode: 'manual', // manual / ai
+        aiConfig: {
+            units: '',
+            difficulty: 'Medium',
+            markSplit: 'Equal',
+            questionCount: 5,
+            keywords: '',
+            slideCount: 10
+        },
+
+        // Rules
+        rules: {
+            lateAllowed: false,
+            resubmissionAllowed: false,
+            latePenalty: 10
+        }
+    });
+
+    const fetchGradebook = async (id: string) => {
+        setIsGradebookLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const res = await axios.get(`${API}/api/assignments/${id}/gradebook`, config);
+            setGradebookData(res.data.gradebook);
+            setSelectedAssignmentGradebook({ ...res.data, id });
+        } catch (error) {
+            showToast('Error fetching gradebook', 'error');
+        } finally {
+            setIsGradebookLoading(false);
+        }
+    };
+
+    const handleExportGradebook = () => {
+        if (!selectedAssignmentGradebook) return;
+
+        const headers = ["Student Name", "Register Number", "Section", "Status", "Marks", "Submitted At"];
+        const rows = gradebookData.map(row => [
+            row.fullName,
+            row.registerNumber,
+            row.section,
+            row.status,
+            row.marks,
+            row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '—'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(e => e.join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${selectedAssignmentGradebook.assignmentTitle.replace(/\s+/g, '_')}_Gradebook.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const fetchMySubjects = useCallback(async () => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const { data } = await axios.get(`${API}/api/subjects?staffId=${user?._id || user?.id}`, config);
+            setMySubjects(data);
+        } catch { /* error handled in console or ignored for quiet load */ }
+    }, [token, user?._id, user?.id]);
+
+    const fetchRecentAssignments = useCallback(async () => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const { data } = await axios.get(`${API}/api/assignments/my-created`, config);
+            setRecentAssignments(Array.isArray(data) ? data : []);
+        } catch { /* error handled in console or ignored for quiet load */ }
+    }, [token]);
+
+    useEffect(() => {
+        fetchMySubjects();
+        fetchRecentAssignments();
+    }, [fetchMySubjects, fetchRecentAssignments]);
+
+    const showToast = (text: string, type: 'success' | 'error') => {
+        setToast({ text, type });
+        setTimeout(() => setToast(null), 5000);
+    };
+
+
+
+    const handleNext = () => setStep(s => Math.min(s + 1, 5));
+    const handlePrev = () => setStep(s => Math.max(s - 1, 1));
+
+    const handleAIGenerate = async () => {
+        setIsLoading(true);
+        try {
+            const subType = formData.submissionType as string;
+            const basePayload = {
+                department: formData.department,
+                semester: formData.semester,
+                subject: mySubjects.find(s => s._id === formData.subjectId)?.name || '',
+                topic: formData.aiConfig.units,
+            };
+
+            let endpoint = `${ML_API}/generate/assignment`;
+            let payload: any = {};
+
+            if (subType === 'Quiz') {
+                endpoint = `${ML_API}/generate/quiz`;
+                payload = {
+                    ...basePayload,
+                    count: formData.aiConfig.questionCount,
+                    type: 'MCQ'
+                };
+            } else if (subType === 'PPT') {
+                endpoint = `${ML_API}/generate/ppt`;
+                payload = {
+                    ...basePayload,
+                    slide_count: formData.aiConfig.slideCount,
+                    level: formData.aiConfig.difficulty
+                };
+            } else {
+                payload = {
+                    ...basePayload,
+                    academic_year: formData.academicYear,
+                    type: subType === 'Programming' ? 'Python' : 'Theory',
+                    difficulty: formData.aiConfig.difficulty,
+                    marks: formData.maxMarks,
+                    keywords: formData.aiConfig.keywords,
+                    question_count: formData.aiConfig.questionCount
+                };
+            }
+
+            const res = await axios.post(endpoint, payload);
+            if (res.data.error) throw new Error(res.data.error);
+
+            // Format handling based on what each endpoint returns
+            if (subType === 'Quiz') {
+                // Returns { questions: [{question, options, correct_answer, explanation}] }
+                const qCount = res.data.questions?.length || 1;
+                const baseMarks = Math.floor(formData.maxMarks / qCount);
+                const remainder = formData.maxMarks % qCount;
+
+                const formattedQs = (res.data.questions || []).map((q: any, idx: number) => ({
+                    questionText: q.question || 'Untitled Question',
+                    questionType: 'MCQ',
+                    options: Array.isArray(q.options) && q.options.length > 0 ? q.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+                    correctAnswer: q.correct_answer || q.correctAnswer || '',
+                    marks: baseMarks + (idx < remainder ? 1 : 0)
+                }));
+                setFormData({ ...formData, questions: formattedQs });
+            } else if (subType === 'Programming') {
+                // Returns problem_statement, constraints, sample_input, sample_output
+                setFormData({
+                    ...formData,
+                    programmingConfig: {
+                        ...formData.programmingConfig,
+                        problemStatement: res.data.problem_statement || res.data.description,
+                        inputFormat: res.data.input_format || '',
+                        outputFormat: res.data.output_format || '',
+                        sampleInput: res.data.sample_input || '',
+                        sampleOutput: res.data.sample_output || ''
+                    }
+                });
+            } else {
+                // Standard theory
+                const qCount = res.data.questions?.length || 1;
+                const baseMarks = Math.floor(formData.maxMarks / qCount);
+                const remainder = formData.maxMarks % qCount;
+
+                const formattedQs = (res.data.questions || []).map((q: any, idx: number) => ({
+                    questionText: typeof q === 'string' ? q : q.question,
+                    marks: baseMarks + (idx < remainder ? 1 : 0),
+                    modelAnswer: q.model_answer || ''
+                }));
+                setFormData({ ...formData, questions: formattedQs, title: res.data.title || formData.title });
+            }
+
+            showToast('Content generated by AI!', 'success');
+        } catch (err: any) {
+            console.error("AI Generation Error: ", err);
+            const errMsg = err.response?.data?.error || err.response?.data?.detail;
+
+            if (err.message === 'Network Error') {
+                showToast('Python AI Service is currently offline (Port 8000).', 'error');
+            } else if (errMsg) {
+                showToast(`AI Error: ${errMsg}`, 'error');
+            } else {
+                showToast('AI response generation or parsing failed. Try again.', 'error');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteAssignment = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this assignment? This will also remove all student submissions.')) return;
+
+        try {
+            console.log("Preparing to delete assignment:", id);
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const response = await axios.delete(`${API}/api/assignments/${id}`, config);
+            console.log("Delete Response:", response.data);
+            showToast('Assignment deleted successfully', 'success');
+            fetchRecentAssignments();
+        } catch (error: any) {
+            console.error('Delete Assignment Error:', error.response?.data || error.message);
+            showToast(error.response?.data?.message || 'Error deleting assignment', 'error');
+        }
+    };
+
+    const handleOpenEditModal = (ass: any) => {
+        setEditingAssignment(ass);
+
+        // Format the ISO UTC date into local YYYY-MM-DDThh:mm
+        let localDeadline = '';
+        if (ass.deadline) {
+            const d = new Date(ass.deadline);
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            localDeadline = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        setEditFormData({
+            deadline: localDeadline,
+            submissionsEnabled: ass.submissionsEnabled !== undefined ? ass.submissionsEnabled : true
+        });
+        setEditModalOpen(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingAssignment) return;
+        setIsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.put(`${API}/api/assignments/${editingAssignment._id}`, editFormData, config);
+            showToast('Assignment settings updated successfully', 'success');
+            setEditModalOpen(false);
+            fetchRecentAssignments();
+        } catch (error: any) {
+            showToast(error.response?.data?.message || 'Error updating assignment', 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setIsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            const subType = formData.submissionType;
+            let formatConfig: any = {
+                rules: formData.rules,
+            };
+
+            // Unified Structure based on type
+            if (subType === 'Handwritten' || subType === 'Document') {
+                formatConfig = {
+                    ...formatConfig,
+                    questions: formData.questions,
+                    allowedFormats: subType === 'Handwritten' ? ["jpg", "png", "pdf"] : ["doc", "docx", "pdf"]
+                };
+            } else if (subType === 'Quiz') {
+                formatConfig = {
+                    ...formatConfig,
+                    timeLimit: formData.quizConfig.timeLimitMinutes,
+                    attemptsAllowed: formData.quizConfig.attemptsAllowed,
+                    randomize: formData.quizConfig.randomizeQuestions,
+                    questions: formData.questions
+                };
+            } else if (subType === 'Programming') {
+                formatConfig = {
+                    ...formatConfig,
+                    ...formData.programmingConfig,
+                    testCases: formData.testCases
+                };
+            } else if (subType === 'Seminar') {
+                formatConfig = {
+                    ...formatConfig,
+                    ...formData.seminarConfig
+                };
+            } else if (subType === 'PPT') {
+                formatConfig = {
+                    ...formatConfig,
+                    ...formData.pptConfig
+                };
+            }
+
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                subjectId: formData.subjectId,
+                section: formData.section,
+                maxMarks: formData.maxMarks,
+                deadline: formData.deadline,
+                submissionType: subType.toLowerCase(),
+                formatConfig
+            };
+
+            await axios.post(`${API}/api/assignments`, payload, config);
+            showToast('Assignment published successfully!', 'success');
+            setStep(1);
+            fetchRecentAssignments();
+            // Reset form
+            setFormData({
+                ...formData,
+                title: '',
+                description: '',
+                questions: [],
+                testCases: [],
+                subjectId: '',
+                section: 'All'
+            });
+        } catch (error: any) {
+            showToast(error.response?.data?.message || 'Error publishing assignment', 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    return (
+        <div className="max-w-7xl mx-auto space-y-6 pb-20">
+            {/* Toast — large & prominent */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -60, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: -40, x: '-50%' }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                        className="fixed top-6 left-1/2 z-[999] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border text-sm font-bold min-w-[320px] max-w-md"
+                        style={{
+                            background: toast.type === 'success' ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fef2f2,#fee2e2)',
+                            borderColor: toast.type === 'success' ? '#86efac' : '#fca5a5',
+                            color: toast.type === 'success' ? '#15803d' : '#dc2626',
+                            boxShadow: toast.type === 'success' ? '0 8px 32px rgba(34,197,94,0.3)' : '0 8px 32px rgba(239,68,68,0.3)'
+                        }}
+                    >
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                            {toast.type === 'success' ? <CheckCircle className="w-5 h-5 text-white" /> : <AlertCircle className="w-5 h-5 text-white" />}
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-extrabold text-base">{toast.type === 'success' ? 'Success!' : 'Error'}</p>
+                            <p className="font-medium text-sm opacity-80">{toast.text}</p>
+                        </div>
+                        <button onClick={() => setToast(null)} className="opacity-40 hover:opacity-100 ml-2">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Assignment Management</h1>
+                    <p className="text-gray-500 text-sm">Create unified academic assessments with integrated AI assistance.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4].map(s => (
+                        <div key={s} className={`w-8 h-1.5 rounded-full transition-all duration-500 ${step >= s ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+                    ))}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Wizard */}
+                <div className="lg:col-span-2 space-y-6">
+                    <Card className="min-h-[500px] flex flex-col">
+                        <div className="flex-1">
+                            <AnimatePresence mode="wait">
+                                {step === 1 && (
+                                    <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><BookOpen className="w-5 h-5" /></div>
+                                            <h2 className="text-lg font-bold text-gray-800">Step 1: Select Subject & Context</h2>
+                                        </div>
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Select Subject</label>
+                                                <select
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white transition-all outline-none"
+                                                    value={formData.subjectId}
+                                                    onChange={e => {
+                                                        const sub = mySubjects.find(s => s._id === e.target.value);
+                                                        setFormData({
+                                                            ...formData,
+                                                            subjectId: e.target.value,
+                                                            department: sub?.department || '',
+                                                            academicYear: sub?.academicYear || '',
+                                                            semester: sub?.semester || ''
+                                                        });
+                                                    }}
+                                                >
+                                                    <option value="">Select a subject...</option>
+                                                    {mySubjects.map(sub => (
+                                                        <option key={sub._id} value={sub._id}>
+                                                            {sub.name} ({sub.code}) - {sub.department} [Sem {sub.semester}]
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <p className="mt-2 text-xs text-gray-500 ml-1 italic">
+                                                    Note: Academic context (Dept, Year, Sem) is automatically derived from the selected subject.
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="opacity-75">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Department</label>
+                                                    <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
+                                                        {formData.department || '—'}
+                                                    </div>
+                                                </div>
+                                                <div className="opacity-75">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Academic Year</label>
+                                                    <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
+                                                        {formData.academicYear || '—'}
+                                                    </div>
+                                                </div>
+                                                <div className="opacity-75">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Semester</label>
+                                                    <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
+                                                        {formData.semester || '—'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {step === 2 && (
+                                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                        <BaseConfig formData={formData} setFormData={setFormData} mySubjects={mySubjects} />
+                                    </motion.div>
+                                )}
+
+                                {step === 3 && (
+                                    <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileEdit className="w-5 h-5" /></div>
+                                                <h2 className="text-lg font-bold text-gray-800">Step 3: Build {formData.submissionType} Format</h2>
+                                            </div>
+                                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                                <button onClick={() => setFormData({ ...formData, creationMode: 'manual' })}
+                                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.creationMode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>Manual Builder</button>
+                                                <button onClick={() => setFormData({ ...formData, creationMode: 'ai' })}
+                                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.creationMode === 'ai' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>AI Assistant</button>
+                                            </div>
+                                        </div>
+
+                                        {formData.creationMode === 'ai' ? (
+                                            <div className="space-y-6 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 mb-8">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    <div className="lg:col-span-full">
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Topic / Keywords</label>
+                                                        <Input placeholder="e.g. Binary Search Trees" value={formData.aiConfig.units} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, units: e.target.value } })} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Difficulty</label>
+                                                        <select className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none text-sm"
+                                                            value={formData.aiConfig.difficulty} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, difficulty: e.target.value } })}>
+                                                            <option>Easy</option><option>Medium</option><option>Hard</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Question Count</label>
+                                                        <Input type="number" min="1" max="20" value={formData.aiConfig.questionCount} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, questionCount: Number(e.target.value) } })} />
+                                                    </div>
+                                                    <div className="flex items-end">
+                                                        <Button className="w-full" onClick={handleAIGenerate} isLoading={isLoading} icon={<Bot className="w-4 h-4" />}>
+                                                            Generate
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                {formData.submissionType === 'Handwritten' && <HandwrittenBuilder formData={formData} setFormData={setFormData} />}
+                                                {formData.submissionType === 'Document' && <DocumentBuilder formData={formData} setFormData={setFormData} />}
+                                                {formData.submissionType === 'PPT' && <PPTBuilder formData={formData} setFormData={setFormData} />}
+                                                {formData.submissionType === 'Quiz' && <QuizBuilder formData={formData} setFormData={setFormData} />}
+                                                {formData.submissionType === 'Programming' && <ProgrammingBuilder formData={formData} setFormData={setFormData} />}
+                                                {formData.submissionType === 'Seminar' && <SeminarBuilder formData={formData} setFormData={setFormData} />}
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                )}
+
+                                {step === 4 && (
+                                    <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><Eye className="w-5 h-5" /></div>
+                                            <h2 className="text-lg font-bold text-gray-800">Step 5: Preview & Publish</h2>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-6">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-gray-900">{formData.title || 'Untitled Assignment'}</h3>
+                                                    <p className="text-sm text-indigo-600 font-medium">{mySubjects.find(s => s._id === formData.subjectId)?.name}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-lg font-black text-gray-900">{formData.maxMarks}</div>
+                                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Points</div>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4 border-y border-gray-200/50">
+                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Type</p><p className="text-sm font-semibold text-gray-700">{formData.submissionType}</p></div>
+                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Due Date</p><p className="text-sm font-semibold text-gray-700">{formData.deadline}</p></div>
+                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Late Policy</p><p className="text-sm font-semibold text-gray-700">{formData.rules.lateAllowed ? `${formData.rules.latePenalty}% Penalty` : 'No Late Sub.'}</p></div>
+                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Resubmission</p><p className="text-sm font-semibold text-gray-700">{formData.rules.resubmissionAllowed ? 'Allowed' : 'Not Allowed'}</p></div>
+                                                {formData.submissionType === 'Seminar' && (
+                                                    <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Format</p><p className="text-sm font-semibold text-gray-700">{formData.seminarConfig.isGroup ? 'Group' : 'Indiv.'}</p></div>
+                                                )}
+
+                                            </div>
+                                            <div className="space-y-4">
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase underline decoration-indigo-200 underline-offset-4">Academic Review</p>
+                                                <div className="space-y-3">
+                                                    {(formData.questions || []).map((q, i) => (
+                                                        <div key={i} className="flex flex-col gap-1 text-sm text-gray-600">
+                                                            <div className="flex gap-3">
+                                                                <span className="font-bold text-indigo-300">{i + 1}.</span>
+                                                                <p className="leading-relaxed">{typeof q === 'string' ? q : (q.questionText || q.question)}</p>
+                                                            </div>
+                                                            {formData.submissionType === 'Quiz' && q.options && (
+                                                                <div className="pl-6 pt-1 space-y-1">
+                                                                    {q.options.map((opt: string, idx: number) => (
+                                                                        <div key={idx} className={`text-xs px-2 py-1 rounded-md inline-block w-full border ${q.correctAnswer === opt || (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt)) ? 'bg-green-50 border-green-200 text-green-700 font-medium' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                                                                            {String.fromCharCode(65 + idx)}. {opt}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    {formData.submissionType === 'Programming' && (
+                                                        <div className="text-sm text-gray-600 italic">
+                                                            Programming problem details and {formData.testCases?.length || 0} test cases configured.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div >
+
+                        {/* Navigation Buttons */}
+                        < div className="pt-8 flex justify-between border-t border-gray-100 mt-auto" >
+                            <Button variant="outline" onClick={handlePrev} disabled={step === 1} icon={<ChevronLeft className="w-4 h-4" />}>Previous</Button>
+                            {
+                                step < 4 ? (
+                                    <Button onClick={handleNext} disabled={!formData.subjectId && step === 1} icon={<ChevronRight className="w-4 h-4" />}>Next Step</Button>
+                                ) : (
+                                    <Button onClick={handlePublish} isLoading={isLoading} icon={<Save className="w-4 h-4" />}>Publish Now</Button>
+                                )
+                            }
+                        </div >
+                    </Card >
+                </div >
+
+                {/* Sidebar: Recent Assignments */}
+                < div className="lg:col-span-1" >
+                    <Card title="Recent Assignments" className="h-full">
+                        <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                            {recentAssignments.length === 0 ? (
+                                <div className="text-center py-10 opacity-50"><Library className="w-10 h-10 mx-auto mb-2" /><p className="text-xs">No assignments yet</p></div>
+                            ) : (
+                                recentAssignments.map(ass => (
+                                    <div
+                                        key={ass._id}
+                                        onClick={() => fetchGradebook(ass._id)}
+                                        className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-indigo-200 transition-all group cursor-pointer shadow-sm hover:shadow-md"
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-bold text-gray-800 text-sm line-clamp-1">{ass.title}</h4>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenEditModal(ass);
+                                                    }}
+                                                    className="text-gray-300 hover:text-indigo-600 p-1 rounded-md hover:bg-indigo-50"
+                                                    title="Edit Settings"
+                                                >
+                                                    <Settings className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteAssignment(ass._id);
+                                                    }}
+                                                    className="text-gray-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50"
+                                                    title="Delete Assignment"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mb-3">
+                                            <div className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">{ass.type || ass.submissionType}</div>
+                                            <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(ass.deadline).toLocaleDateString()}</div>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[10px]">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${ass.submissionsEnabled !== false ? 'bg-green-500' : 'bg-red-500'}`} />
+                                                <span className={ass.submissionsEnabled !== false ? 'text-gray-600' : 'text-red-500'}>
+                                                    {ass.submissionsEnabled !== false ? 'Active' : 'Disabled'}
+                                                </span>
+                                            </div>
+                                            <span className="font-black text-gray-600">{ass.maxMarks} PTS</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </Card>
+                </div >
+            </div >
+
+            {/* Gradebook Modal */}
+            <AnimatePresence>
+                {selectedAssignmentGradebook && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                        onClick={() => setSelectedAssignmentGradebook(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <h2 className="text-lg font-bold text-gray-900 truncate">{selectedAssignmentGradebook.assignmentTitle}</h2>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded">Gradebook</span>
+                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{gradebookData.length} Students Total</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleExportGradebook}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 rounded-lg text-white hover:bg-indigo-700 transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm"
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                        Export
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedAssignmentGradebook(null)}
+                                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                {isGradebookLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Loading student data...</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-hidden border border-gray-100 rounded-2xl">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-gray-50 text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                                <tr>
+                                                    <th className="px-6 py-3">Student</th>
+                                                    <th className="px-6 py-3">Reg. Number</th>
+                                                    <th className="px-6 py-3 text-center">Section</th>
+                                                    <th className="px-6 py-3">Status</th>
+                                                    <th className="px-6 py-3 text-right">Marks</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {gradebookData.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic text-sm">No students matched the assignment criteria.</td>
+                                                    </tr>
+                                                ) : (
+                                                    gradebookData.map((row, i) => (
+                                                        <tr key={i} className="hover:bg-gray-50/50 transition-colors text-sm">
+                                                            <td className="px-6 py-3 font-bold text-gray-900">{row.fullName}</td>
+                                                            <td className="px-6 py-3 text-gray-500 font-mono text-xs">{row.registerNumber}</td>
+                                                            <td className="px-6 py-3 text-center text-gray-400 font-bold uppercase text-[10px]">{row.section || '—'}</td>
+                                                            <td className="px-6 py-3 text-xs">
+                                                                <span className={`px-2 py-0.5 rounded-md font-bold uppercase tracking-tighter border
+                                                                    ${row.status === 'graded'
+                                                                        ? 'bg-green-50 border-green-100 text-green-600'
+                                                                        : row.status === 'submitted'
+                                                                            ? 'bg-blue-50 border-blue-100 text-blue-600'
+                                                                            : 'bg-red-50 border-red-100 text-red-400'}`}>
+                                                                    {row.status === 'pending' ? 'Not Submitted' : row.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-3 text-right">
+                                                                <span className={`font-black ${row.marks !== null && row.marks >= 0 ? 'text-indigo-600' : 'text-gray-200'}`}>
+                                                                    {row.marks !== null ? row.marks : '—'}
+                                                                </span>
+                                                                <span className="text-[10px] font-bold text-gray-300 ml-0.5">/{selectedAssignmentGradebook.maxMarks}</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Settings Modal */}
+            <AnimatePresence>
+                {editModalOpen && editingAssignment && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                        onClick={() => setEditModalOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                    <Settings className="w-4 h-4 text-indigo-600" /> Edit Settings
+                                </h3>
+                                <button onClick={() => setEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-800 mb-1 line-clamp-1">{editingAssignment.title}</h4>
+                                    <p className="text-xs text-gray-500">Update deadline or toggle submissions.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Extended Deadline</label>
+                                    <Input
+                                        type="datetime-local"
+                                        value={editFormData.deadline}
+                                        onChange={e => setEditFormData({ ...editFormData, deadline: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-800">Enable Submissions</label>
+                                        <p className="text-[10px] text-gray-500">Allow students to submit work</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setEditFormData({ ...editFormData, submissionsEnabled: !editFormData.submissionsEnabled })}
+                                        className={`w-12 h-6 rounded-full transition-colors relative flex items-center ${editFormData.submissionsEnabled ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm absolute transition-transform ${editFormData.submissionsEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                                <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleSaveEdit} isLoading={isLoading}>Save Changes</Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div >
+    );
+};
+
+export default UnifiedAssignments;

@@ -3,12 +3,23 @@ import { jwtDecode } from 'jwt-decode';
 
 interface User {
     id: string;
+    _id: string;
     username: string;
+    fullName?: string;
     email: string;
-    role: 'admin' | 'hod' | 'staff' | 'student';
+    role: 'admin' | 'hod' | 'staff' | 'student' | 'principal';
     department?: string;
     semester?: string;
     academicYear?: string;
+    phone?: string;
+    bloodGroup?: string;
+    schooling?: string;
+    currentCgpa?: string;
+    historyOfArrears?: string;
+    profileImage?: string;
+    isAdvisor?: boolean;
+    advisorYear?: string;
+    advisorDepartment?: string;
 }
 
 interface AuthContextType {
@@ -16,6 +27,7 @@ interface AuthContextType {
     token: string | null;
     login: (token: string, userData: User) => void;
     logout: () => void;
+    updateUser: (updates: Partial<User>) => void;
     isAuthenticated: boolean;
 }
 
@@ -55,8 +67,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         window.location.href = '/login';
     };
 
+    const updateUser = (updates: Partial<User>) => {
+        setUser(prev => {
+            if (!prev) return prev;
+            const updated = { ...prev, ...updates };
+            localStorage.setItem('user', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
+        <AuthContext.Provider value={{ user, token, login, logout, updateUser, isAuthenticated: !!token }}>
             {children}
         </AuthContext.Provider>
     );

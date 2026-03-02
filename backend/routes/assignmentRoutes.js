@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const {
     createAssignment,
+    updateAssignment,
     getAssignments,
     getMyCreatedAssignments,
     getAssignmentById,
     deleteAssignment,
+    getAssignmentGradebook,
     getStaffStats,
     getStudentAssignments
 } = require('../controllers/assignmentController');
@@ -21,6 +23,9 @@ router.get('/stats/staff', protect, authorize('staff'), getStaffStats);
 
 router.route('/:id')
     .get(protect, getAssignmentById)
+    .put(protect, authorize('staff'), updateAssignment)
     .delete(protect, authorize('staff'), deleteAssignment);
+
+router.get('/:id/gradebook', protect, authorize('staff'), getAssignmentGradebook);
 
 module.exports = router;
