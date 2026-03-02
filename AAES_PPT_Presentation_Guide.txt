@@ -1,75 +1,75 @@
 AAES - Automated Assignment Evaluation System - Presentation Content (Detailed)
 
-Slide 1: Abstract
-• AI-powered platform to automate academic assignment evaluation.
-• Supports Theory (OCR) and Programming (Python) submissions.
-• Role-based dashboards for Students, Staff, HODs, and Principals.
+Slide 1: Title Slide
+• Project Title: AAES - Automated Academic Evaluation System
+• A comprehensive, AI-powered platform to automate academic assignments and management.
+• Presented by: [Your Name/Team]
 
-Slide 2: Problem Statements
-• Manual Overhead: Time-consuming manual grading for faculty.
-• Inconsistency: Subjective and varied human evaluation results.
-• Delayed Feedback: Students wait too long for performance results.
-• Lack of Tracking: No real-time institutional monitoring for HOD/Principal.
+Slide 2: Abstract
+• Intelligent Evaluation: Automatically grades Theory (OCR) and Programming (Python) submissions.
+• Unified Roles: Dedicated dashboards for Students, Staff, HODs, Administration, and Principals.
+• Core Goal: Save faculty time and provide instant, accurate feedback to students.
 
-Slide 3: Literature Survey (Simplified)
-• Traditional LMS: No automated subjective grading.
-• AI in Education: OCR and LLMs offer new possibilities for evaluation.
+Slide 3: Problem Statement
+• Manual Overhead: Faculty spend excessive time on repetitive manual grading.
+• Inconsistency: Subjective variations in human evaluation.
+• Delayed Feedback: Students wait weeks to know their performance.
+• Lack of Tracking: No real-time institutional overview for management (HOD/Principal).
 
-Slide 4: Existing System
-• Manual Processes: Physical submissions and offline evaluation.
-• Offline Records: Records stored in physical registers or Excel.
+Slide 4: Existing System vs Disadvantages
+• Current Method: Physical paper submissions or scattered digital files.
+• Disadvantages:
+  - High Turnaround Time for grading.
+  - Risk of human bias or error.
+  - Heavy administrative burden on staff to manage records.
 
-Slide 5: Existing System Disadvantages
-• High Turnaround Time for feedback.
-• Potential for Human Bias in marking.
-• Administrative Burden on staff for data management.
+Slide 5: Proposed System (AAES) Solution
+• AI-Driven Grading: Uses Optical Character Recognition (OCR), LLMs, and Safe Code Execution.
+• Centralized Portal: One platform for all academic interactions.
+• Real-time Analytics: Instant governance and risk dashboards for administration.
 
-Slide 6: Proposed System
-• Intelligent Evaluation using OCR, LLMs, and Safe Code Execution.
-• Unified Role-Based Portals for all stakeholders.
-• Real-time Analytics and Governance Dashboards.
+Slide 6: Key Features - Staff & Subject Management
+• Easy Assignment Creation: Set up theory and coding tasks in minutes.
+• AI-Assisted Evaluation: Automated grading with the ability to manually override scores.
+• Subject Analytics: Real-time attendance and grade distribution tracking.
+• Resubmission Control: Approve or reject student requests to resubmit work.
 
-Slide 7: Proposed System Advantages
-• Instant Feedback loop for students.
-• Higher Accuracy and consistency in grading.
-• Automated Governance via Risk Intelligence.
+Slide 7: Key Features - Student Experience
+• Unified Dashboard: View upcoming deadlines, submitted assignments, and attendance.
+• Multiple Submission Types: Upload handwritten docs, PDFs, PPTs, or write online Code.
+• Instant Feedback: Receive AI-generated feedback and marks immediately after submission.
+• Extenuating Circumstances: Request resubmissions for failed/low-scoring assignments.
 
-Slide 8: Staff & Subject Management
-• Assignment Creation: Configure Theory and Coding tasks easily.
-• Intelligent Evaluation: AI-assisted grading with manual overrides.
-• Subject Analytics: Real-time attendance summary and grade distribution.
-• Unified Dashboards: Manage all subjects from a single interface.
+Slide 8: Key Features - Mentorship & CCM (Class Committee Meeting)
+• Mentor Dashboard: Assigned advisors can track their specific students' performance across all subjects.
+• Mentor Notes: Log behavioral and academic progress for "At-Risk" students.
+• CCM Portal (Class Committee Meeting): Staff can register meeting minutes and record student feedback.
+• Feedback Tracking: Ensure action items from students are systematically addressed.
 
-Slide 9: Advisor (Mentor) & CCM Features
-[Mentor / Advisor Options]
-• Student List Management: Detailed view of all mentored students.
-• Advisor Attendance: Monitor consistent presence across all subjects.
-• Advisor Notes: Log student behavioral and academic progress.
-• Performance Monitoring: Cross-subject grade tracking for individuals.
-[CCM (Class Committee Meeting)]
-• Staff CCM Portal: Register and track meeting minutes and student feedback.
-• Action Item Tracking: Ensure student grievances are addressed promptly.
-• Advisor Reports: Generate comprehensive class performance summaries.
+Slide 9: Key Features - Governance (Principal & HOD)
+• Institutional Audit: Complete, top-down view of department and faculty progress.
+• Risk Intelligence: Proactively identifies "At-Risk" students failing multiple subjects or having low attendance.
+• Regional Performance: Compare faculty grading trends and department averages.
+• Exportable Reports: Download comprehensive data as PDFs for official reviews.
 
-Slide 10: Governance & Administration
-[Principal / HOD]
-• Full Institutional Audit: Comprehensive view of department progress.
-• Risk Intelligence: Proactive identification of "At-Risk" students.
-• Regional Performance: Faculty and departmental comparisons.
-[Admin]
-• Bulk Management: Large-scale CSV imports for users and subjects.
-• System Lifecycle: Automated Semester Transitions and Promotions.
+Slide 10: Key Features - Administration
+• Core System Management: The backbone of the institutional setup.
+• Bulk Operations: One-click CSV imports to create hundreds of Users and Subjects.
+• System Lifecycle Management: Automated "Semester Transitions" to promote students to the next year securely.
 
-Slide 11: Workflow
-• Student Solution Upload -> Evaluation Engine Trigger.
-• Theory Path: Image -> OCR -> AI Comparison -> Score.
-• Coding Path: Python -> Execution -> Test Cases -> Score.
-• Result Storage -> Dashboard Update -> User Notification.
+Slide 11: System Workflow
+1. Upload: Student uploads document (Handwritten/PDF) or Code.
+2. Processing:
+   - Theory: Image -> OCR -> AI Comparison against Model Answer -> Score & Feedback.
+   - Code: Python Script -> Secure Sandbox Execution -> Automated Test Cases -> Score.
+3. Finalization: Result saved in Database -> Dashboards updated -> Notifications sent.
 
-Slide 12: Requirements
-• Software: React, Node.js, Express, MongoDB, Python (FastAPI), OCR, LLM.
-• Hardware: 2.5GHz Quad-core+, 8GB-16GB RAM, 10GB Storage.
+Slide 12: Technology Stack & Requirements
+• Frontend: React, Node.js, Tailwind CSS (Modern, premium interface).
+• Backend & Database: Express, MongoDB (Secure, scalable data storage).
+• Evaluation Engine: Python (FastAPI), OCR tools, Large Language Models (LLM) for Natural Language Processing.
+• Hardware: Standard Server/Cloud instance (2.5GHz+, 8GB RAM).
 
-Slide 13: Conclusion
-• Modernizing academic excellence with data-driven AI solutions.
-• Reducing faculty load while improving student outcomes.
+Slide 13: Conclusion & Future Scope
+• Conclusion: Modernizing academic excellence by reducing faculty load and elevating student outcomes through data-driven AI.
+• Future Scope: Plagiarism detection enhancements, integration with existing ERP systems, and predictive student success analytics.
