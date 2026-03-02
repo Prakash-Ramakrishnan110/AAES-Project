@@ -2,7 +2,7 @@ AAES FINAL PRESENTATION CONTENT (COMPREHENSIVE - ALL FEATURES INCLUDED)
 
 1. ABSTRACT
 • Core Purpose: AAES is an end-to-end, AI-driven educational platform designed to automate assignment evaluation, streamline institutional governance, and facilitate continuous student mentorship.
-• Technologies Employed: Optical Character Recognition (OCR), Google Gemini LLM for semantic grading of theory/essays, and highly secure Sandboxed Python Execution for programming assignments.
+• Technologies Employed: Optical Character Recognition (OCR), Ollama LLM for semantic grading of theory/essays, and highly secure Sandboxed Python Execution for programming assignments.
 • Stakeholder Reach: Features distinct, fully-featured modules for 6 unique roles: Students, Teaching Staff, Faculty Advisors (Mentors), Heads of Department (HOD), Principal, and System Administrators.
 
 2. PROBLEM STATEMENTS

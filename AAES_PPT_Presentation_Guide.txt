@@ -65,7 +65,7 @@ Slide 10: Key Feature 6 - Administration & System Lifecycle
 Slide 11: Technology Stack & AI Architecture
 • Frontend: React, Node.js, Tailwind CSS (Modern, premium interface).
 • Backend & Database: Express, MongoDB (Secure, scalable data storage).
-• Evaluation Engine: Python (FastAPI), Google Vision/Tesseract (OCR), Large Language Models (LLM) for Natural Language Processing.
+• Evaluation Engine: Python (FastAPI), Tesseract (OCR), Ollama (Local LLM) for Natural Language Processing.
 • Hardware Requirements: Standard Server/Cloud instance (2.5GHz+, 8GB RAM).
 
 Slide 12: Conclusion & Future Scope
