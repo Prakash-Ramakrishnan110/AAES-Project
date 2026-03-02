@@ -1,0 +1,66 @@
+AAES - DETAILED PRESENTATION CONTENT & SPEAKER NOTES
+
+SLIDE 1: INTRODUCTION
+• Title: Automated Assignment Evaluation System (AAES)
+• Goal: To automate the grading process for coding and descriptive theory answers using AI.
+
+SLIDE 2: THE PROBLEM (WHY WE BUILT THIS)
+• Problem 1: Manual grading is slow and leads to teacher burnout.
+• Problem 2: Human grading can be inconsistent or biased.
+• Problem 3: Students stay in the dark about their mistakes for too long.
+• Problem 4: Colleges lack real-time data on student performance.
+
+SLIDE 3: THE PROPOSED SOLUTION
+• We use AI (OCR + Language Models) to "read" and "understand" answers just like a human.
+• We use safe code containers to test Python programs automatically.
+• We provide 5 specialized dashboards for every role in the institution.
+
+SLIDE 4: FOR STUDENTS (SUBMISSION)
+• Simple UI to see all enrolled subjects.
+• Easy upload for handwritten assignments (Theory).
+• Live code editor for programming assignments.
+• Instant feedback and marks breakdown.
+
+SLIDE 5: FOR STAFF (EVALUATION)
+• Automated grading of Python code with hidden test cases.
+• AI assistance for theory answers (Semantic matching).
+• Manual Mark Override: Total control for the teacher to check AI results.
+• Class Analytics: Identify "What topics did the class fail in?"
+
+SLIDE 6: FOR ADVISORS/MENTORS (STUDENT CARE)
+• Mentor Dashboard: View your specific group of mentees.
+• All-Subject Attendance: See if a student is bunking specific classes.
+• Advisor Notes: Log counseling sessions and behavioral changes.
+• Student Performance Audit: View how your mentees are doing in other subjects.
+
+SLIDE 7: CCM (CLASS COMMITTEE MEETING)
+• Minutes of Meeting: Digitally record student feedback and teacher responses.
+• Grievance Tracking: Ensure student complaints are documented and solved.
+• Academic Health Report: Generate a summary for HOD review.
+
+SLIDE 8: FOR HOD & PRINCIPAL (GOVERNANCE)
+• Risk Intelligence: Proactive alerts if a student is likely to fail.
+• Institutional Audit: Overview of all departments on one screen.
+• Faculty Metrics: Track assignment completion and syllabus progress.
+• PDF/CSV Reports: Ready-to-use data for academic audits.
+
+SLIDE 9: FOR ADMINS (MANAGEMENT)
+• Bulk CSV Upload: Register 1000+ students in one click.
+• Semester Promotion: Move entire batches forward at the end of the term.
+• System Logs: Track every change for security.
+
+SLIDE 10: HOW THE TECH WORKS (WORKFLOW)
+• Solution Submitted -> Backend receives -> Evaluation Microservice Path.
+• Theory Path: Image is scanned (OCR) -> AI (Gemma) compares with Model Answer.
+• Code Path: Python code runs against Test Cases -> Result validated.
+• Marks saved -> Dashboard updated instantly.
+
+SLIDE 11: TECHNICAL STACK
+• Frontend: React, TypeScript, Tailwind.
+• Backend: Node.js, Express, MongoDB.
+• AI Layer: Python, FastAPI, Tesseract, Ollama.
+
+SLIDE 12: CONCLUSION
+• AAES reduces administrative work and increases academic growth.
+• It provides "Actionable Intelligence" to institutional leaders.
+• Consistent, fast, and transparent evaluation for every student.

@@ -4,7 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { BookOpen, Award, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const StudentInternalMarks = () => {
     const { token } = useContext(AuthContext)!;

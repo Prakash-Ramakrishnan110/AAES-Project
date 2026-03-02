@@ -11,7 +11,7 @@ import SeminarView from '../../components/student/assignments/SeminarView';
 import PPTView from '../../components/student/assignments/PPTView';
 import HandwrittenView from '../../components/student/assignments/HandwrittenView';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const StudentAssignmentView = () => {
     const { id } = useParams();

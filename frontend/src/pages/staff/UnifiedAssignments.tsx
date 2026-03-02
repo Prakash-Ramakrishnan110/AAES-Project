@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 
 // Builders
 import BaseConfig from '../../components/assignments/BaseConfig';
@@ -49,6 +50,16 @@ const UnifiedAssignments = () => {
         deadline: '',
         submissionsEnabled: true
     });
+
+    const [activeTab, setActiveTab] = useState<'publish' | 'reevaluation'>('publish');
+    const [reEvalRequests, setReEvalRequests] = useState<any[]>([]);
+    const [isReEvalLoading, setIsReEvalLoading] = useState(false);
+
+    // Re-evaluation Modal State
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [reviewingRequest, setReviewingRequest] = useState<any>(null);
+    const [reviewAction, setReviewAction] = useState<'Approved' | 'Rejected' | null>(null);
+    const [reviewFormData, setReviewFormData] = useState({ updatedScore: 0, comment: '' });
 
     // Form Data
     const [formData, setFormData] = useState({
@@ -137,6 +148,64 @@ const UnifiedAssignments = () => {
             showToast('Error fetching gradebook', 'error');
         } finally {
             setIsGradebookLoading(false);
+        }
+    };
+
+    const fetchReEvaluationRequests = async () => {
+        setIsReEvalLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const res = await axios.get(`${API}/api/re-evaluation`, config);
+            setReEvalRequests(res.data);
+        } catch (error) {
+            console.error('Error fetching re-evaluations:', error);
+        } finally {
+            setIsReEvalLoading(false);
+        }
+    };
+
+    const handleUpdateReEval = async (id: string, status: 'Approved' | 'Rejected', updatedScore?: number, comment?: string) => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.put(`${API}/api/re-evaluation/${id}`, {
+                status,
+                updatedScore,
+                reviewerComment: comment
+            }, config);
+            showToast(`Request ${status.toLowerCase()} successfully`, 'success');
+            fetchReEvaluationRequests();
+        } catch (error: any) {
+            showToast(error.response?.data?.message || 'Error updating request', 'error');
+        }
+    };
+
+    const handleExportAdvanced = (type: 'excel' | 'pdf') => {
+        if (!selectedAssignmentGradebook || !gradebookData.length) return;
+
+        const fileName = `${selectedAssignmentGradebook.assignmentTitle.replace(/\s+/g, '_')}_Gradebook`;
+        const title = `${selectedAssignmentGradebook.assignmentTitle} - Gradebook`;
+
+        const dataToExport = gradebookData.map(row => ({
+            'Student Name': row.fullName,
+            'Register Number': row.registerNumber,
+            'Section': row.section,
+            'Status': row.status,
+            'Marks': row.marks,
+            'Submitted At': row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '—'
+        }));
+
+        if (type === 'excel') {
+            exportToExcel(dataToExport, fileName);
+        } else {
+            const columns = [
+                { header: 'Student Name', dataKey: 'Student Name' },
+                { header: 'Reg No', dataKey: 'Register Number' },
+                { header: 'Sec', dataKey: 'Section' },
+                { header: 'Status', dataKey: 'Status' },
+                { header: 'Marks', dataKey: 'Marks' },
+                { header: 'Submitted At', dataKey: 'Submitted At' }
+            ];
+            exportToPDF(columns, dataToExport, fileName, title);
         }
     };
 
@@ -472,263 +541,361 @@ const UnifiedAssignments = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Wizard */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="min-h-[500px] flex flex-col">
-                        <div className="flex-1">
-                            <AnimatePresence mode="wait">
-                                {step === 1 && (
-                                    <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><BookOpen className="w-5 h-5" /></div>
-                                            <h2 className="text-lg font-bold text-gray-800">Step 1: Select Subject & Context</h2>
-                                        </div>
-                                        <div className="space-y-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Select Subject</label>
-                                                <select
-                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white transition-all outline-none"
-                                                    value={formData.subjectId}
-                                                    onChange={e => {
-                                                        const sub = mySubjects.find(s => s._id === e.target.value);
-                                                        setFormData({
-                                                            ...formData,
-                                                            subjectId: e.target.value,
-                                                            department: sub?.department || '',
-                                                            academicYear: sub?.academicYear || '',
-                                                            semester: sub?.semester || ''
-                                                        });
-                                                    }}
-                                                >
-                                                    <option value="">Select a subject...</option>
-                                                    {mySubjects.map(sub => (
-                                                        <option key={sub._id} value={sub._id}>
-                                                            {sub.name} ({sub.code}) - {sub.department} [Sem {sub.semester}]
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <p className="mt-2 text-xs text-gray-500 ml-1 italic">
-                                                    Note: Academic context (Dept, Year, Sem) is automatically derived from the selected subject.
-                                                </p>
-                                            </div>
+            <div className="flex border-b border-gray-200 gap-8 mb-2">
+                <button
+                    onClick={() => setActiveTab('publish')}
+                    className={`pb-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'publish' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400'}`}
+                >
+                    Create & Manage
+                </button>
+                <button
+                    onClick={() => {
+                        setActiveTab('reevaluation');
+                        fetchReEvaluationRequests();
+                    }}
+                    className={`pb-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'reevaluation' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400'}`}
+                >
+                    Re-evaluation Requests
+                </button>
+            </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="opacity-75">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Department</label>
-                                                    <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
-                                                        {formData.department || '—'}
-                                                    </div>
-                                                </div>
-                                                <div className="opacity-75">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Academic Year</label>
-                                                    <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
-                                                        {formData.academicYear || '—'}
-                                                    </div>
-                                                </div>
-                                                <div className="opacity-75">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Semester</label>
-                                                    <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
-                                                        {formData.semester || '—'}
-                                                    </div>
-                                                </div>
+            {activeTab === 'publish' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Main Wizard */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <Card className="min-h-[500px] flex flex-col">
+                            <div className="flex-1">
+                                <AnimatePresence mode="wait">
+                                    {step === 1 && (
+                                        <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><BookOpen className="w-5 h-5" /></div>
+                                                <h2 className="text-lg font-bold text-gray-800">Step 1: Select Subject & Context</h2>
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-
-                                {step === 2 && (
-                                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                        <BaseConfig formData={formData} setFormData={setFormData} mySubjects={mySubjects} />
-                                    </motion.div>
-                                )}
-
-                                {step === 3 && (
-                                    <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileEdit className="w-5 h-5" /></div>
-                                                <h2 className="text-lg font-bold text-gray-800">Step 3: Build {formData.submissionType} Format</h2>
-                                            </div>
-                                            <div className="flex bg-gray-100 p-1 rounded-xl">
-                                                <button onClick={() => setFormData({ ...formData, creationMode: 'manual' })}
-                                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.creationMode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>Manual Builder</button>
-                                                <button onClick={() => setFormData({ ...formData, creationMode: 'ai' })}
-                                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.creationMode === 'ai' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>AI Assistant</button>
-                                            </div>
-                                        </div>
-
-                                        {formData.creationMode === 'ai' ? (
-                                            <div className="space-y-6 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 mb-8">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    <div className="lg:col-span-full">
-                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Topic / Keywords</label>
-                                                        <Input placeholder="e.g. Binary Search Trees" value={formData.aiConfig.units} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, units: e.target.value } })} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Difficulty</label>
-                                                        <select className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none text-sm"
-                                                            value={formData.aiConfig.difficulty} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, difficulty: e.target.value } })}>
-                                                            <option>Easy</option><option>Medium</option><option>Hard</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Question Count</label>
-                                                        <Input type="number" min="1" max="20" value={formData.aiConfig.questionCount} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, questionCount: Number(e.target.value) } })} />
-                                                    </div>
-                                                    <div className="flex items-end">
-                                                        <Button className="w-full" onClick={handleAIGenerate} isLoading={isLoading} icon={<Bot className="w-4 h-4" />}>
-                                                            Generate
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
                                             <div className="space-y-6">
-                                                {formData.submissionType === 'Handwritten' && <HandwrittenBuilder formData={formData} setFormData={setFormData} />}
-                                                {formData.submissionType === 'Document' && <DocumentBuilder formData={formData} setFormData={setFormData} />}
-                                                {formData.submissionType === 'PPT' && <PPTBuilder formData={formData} setFormData={setFormData} />}
-                                                {formData.submissionType === 'Quiz' && <QuizBuilder formData={formData} setFormData={setFormData} />}
-                                                {formData.submissionType === 'Programming' && <ProgrammingBuilder formData={formData} setFormData={setFormData} />}
-                                                {formData.submissionType === 'Seminar' && <SeminarBuilder formData={formData} setFormData={setFormData} />}
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                )}
-
-                                {step === 4 && (
-                                    <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><Eye className="w-5 h-5" /></div>
-                                            <h2 className="text-lg font-bold text-gray-800">Step 5: Preview & Publish</h2>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-6">
-                                            <div className="flex justify-between items-start">
                                                 <div>
-                                                    <h3 className="text-xl font-bold text-gray-900">{formData.title || 'Untitled Assignment'}</h3>
-                                                    <p className="text-sm text-indigo-600 font-medium">{mySubjects.find(s => s._id === formData.subjectId)?.name}</p>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Select Subject</label>
+                                                    <select
+                                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white transition-all outline-none"
+                                                        value={formData.subjectId}
+                                                        onChange={e => {
+                                                            const sub = mySubjects.find(s => s._id === e.target.value);
+                                                            setFormData({
+                                                                ...formData,
+                                                                subjectId: e.target.value,
+                                                                department: sub?.department || '',
+                                                                academicYear: sub?.academicYear || '',
+                                                                semester: sub?.semester || ''
+                                                            });
+                                                        }}
+                                                    >
+                                                        <option value="">Select a subject...</option>
+                                                        {mySubjects.map(sub => (
+                                                            <option key={sub._id} value={sub._id}>
+                                                                {sub.name} ({sub.code}) - {sub.department} [Sem {sub.semester}]
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <p className="mt-2 text-xs text-gray-500 ml-1 italic">
+                                                        Note: Academic context (Dept, Year, Sem) is automatically derived from the selected subject.
+                                                    </p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-lg font-black text-gray-900">{formData.maxMarks}</div>
-                                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Points</div>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4 border-y border-gray-200/50">
-                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Type</p><p className="text-sm font-semibold text-gray-700">{formData.submissionType}</p></div>
-                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Due Date</p><p className="text-sm font-semibold text-gray-700">{formData.deadline}</p></div>
-                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Late Policy</p><p className="text-sm font-semibold text-gray-700">{formData.rules.lateAllowed ? `${formData.rules.latePenalty}% Penalty` : 'No Late Sub.'}</p></div>
-                                                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Resubmission</p><p className="text-sm font-semibold text-gray-700">{formData.rules.resubmissionAllowed ? 'Allowed' : 'Not Allowed'}</p></div>
-                                                {formData.submissionType === 'Seminar' && (
-                                                    <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Format</p><p className="text-sm font-semibold text-gray-700">{formData.seminarConfig.isGroup ? 'Group' : 'Indiv.'}</p></div>
-                                                )}
 
-                                            </div>
-                                            <div className="space-y-4">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase underline decoration-indigo-200 underline-offset-4">Academic Review</p>
-                                                <div className="space-y-3">
-                                                    {(formData.questions || []).map((q, i) => (
-                                                        <div key={i} className="flex flex-col gap-1 text-sm text-gray-600">
-                                                            <div className="flex gap-3">
-                                                                <span className="font-bold text-indigo-300">{i + 1}.</span>
-                                                                <p className="leading-relaxed">{typeof q === 'string' ? q : (q.questionText || q.question)}</p>
-                                                            </div>
-                                                            {formData.submissionType === 'Quiz' && q.options && (
-                                                                <div className="pl-6 pt-1 space-y-1">
-                                                                    {q.options.map((opt: string, idx: number) => (
-                                                                        <div key={idx} className={`text-xs px-2 py-1 rounded-md inline-block w-full border ${q.correctAnswer === opt || (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt)) ? 'bg-green-50 border-green-200 text-green-700 font-medium' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                                                                            {String.fromCharCode(65 + idx)}. {opt}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                    <div className="opacity-75">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Department</label>
+                                                        <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
+                                                            {formData.department || '—'}
                                                         </div>
-                                                    ))}
-                                                    {formData.submissionType === 'Programming' && (
-                                                        <div className="text-sm text-gray-600 italic">
-                                                            Programming problem details and {formData.testCases?.length || 0} test cases configured.
+                                                    </div>
+                                                    <div className="opacity-75">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Academic Year</label>
+                                                        <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
+                                                            {formData.academicYear || '—'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="opacity-75">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Semester</label>
+                                                        <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-600 text-sm">
+                                                            {formData.semester || '—'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {step === 2 && (
+                                        <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                            <BaseConfig formData={formData} setFormData={setFormData} mySubjects={mySubjects} />
+                                        </motion.div>
+                                    )}
+
+                                    {step === 3 && (
+                                        <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileEdit className="w-5 h-5" /></div>
+                                                    <h2 className="text-lg font-bold text-gray-800">Step 3: Build {formData.submissionType} Format</h2>
+                                                </div>
+                                                <div className="flex bg-gray-100 p-1 rounded-xl">
+                                                    <button onClick={() => setFormData({ ...formData, creationMode: 'manual' })}
+                                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.creationMode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>Manual Builder</button>
+                                                    <button onClick={() => setFormData({ ...formData, creationMode: 'ai' })}
+                                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.creationMode === 'ai' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>AI Assistant</button>
+                                                </div>
+                                            </div>
+
+                                            {formData.creationMode === 'ai' ? (
+                                                <div className="space-y-6 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 mb-8">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        <div className="lg:col-span-full">
+                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Topic / Keywords</label>
+                                                            <Input placeholder="e.g. Binary Search Trees" value={formData.aiConfig.units} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, units: e.target.value } })} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Difficulty</label>
+                                                            <select className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none text-sm"
+                                                                value={formData.aiConfig.difficulty} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, difficulty: e.target.value } })}>
+                                                                <option>Easy</option><option>Medium</option><option>Hard</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Question Count</label>
+                                                            <Input type="number" min="1" max="20" value={formData.aiConfig.questionCount} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, questionCount: Number(e.target.value) } })} />
+                                                        </div>
+                                                        <div className="flex items-end">
+                                                            <Button className="w-full" onClick={handleAIGenerate} isLoading={isLoading} icon={<Bot className="w-4 h-4" />}>
+                                                                Generate
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-6">
+                                                    {formData.submissionType === 'Handwritten' && <HandwrittenBuilder formData={formData} setFormData={setFormData} />}
+                                                    {formData.submissionType === 'Document' && <DocumentBuilder formData={formData} setFormData={setFormData} />}
+                                                    {formData.submissionType === 'PPT' && <PPTBuilder formData={formData} setFormData={setFormData} />}
+                                                    {formData.submissionType === 'Quiz' && <QuizBuilder formData={formData} setFormData={setFormData} />}
+                                                    {formData.submissionType === 'Programming' && <ProgrammingBuilder formData={formData} setFormData={setFormData} />}
+                                                    {formData.submissionType === 'Seminar' && <SeminarBuilder formData={formData} setFormData={setFormData} />}
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    )}
+
+                                    {step === 4 && (
+                                        <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><Eye className="w-5 h-5" /></div>
+                                                <h2 className="text-lg font-bold text-gray-800">Step 5: Preview & Publish</h2>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-6">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-gray-900">{formData.title || 'Untitled Assignment'}</h3>
+                                                        <p className="text-sm text-indigo-600 font-medium">{mySubjects.find(s => s._id === formData.subjectId)?.name}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-lg font-black text-gray-900">{formData.maxMarks}</div>
+                                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Points</div>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4 border-y border-gray-200/50">
+                                                    <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Type</p><p className="text-sm font-semibold text-gray-700">{formData.submissionType}</p></div>
+                                                    <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Due Date</p><p className="text-sm font-semibold text-gray-700">{formData.deadline}</p></div>
+                                                    <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Late Policy</p><p className="text-sm font-semibold text-gray-700">{formData.rules.lateAllowed ? `${formData.rules.latePenalty}% Penalty` : 'No Late Sub.'}</p></div>
+                                                    <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Resubmission</p><p className="text-sm font-semibold text-gray-700">{formData.rules.resubmissionAllowed ? 'Allowed' : 'Not Allowed'}</p></div>
+                                                    {formData.submissionType === 'Seminar' && (
+                                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Format</p><p className="text-sm font-semibold text-gray-700">{formData.seminarConfig.isGroup ? 'Group' : 'Indiv.'}</p></div>
+                                                    )}
+
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase underline decoration-indigo-200 underline-offset-4">Academic Review</p>
+                                                    <div className="space-y-3">
+                                                        {(formData.questions || []).map((q, i) => (
+                                                            <div key={i} className="flex flex-col gap-1 text-sm text-gray-600">
+                                                                <div className="flex gap-3">
+                                                                    <span className="font-bold text-indigo-300">{i + 1}.</span>
+                                                                    <p className="leading-relaxed">{typeof q === 'string' ? q : (q.questionText || q.question)}</p>
+                                                                </div>
+                                                                {formData.submissionType === 'Quiz' && q.options && (
+                                                                    <div className="pl-6 pt-1 space-y-1">
+                                                                        {q.options.map((opt: string, idx: number) => (
+                                                                            <div key={idx} className={`text-xs px-2 py-1 rounded-md inline-block w-full border ${q.correctAnswer === opt || (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt)) ? 'bg-green-50 border-green-200 text-green-700 font-medium' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                                                                                {String.fromCharCode(65 + idx)}. {opt}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                        {formData.submissionType === 'Programming' && (
+                                                            <div className="text-sm text-gray-600 italic">
+                                                                Programming problem details and {formData.testCases?.length || 0} test cases configured.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div >
+
+                            {/* Navigation Buttons */}
+                            < div className="pt-8 flex justify-between border-t border-gray-100 mt-auto" >
+                                <Button variant="outline" onClick={handlePrev} disabled={step === 1} icon={<ChevronLeft className="w-4 h-4" />}>Previous</Button>
+                                {
+                                    step < 4 ? (
+                                        <Button onClick={handleNext} disabled={!formData.subjectId && step === 1} icon={<ChevronRight className="w-4 h-4" />}>Next Step</Button>
+                                    ) : (
+                                        <Button onClick={handlePublish} isLoading={isLoading} icon={<Save className="w-4 h-4" />}>Publish Now</Button>
+                                    )
+                                }
+                            </div >
+                        </Card >
+                    </div >
+
+                    {/* Sidebar: Recent Assignments */}
+                    < div className="lg:col-span-1" >
+                        <Card title="Recent Assignments" className="h-full">
+                            <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                                {recentAssignments.length === 0 ? (
+                                    <div className="text-center py-10 opacity-50"><Library className="w-10 h-10 mx-auto mb-2" /><p className="text-xs">No assignments yet</p></div>
+                                ) : (
+                                    recentAssignments.map(ass => (
+                                        <div
+                                            key={ass._id}
+                                            onClick={() => fetchGradebook(ass._id)}
+                                            className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-indigo-200 transition-all group cursor-pointer shadow-sm hover:shadow-md"
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="font-bold text-gray-800 text-sm line-clamp-1">{ass.title}</h4>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleOpenEditModal(ass);
+                                                        }}
+                                                        className="text-gray-300 hover:text-indigo-600 p-1 rounded-md hover:bg-indigo-50"
+                                                        title="Edit Settings"
+                                                    >
+                                                        <Settings className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteAssignment(ass._id);
+                                                        }}
+                                                        className="text-gray-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50"
+                                                        title="Delete Assignment"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mb-3">
+                                                <div className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">{ass.type || ass.submissionType}</div>
+                                                <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(ass.deadline).toLocaleDateString()}</div>
+                                            </div>
+                                            <div className="flex justify-between items-center text-[10px]">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${ass.submissionsEnabled !== false ? 'bg-green-500' : 'bg-red-500'}`} />
+                                                    <span className={ass.submissionsEnabled !== false ? 'text-gray-600' : 'text-red-500'}>
+                                                        {ass.submissionsEnabled !== false ? 'Active' : 'Disabled'}
+                                                    </span>
+                                                </div>
+                                                <span className="font-black text-gray-600">{ass.maxMarks} PTS</span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    <Card title="Pending Re-evaluation Requests">
+                        {isReEvalLoading ? (
+                            <div className="py-20 text-center uppercase tracking-widest text-gray-400 font-bold animate-pulse">Loading requests...</div>
+                        ) : reEvalRequests.length === 0 ? (
+                            <div className="py-20 text-center text-gray-400">No pending re-evaluation requests.</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b">
+                                        <tr>
+                                            <th className="px-6 py-4">Student</th>
+                                            <th className="px-6 py-4">Assignment</th>
+                                            <th className="px-6 py-4">Original Score</th>
+                                            <th className="px-6 py-4">Reason</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {reEvalRequests.map((req) => (
+                                            <tr key={req._id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-gray-900">{req.student?.fullName || req.student?.username || 'Unknown Student'}</span>
+                                                        <span className="text-[10px] text-gray-500">{req.student?.registerNumber || '—'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-medium text-gray-700">{req.assignment?.title || 'Unknown Assignment'}</div>
+                                                </td>
+                                                <td className="px-6 py-4 font-black text-gray-900">{req.originalScore}</td>
+                                                <td className="px-6 py-4 max-w-xs">
+                                                    <p className="text-xs text-gray-600 italic line-clamp-2" title={req.reason}>"{req.reason}"</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${req.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                        req.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                        {req.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {req.status === 'Pending' && (
+                                                        <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setReviewingRequest(req);
+                                                                    setReviewAction('Approved');
+                                                                    setReviewFormData({ updatedScore: req.originalScore, comment: 'Score updated after review' });
+                                                                    setReviewModalOpen(true);
+                                                                }}
+                                                                className="px-3 py-1 bg-green-600 text-white rounded-lg text-[10px] font-bold uppercase hover:bg-green-700 transition"
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setReviewingRequest(req);
+                                                                    setReviewAction('Rejected');
+                                                                    setReviewFormData({ updatedScore: req.originalScore, comment: '' });
+                                                                    setReviewModalOpen(true);
+                                                                }}
+                                                                className="px-3 py-1 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase hover:bg-red-700 transition"
+                                                            >
+                                                                Reject
+                                                            </button>
                                                         </div>
                                                     )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div >
-
-                        {/* Navigation Buttons */}
-                        < div className="pt-8 flex justify-between border-t border-gray-100 mt-auto" >
-                            <Button variant="outline" onClick={handlePrev} disabled={step === 1} icon={<ChevronLeft className="w-4 h-4" />}>Previous</Button>
-                            {
-                                step < 4 ? (
-                                    <Button onClick={handleNext} disabled={!formData.subjectId && step === 1} icon={<ChevronRight className="w-4 h-4" />}>Next Step</Button>
-                                ) : (
-                                    <Button onClick={handlePublish} isLoading={isLoading} icon={<Save className="w-4 h-4" />}>Publish Now</Button>
-                                )
-                            }
-                        </div >
-                    </Card >
-                </div >
-
-                {/* Sidebar: Recent Assignments */}
-                < div className="lg:col-span-1" >
-                    <Card title="Recent Assignments" className="h-full">
-                        <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                            {recentAssignments.length === 0 ? (
-                                <div className="text-center py-10 opacity-50"><Library className="w-10 h-10 mx-auto mb-2" /><p className="text-xs">No assignments yet</p></div>
-                            ) : (
-                                recentAssignments.map(ass => (
-                                    <div
-                                        key={ass._id}
-                                        onClick={() => fetchGradebook(ass._id)}
-                                        className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-indigo-200 transition-all group cursor-pointer shadow-sm hover:shadow-md"
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-bold text-gray-800 text-sm line-clamp-1">{ass.title}</h4>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleOpenEditModal(ass);
-                                                    }}
-                                                    className="text-gray-300 hover:text-indigo-600 p-1 rounded-md hover:bg-indigo-50"
-                                                    title="Edit Settings"
-                                                >
-                                                    <Settings className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteAssignment(ass._id);
-                                                    }}
-                                                    className="text-gray-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50"
-                                                    title="Delete Assignment"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mb-3">
-                                            <div className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">{ass.type || ass.submissionType}</div>
-                                            <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(ass.deadline).toLocaleDateString()}</div>
-                                        </div>
-                                        <div className="flex justify-between items-center text-[10px]">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${ass.submissionsEnabled !== false ? 'bg-green-500' : 'bg-red-500'}`} />
-                                                <span className={ass.submissionsEnabled !== false ? 'text-gray-600' : 'text-red-500'}>
-                                                    {ass.submissionsEnabled !== false ? 'Active' : 'Disabled'}
-                                                </span>
-                                            </div>
-                                            <span className="font-black text-gray-600">{ass.maxMarks} PTS</span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </Card>
-                </div >
-            </div >
-
+                </div>
+            )}
             {/* Gradebook Modal */}
             <AnimatePresence>
                 {selectedAssignmentGradebook && (
@@ -757,11 +924,18 @@ const UnifiedAssignments = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={handleExportGradebook}
+                                        onClick={() => handleExportAdvanced('excel')}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 rounded-lg text-white hover:bg-green-700 transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm"
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                        Excel
+                                    </button>
+                                    <button
+                                        onClick={() => handleExportAdvanced('pdf')}
                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 rounded-lg text-white hover:bg-indigo-700 transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm"
                                     >
                                         <Download className="w-3.5 h-3.5" />
-                                        Export
+                                        PDF
                                     </button>
                                     <button
                                         onClick={() => setSelectedAssignmentGradebook(null)}
@@ -887,6 +1061,86 @@ const UnifiedAssignments = () => {
                             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
                                 <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
                                 <Button onClick={handleSaveEdit} isLoading={isLoading}>Save Changes</Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Re-evaluation Review Modal */}
+            <AnimatePresence>
+                {reviewModalOpen && reviewingRequest && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                        onClick={() => setReviewModalOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white rounded-3xl w-full max-w-md overflow-hidden transform"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <div>
+                                    <h3 className={`text-xl font-bold ${reviewAction === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {reviewAction === 'Approved' ? 'Approve Re-evaluation' : 'Reject Re-evaluation'}
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{reviewingRequest.assignment?.title}</p>
+                                </div>
+                                <button onClick={() => setReviewModalOpen(false)} className="p-2 hover:bg-white rounded-full transition-colors text-gray-400">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm flex justify-between items-center">
+                                    <span className="text-gray-500 font-medium">Original Score:</span>
+                                    <span className="text-gray-900 font-black text-lg">{reviewingRequest.originalScore}</span>
+                                </div>
+
+                                {reviewAction === 'Approved' && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Manually Updated Score</label>
+                                        <Input
+                                            type="number"
+                                            value={reviewFormData.updatedScore}
+                                            onChange={e => setReviewFormData({ ...reviewFormData, updatedScore: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Reviewer Comment / Feedback</label>
+                                    <textarea
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 min-h-[100px] resize-none text-sm"
+                                        placeholder="Explain your decision..."
+                                        value={reviewFormData.comment}
+                                        onChange={e => setReviewFormData({ ...reviewFormData, comment: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <Button variant="outline" className="flex-1" onClick={() => setReviewModalOpen(false)}>Cancel</Button>
+                                    <Button
+                                        className={`flex-1 ${reviewAction === 'Approved' ? '!bg-green-600 hover:!bg-green-700' : '!bg-red-600 hover:!bg-red-700'}`}
+                                        onClick={() => {
+                                            handleUpdateReEval(
+                                                reviewingRequest._id,
+                                                reviewAction!,
+                                                reviewAction === 'Approved' ? reviewFormData.updatedScore : undefined,
+                                                reviewFormData.comment
+                                            );
+                                            setReviewModalOpen(false);
+                                        }}
+                                    >
+                                        Confirm
+                                    </Button>
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>

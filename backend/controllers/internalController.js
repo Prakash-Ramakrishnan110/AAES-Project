@@ -3,6 +3,7 @@ const InternalMark = require('../models/InternalMark');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const Notification = require('../models/Notification');
 const { recalculateRiskForStudent } = require('../services/riskEngine');
 
 /**
@@ -182,6 +183,22 @@ exports.togglePublish = async (req, res) => {
         pattern.published = published;
         pattern.publishedBy = hodId;
         await pattern.save();
+
+        if (published) {
+            try {
+                const results = await (require('../models/InternalMark')).find({ pattern: patternId }).select('student');
+                const subjectObj = await (require('../models/Subject')).findById(pattern.subject).select('name');
+                for (const m of results) {
+                    await (require('../models/Notification')).create({
+                        user: m.student,
+                        title: 'CIA Marks Published',
+                        message: `Internal marks for ${subjectObj ? subjectObj.name : 'your subject'} have been published.`,
+                        type: 'Info',
+                        link: '/student/marks'
+                    });
+                }
+            } catch (err) { console.error('Notif Error:', err); }
+        }
 
         await AuditLog.create({
             action: published ? 'PUBLISH_INTERNAL_MARKS' : 'UNPUBLISH_INTERNAL_MARKS',

@@ -10,7 +10,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AttendanceDashboard = () => {
     const { user, token } = useContext(AuthContext)!;
@@ -60,10 +60,11 @@ const AttendanceDashboard = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const res = await axios.get(`${API}/api/attendance/my`, config);
-            setItems(res.data);
+            const attendanceData = res.data.stats || res.data; // Support both old and new format
+            setItems(attendanceData);
 
             // Calculate overall stats for student
-            const valid = res.data.filter((s: any) => s.percentage !== null);
+            const valid = attendanceData.filter((s: any) => s.percentage !== null);
             if (valid.length > 0) {
                 setStats({
                     overallAvg: valid.reduce((acc: number, s: any) => acc + s.percentage, 0) / valid.length,
@@ -72,8 +73,12 @@ const AttendanceDashboard = () => {
             } else {
                 setStats({ overallAvg: 0, lowCount: 0 });
             }
-        } catch (error) { console.error(error); }
-        finally { setLoading(false); }
+        } catch (error: any) {
+            console.error(error);
+            alert(`Error fetching attendance: ${error.message}. API: ${API}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

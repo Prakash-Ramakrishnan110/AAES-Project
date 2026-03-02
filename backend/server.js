@@ -35,6 +35,8 @@ const ccmRoutes = require('./routes/ccmRoutes');
 const mentorshipRoutes = require('./routes/mentorshipRoutes');
 const governanceRoutes = require('./routes/governanceRoutes');
 const internalRoutes = require('./routes/internalRoutes');
+const reEvaluationRoutes = require('./routes/reEvaluationRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const cron = require('node-cron');
 const { promoteStaleEscalations } = require('./services/escalationEngine');
 
@@ -53,6 +55,8 @@ app.use('/api/ccm', ccmRoutes);
 app.use('/api/mentorship', mentorshipRoutes);
 app.use('/api/governance', governanceRoutes);
 app.use('/api/internal', internalRoutes);
+app.use('/api/re-evaluation', reEvaluationRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Daily Cron Job: Promote stale escalations (e.g., every day at midnight)
 cron.schedule('0 0 * * *', () => {

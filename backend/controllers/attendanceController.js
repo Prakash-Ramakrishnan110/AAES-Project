@@ -1,6 +1,9 @@
 const Attendance = require('../models/Attendance');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
+const fs = require('fs');
+const path = require('path');
+const logFile = path.join(__dirname, '../attendance_debug.log');
 const ClassAdvisor = require('../models/ClassAdvisor');
 const { recalculateRiskForStudent } = require('../services/riskEngine');
 
@@ -419,6 +422,16 @@ const getStudentsForSubject = async (req, res) => {
 const getMyAttendance = async (req, res) => {
     try {
         const studentId = req.user.id;
+        const debugInfo = {
+            timestamp: new Date().toISOString(),
+            user: {
+                id: studentId,
+                username: req.user.username,
+                dept: req.user.department,
+                year: req.user.academicYear,
+                sem: req.user.semester
+            }
+        };
 
         // Find all subjects for this student
         const subjects = await Subject.find({
@@ -426,6 +439,15 @@ const getMyAttendance = async (req, res) => {
             academicYear: req.user.academicYear,
             semester: req.user.semester
         });
+
+        debugInfo.subjectsFound = subjects.length;
+        debugInfo.query = {
+            department: req.user.department,
+            academicYear: req.user.academicYear,
+            semester: req.user.semester
+        };
+
+        fs.appendFileSync(logFile, JSON.stringify(debugInfo, null, 2) + '\n---\n');
 
         const subjectIds = subjects.map(s => s._id);
 
@@ -459,7 +481,19 @@ const getMyAttendance = async (req, res) => {
             };
         });
 
-        res.json(subjectStats);
+        res.json({
+            stats: subjectStats,
+            debug: {
+                studentId,
+                criteria: {
+                    department: req.user.department,
+                    academicYear: req.user.academicYear,
+                    semester: req.user.semester
+                },
+                subjectCount: subjects.length,
+                sessionCount: sessions.length
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

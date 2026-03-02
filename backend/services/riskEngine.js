@@ -10,7 +10,7 @@ const InternalMark = require('../models/InternalMark');
 const InternalPattern = require('../models/InternalPattern');
 const Attendance = require('../models/Attendance');
 const Assignment = require('../models/Assignment');
-const Submission = require('../models/Submission');
+const Notification = require('../models/Notification');
 const User = require('../models/User');
 
 /**
@@ -104,6 +104,17 @@ async function recalculateRiskForStudent(studentId, semester, academicYear) {
                 },
                 { upsert: true, new: true }
             );
+
+            // Notify Student if Risk becomes Red or Yellow
+            if (riskLevel !== 'Green' && (!existing || existing.riskLevel !== riskLevel)) {
+                await Notification.create({
+                    user: studentId,
+                    title: 'Academic Risk Alert',
+                    message: `Your academic risk level has changed to ${riskLevel}. Please check your attendance and marks.`,
+                    type: riskLevel === 'Red' ? 'Alert' : 'Warning',
+                    link: '/student/dashboard'
+                });
+            }
 
             // ─── 6. Trigger escalation if 2+ consecutive RED ─────────────────────
             if (newConsecutiveRed >= 2 && !riskDoc.escalationTriggered) {

@@ -1,0 +1,75 @@
+AAES FINAL PRESENTATION CONTENT (13 SECTIONS)
+
+1. ABSTRACT
+• Purpose: Automate theory (OCR/AI) and programming evaluation.
+• Tech: Uses Gemma LLM for semantic grading and secure Python sandboxing.
+• Reach: Specialized views for Principal, HOD, Advisor (Mentor), Staff, and Student.
+
+2. PROBLEM STATEMENTS
+• Manual Load: Thousands of assignments creating teacher burnout.
+• Subjectivity: Inconsistent marking across different graders.
+• Delay: Long feedback loops harming student progress.
+• Governance: No "live" view of institutional academic health.
+
+3. LITERATURE SURVEY
+• Traditional LMS: No "meaning-based" auto-grading for theory.
+• Current Tools: Mostly support MCQs or simple code snippets.
+• AI Potential: Tesseract and Gemma LLMs now allow complex evaluation safely.
+
+4. EXISTING SYSTEM
+• Submission: Physical papers or simple file uploads.
+• Evaluation: Completely manual reading and marking by staff.
+• Records: Offline spreadsheets or physical registers.
+• Reporting: Only available at the end of the term.
+
+5. EXISTING SYSTEM DISADVANTAGE
+• Slow: Turnaround time of days or weeks.
+• Error-Prone: Fatigue-based grading mistakes.
+• Opaque: Students don't know why they lost marks.
+• Reactive: Issues found only after results are published.
+
+6. PROPOSED SYSTEM
+• Smart Grading: AI-driven semantic comparison + Unit testing.
+• Integrated Portals: Unified platform for Advisor, CCM, and Analytics.
+• Live Data: Dynamic dashboards that update instantly.
+• Secure Core: Isolated environments for safe code execution.
+
+7. PROPOSED SYSTEM ADVANTAGE
+• Fast: Results in seconds after submission.
+• Objective: Fair and standardized marking for everyone.
+• Proactive: "Risk Intelligence" flags struggling students early.
+• Efficient: 90% reduction in teacher evaluation time.
+
+8. MODULES DESCRIPTION
+• Student: Enrollment, Submission Portal, and Performance Tracker.
+• Staff: Assignment Creation, AI Grading Review, and Class Analytics.
+• Advisor (Mentor): Mentee group tracking, cross-subject attendance, and Advisor Notes.
+• CCM Portal: Digital minutes recording, grievance tracking, and action items.
+• HOD & Principal: Institutional Audits, Department Risk heatmaps, and Faculty monitoring.
+• Admin: Bulk CSV Onboarding and Semester Promotion.
+
+9. FEATURE ENHANCEMENT
+• Plagiarism Detection: AI-to-AI similarity checking.
+• Mobile App: Native submission and notifications.
+• Advanced Proctoring: AI monitoring for assessments.
+• Multilingual Support: Grading in regional languages.
+
+10. HARDWARE AND SOFTWARE REQUIREMENTS
+• Software: React, Node.js, Express, MongoDB, Python, FastAPI, OCR, LLM.
+• Hardware: 2.5GHz Quad-core Processor, 8GB-16GB RAM, 10GB Storage.
+
+11. WORKFLOW DIAGRAM
+• Student Upload -> Trigger Evaluation -> Route (Theory vs Code).
+• Theory: Image -> OCR -> AI semantic match -> Score.
+• Code: Execution -> Test Case run -> Score.
+• Final: Save to DB -> Update Dashboard -> Notify User.
+
+12. SCREEN SHOT
+• High-fidelity dashboards for all 5 roles.
+• Intelligent risk maps and performance charts.
+• Electronic CCM record and Advisor counseling logs.
+
+13. CONCLUSION
+• AAES modernizes education with "Actionable Intelligence."
+• Reduces administrative friction while increasing academic standards.
+• A transparent, scalable, and fast future for institutional evaluation.

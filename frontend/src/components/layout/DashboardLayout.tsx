@@ -7,6 +7,9 @@ import {
     User, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface SidebarItemProps {
     icon: React.ReactNode;
@@ -79,7 +82,57 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
     const { logout, user } = useContext(AuthContext)!;
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    // Notifications State
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const location = useLocation();
+
+    const fetchNotifications = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API_URL}/notifications`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setNotifications(res.data);
+            setUnreadCount(res.data.filter((n: any) => !n.read).length);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
+
+    const markAsRead = async (id: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`${API_URL}/notifications/${id}/read`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error marking as read:', error);
+        }
+    };
+
+    const markAllAsRead = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`${API_URL}/notifications/read-all`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications();
+            const interval = setInterval(fetchNotifications, 30000); // Polling every 30s
+            return () => clearInterval(interval);
+        }
+    }, [user]);
 
     // Auto-close sidebar on mobile route change
     useEffect(() => {
@@ -242,10 +295,68 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <button className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative"
+                            >
+                                <Bell className="w-5 h-5" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            <AnimatePresence>
+                                {isNotificationsOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 overflow-hidden"
+                                    >
+                                        <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                            <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                                            {unreadCount > 0 && (
+                                                <button
+                                                    onClick={markAllAsRead}
+                                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                                >
+                                                    Mark all as read
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-[400px] overflow-y-auto">
+                                            {notifications.length === 0 ? (
+                                                <div className="px-4 py-8 text-center">
+                                                    <p className="text-sm text-gray-500">No notifications yet</p>
+                                                </div>
+                                            ) : (
+                                                notifications.map((n) => (
+                                                    <div
+                                                        key={n._id}
+                                                        onClick={() => markAsRead(n._id)}
+                                                        className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <p className={`text-sm ${!n.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                                                {n.title}
+                                                            </p>
+                                                            {!n.read && <div className="w-2 h-2 bg-indigo-600 rounded-full mt-1"></div>}
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
+                                                        <p className="text-[10px] text-gray-400 mt-1">
+                                                            {new Date(n.createdAt).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
                         <div className="relative">
                             <button

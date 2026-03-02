@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import ReEvaluationModal from '../../components/modals/ReEvaluationModal';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -31,6 +32,9 @@ const StudentDashboard = () => {
     const [queries, setQueries] = useState<any[]>([]);
     const [newQuery, setNewQuery] = useState({ queryType: 'Academic', priority: 'Medium', message: '' });
     const [submittingQuery, setSubmittingQuery] = useState(false);
+
+    // Re-evaluation State
+    const [selectedSubForReEval, setSelectedSubForReEval] = useState<any | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -73,7 +77,7 @@ const StudentDashboard = () => {
     const isQueryLimitReached = openQueriesCount >= 3;
 
     const performanceData = recentSubmissions.map(s => ({
-        name: s.assignment?.title.substring(0, 15) + '...',
+        name: (s.assignment?.title || 'Unknown').substring(0, 15) + '...',
         score: s.status === 'graded' ? s.marks : 0
     })).reverse();
 
@@ -183,9 +187,17 @@ const StudentDashboard = () => {
                                         </p>
                                     </div>
                                     {sub.status === 'graded' && (
-                                        <div className="flex items-center text-sm font-bold text-gray-900 bg-gray-50 px-2 py-1 rounded">
-                                            <Star className="w-3 h-3 text-yellow-400 mr-1 fill-current" />
-                                            {sub.marks}
+                                        <div className="flex flex-col items-end gap-1">
+                                            <div className="flex items-center text-sm font-bold text-gray-900 bg-gray-50 px-2 py-1 rounded">
+                                                <Star className="w-3 h-3 text-yellow-400 mr-1 fill-current" />
+                                                {sub.marks}
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedSubForReEval(sub)}
+                                                className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline"
+                                            >
+                                                Re-evaluate?
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -294,6 +306,14 @@ const StudentDashboard = () => {
                         </form>
                     </div>
                 </div>
+            )}
+            {/* Re-evaluation Modal */}
+            {selectedSubForReEval && (
+                <ReEvaluationModal
+                    isOpen={!!selectedSubForReEval}
+                    onClose={() => setSelectedSubForReEval(null)}
+                    submission={selectedSubForReEval}
+                />
             )}
         </div>
     );

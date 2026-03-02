@@ -4,6 +4,9 @@ const FormData = require('form-data');
 const axios = require('axios');
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
+const Subject = require('../models/Subject');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 const { runAutoGrading } = require('../utils/pythonRunner');
 const { recalculateRiskForStudent } = require('../services/riskEngine');
@@ -344,6 +347,18 @@ const submitAssignment = async (req, res) => {
 
             await submission.save();
 
+            // Notify Staff of Resubmission
+            const assignmentRecord = await Assignment.findById(assignmentId);
+            if (assignmentRecord) {
+                await Notification.create({
+                    user: assignmentRecord.createdBy,
+                    title: 'Assignment Resubmitted',
+                    message: `${req.user.username} resubmitted: ${assignmentRecord.title}`,
+                    type: 'Grading',
+                    link: `/staff/assignments/${assignmentId}`
+                });
+            }
+
             // Trigger Risk Recalculation if graded
             if (status === 'graded') {
                 recalculateRiskForStudent(req.user.id);
@@ -379,6 +394,18 @@ const submitAssignment = async (req, res) => {
         });
 
         await newSubmission.save();
+
+        // Notify Staff of New Submission
+        const assignmentRecordNew = await Assignment.findById(assignmentId);
+        if (assignmentRecordNew) {
+            await Notification.create({
+                user: assignmentRecordNew.createdBy,
+                title: 'New Assignment Submission',
+                message: `${req.user.username} submitted: ${assignmentRecordNew.title}`,
+                type: 'Grading',
+                link: `/staff/assignments/${assignmentId}`
+            });
+        }
 
         // Trigger Risk Recalculation if graded
         if (status === 'graded') {
@@ -464,6 +491,15 @@ const gradeSubmission = async (req, res) => {
         submission.feedback = feedback;
         submission.status = 'graded';
         await submission.save();
+
+        // Notify Student of Grade
+        await Notification.create({
+            user: submission.student,
+            title: 'Assignment Graded',
+            message: `Your assignment "${submission.assignment.title}" has been graded. Score: ${marks}`,
+            type: 'Grading',
+            link: `/student/assignments/${submission.assignment._id}`
+        });
 
         // Trigger Risk Recalculation
         recalculateRiskForStudent(submission.student);

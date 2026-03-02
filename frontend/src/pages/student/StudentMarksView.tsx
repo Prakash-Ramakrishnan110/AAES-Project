@@ -37,18 +37,30 @@ const StudentMarksView = () => {
             const subRes = await axios.get(`${API}/api/submissions/my`, config);
             const submissions = subRes.data;
 
-            // Group by Subject
-            const combined = attendance.map((att: any) => {
+            // Get unique subject IDs from both sources
+            const subjectIds = new Set([
+                ...attendance.map((a: any) => a.subjectId),
+                ...submissions.filter((s: any) => s.assignment?.subject).map((s: any) => s.assignment.subject._id || s.assignment.subject)
+            ]);
+
+            const combined = Array.from(subjectIds).map(subId => {
+                const att = attendance.find((a: any) => a.subjectId === subId);
                 const subjectSubmissions = submissions.filter((s: any) =>
-                    s.assignment?.subject === att.subjectId ||
-                    s.assignment?.subject?._id === att.subjectId
+                    (s.assignment?.subject === subId || s.assignment?.subject?._id === subId)
                 );
 
                 const totalMarksObtained = subjectSubmissions.reduce((acc: number, s: any) => acc + (s.marks || 0), 0);
                 const totalMaxMarks = subjectSubmissions.reduce((acc: number, s: any) => acc + (s.assignment?.maxMarks || 0), 0);
 
+                // Try to get subject name/code from either source
+                const subjectName = att?.name || subjectSubmissions[0]?.assignment?.subject?.name || 'Unknown Subject';
+                const subjectCode = att?.code || subjectSubmissions[0]?.assignment?.subject?.code || '???';
+
                 return {
-                    ...att,
+                    subjectId: subId,
+                    name: subjectName,
+                    code: subjectCode,
+                    percentage: att ? att.percentage : null,
                     submissionsCount: subjectSubmissions.length,
                     marksObtained: totalMarksObtained,
                     maxMarks: totalMaxMarks,

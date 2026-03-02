@@ -136,20 +136,11 @@ const getStudentAssignments = async (req, res) => {
         }
 
         // Find subjects matching student's enrollment
-        // Priority 1: Exact Match (Dept, Sem, Academic Year)
+        // Priority: Match by Dept and Sem (handle mismatched academic years easily)
         let subjects = await Subject.find({
-            department: student.department,
-            semester: student.semester,
-            academicYear: student.academicYear
+            department: new RegExp(`^${student.department}$`, 'i'),
+            semester: student.semester
         });
-
-        // Priority 2: Fallback (Dept, Sem only) - Handles descriptive labels like "3rd Year" vs "2023-24"
-        if (subjects.length === 0) {
-            subjects = await Subject.find({
-                department: student.department,
-                semester: student.semester
-            });
-        }
 
         const subjectIds = subjects.map(s => s._id);
 

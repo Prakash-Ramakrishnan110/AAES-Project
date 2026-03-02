@@ -1,5 +1,7 @@
 const CCM = require('../models/CCM');
 const AuditLog = require('../models/AuditLog');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Helper: Create Audit Log
 const createAuditLog = async (action, performedBy, targetId, department, details = {}) => {
@@ -79,6 +81,19 @@ const createCCM = async (req, res) => {
         });
 
         await createAuditLog('CREATE_CCM', req.user.id, ccm._id, req.user.department, { agenda });
+
+        // Notify Student Representatives
+        if (parsedReps && parsedReps.length > 0) {
+            for (const repId of parsedReps) {
+                await Notification.create({
+                    user: repId,
+                    title: 'CCM Meeting Scheduled',
+                    message: `You have been selected as a representative for the CCM meeting on ${new Date(meetingDate).toLocaleDateString()}. Agenda: ${agenda}`,
+                    type: 'Info',
+                    link: '/student/dashboard'
+                });
+            }
+        }
 
         res.status(201).json(ccm);
     } catch (error) {
