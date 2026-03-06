@@ -373,43 +373,52 @@ graph LR
 ### 5.10 USECASE DIAGRAM
 
 ```mermaid
-usecaseDiagram
-    actor Student
-    actor Faculty
-    actor HOD
-    actor Admin
+flowchart LR
+    %% Actors
+    Student([Student])
+    Faculty([Faculty])
+    HOD([HOD])
+    Admin([Admin])
 
-    usecase "Submit Assignment" as UC1
-    usecase "View Analytics Dashboard" as UC2
-    usecase "Interact with AI Study Notes" as UC3
+    %% Use Cases
+    UC1([Submit Assignment])
+    UC2([View Analytics Dashboard])
+    UC3([Interact with AI Study Notes])
     
-    usecase "Create Smart Assignment" as UC4
-    usecase "Override AI Grade" as UC5
-    usecase "Manage Mentees" as UC6
+    UC4([Create Smart Assignment])
+    UC5([Override AI Grade])
+    UC6([Manage Mentees])
     
-    usecase "Review Department Performance" as UC7
-    usecase "Manage Internal Patterns" as UC8
-    usecase "Conduct CCM" as UC9
+    UC7([Review Department Performance])
+    UC8([Manage Internal Patterns])
+    UC9([Conduct CCM])
     
-    usecase "System Configuration" as UC10
-    usecase "Review Security Audit Logs" as UC11
+    UC10([System Configuration])
+    UC11([Review Security Audit Logs])
     
-    Student --> UC1
-    Student --> UC2
-    Student --> UC3
+    %% Relationships
+    Student --- UC1
+    Student --- UC2
+    Student --- UC3
     
-    Faculty --> UC2
-    Faculty --> UC4
-    Faculty --> UC5
-    Faculty --> UC6
+    Faculty --- UC2
+    Faculty --- UC4
+    Faculty --- UC5
+    Faculty --- UC6
     
-    HOD --> UC2
-    HOD --> UC7
-    HOD --> UC8
-    HOD --> UC9
+    HOD --- UC2
+    HOD --- UC7
+    HOD --- UC8
+    HOD --- UC9
     
-    Admin --> UC10
-    Admin --> UC11
+    Admin --- UC10
+    Admin --- UC11
+
+    %% Optional styling to make use cases look like ovals and actors stand out
+    style Student fill:#f9f,stroke:#333,stroke-width:2px
+    style Faculty fill:#f9f,stroke:#333,stroke-width:2px
+    style HOD fill:#f9f,stroke:#333,stroke-width:2px
+    style Admin fill:#f9f,stroke:#333,stroke-width:2px
 ```
 *(Note: Use case logic mapped via mermaid graph equivalents visually in UI)*
 
