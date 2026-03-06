@@ -82,8 +82,6 @@ PYTHON_SERVICE_URL=http://localhost:8000
 
 ## 📖 Documentation
 
-- **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** - MongoDB installation and configuration
-- **[EVALUATION_SETUP.md](./EVALUATION_SETUP.md)** - Security features and evaluation setup
 
 ## 🎯 Quick Start
 

@@ -3,6 +3,8 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const BulkUpload = () => {
     const { token } = useContext(AuthContext)!;
     const [file, setFile] = useState<File | null>(null);
@@ -40,7 +42,7 @@ const BulkUpload = () => {
             };
 
             const { data } = await axios.post(
-                'http://localhost:5000/api/users/bulk-upload',
+                `${API}/api/users/bulk-upload`,
                 formData,
                 config
             );

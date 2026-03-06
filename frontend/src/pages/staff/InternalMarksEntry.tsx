@@ -6,7 +6,7 @@ import { ChevronLeft, Save, Check, AlertTriangle, FileText } from 'lucide-react'
 
 import { motion } from 'framer-motion';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface Component {
     name: string;

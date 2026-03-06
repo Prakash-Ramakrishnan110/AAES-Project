@@ -32,7 +32,7 @@ interface BulkResult {
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const SEMESTERS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const HODStudents = () => {
     const navigate = useNavigate();

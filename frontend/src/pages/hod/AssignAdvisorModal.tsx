@@ -3,6 +3,8 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { X, Save, AlertCircle } from 'lucide-react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface AssignAdvisorModalProps {
     onClose: () => void;
     advisors: any[];
@@ -25,7 +27,7 @@ const AssignAdvisorModal = ({ onClose, advisors, refreshData }: AssignAdvisorMod
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 // Fetch staff in the HOD's department
-                const res = await axios.get('http://localhost:5000/api/users?role=staff', config);
+                const res = await axios.get(`${API}/api/users?role=staff`, config);
                 setStaffList(res.data);
 
                 if (res.data.length > 0) {
@@ -46,7 +48,7 @@ const AssignAdvisorModal = ({ onClose, advisors, refreshData }: AssignAdvisorMod
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:5000/api/advisor/assign', formData, config);
+            await axios.post(`${API}/api/advisor/assign`, formData, config);
 
             setSuccess('Advisor assigned successfully!');
             refreshData();

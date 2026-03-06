@@ -5,9 +5,12 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Plus, Search, User, Mail, Calendar, Briefcase, Trash2, RotateCcw, CheckCircle, XCircle, Camera } from 'lucide-react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface User {
     _id: string;
     username: string;
+    fullName?: string;
     email: string;
     department: string;
     academicYear?: string;
@@ -27,11 +30,12 @@ const StaffList = () => {
 
     const [formData, setFormData] = useState({
         username: '',
+        fullName: '',
         email: '',
         password: 'password123',
         department: '',
         role: 'staff',
-        academicYear: '2023-2024'
+        academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString()
     });
 
     const { token } = useContext(AuthContext)!;
@@ -45,9 +49,9 @@ const StaffList = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const [staffRes, hodRes, deptsRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/users?role=staff&status=all', config),
-                axios.get('http://localhost:5000/api/users?role=hod&status=all', config),
-                axios.get('http://localhost:5000/api/departments', config)
+                axios.get(`${API}/api/users?role=staff&status=all`, config),
+                axios.get(`${API}/api/users?role=hod&status=all`, config),
+                axios.get(`${API}/api/departments`, config)
             ]);
             setStaff([...staffRes.data, ...hodRes.data]);
             setDepartments(deptsRes.data);
@@ -62,8 +66,8 @@ const StaffList = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const [staffRes, hodRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/users?role=staff&status=all', config),
-                axios.get('http://localhost:5000/api/users?role=hod&status=all', config)
+                axios.get(`${API}/api/users?role=staff&status=all`, config),
+                axios.get(`${API}/api/users?role=hod&status=all`, config)
             ]);
             setStaff([...staffRes.data, ...hodRes.data]);
         } catch (error) { console.error(error); }
@@ -75,6 +79,7 @@ const StaffList = () => {
             const config = { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } };
             const data = new FormData();
             data.append('username', formData.username);
+            data.append('fullName', formData.fullName);
             data.append('email', formData.email);
             data.append('password', formData.password);
             data.append('role', formData.role);
@@ -84,9 +89,17 @@ const StaffList = () => {
                 data.append('profileImage', profileImage);
             }
 
-            await axios.post('http://localhost:5000/api/users', data, config);
+            await axios.post(`${API}/api/users`, data, config);
             fetchStaff();
-            setFormData({ ...formData, username: '', email: '', password: 'password123', department: '', role: 'staff', academicYear: '2023-2024' });
+            setFormData({
+                username: '',
+                fullName: '',
+                email: '',
+                password: 'password123',
+                department: '',
+                role: 'staff',
+                academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString()
+            });
             setProfileImage(null);
             setToastMessage({ text: 'Staff added successfully!', type: 'success' });
             setTimeout(() => setToastMessage(null), 3000);
@@ -100,7 +113,7 @@ const StaffList = () => {
         if (!confirm('Are you sure you want to deactivate this user?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:5000/api/users/${id}`, config);
+            await axios.delete(`${API}/api/users/${id}`, config);
             fetchStaff();
         } catch (error) { console.error(error); }
     };
@@ -109,7 +122,7 @@ const StaffList = () => {
         if (!confirm('Are you sure you want to reactivate this user?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`http://localhost:5000/api/users/${id}`, { isActive: true }, config);
+            await axios.put(`${API}/api/users/${id}`, { isActive: true }, config);
             fetchStaff();
         } catch (error) { console.error(error); }
     };
@@ -180,7 +193,20 @@ const StaffList = () => {
                         <div className="p-6">
                             <form onSubmit={handleAddStaff} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-3 text-gray-400" size={18} />
+                                        <input
+                                            type="text"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                            placeholder="Enter full name"
+                                            value={formData.fullName}
+                                            onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Username (Login ID)</label>
                                     <div className="relative">
                                         <User className="absolute left-3 top-3 text-gray-400" size={18} />
                                         <input
@@ -337,7 +363,7 @@ const StaffList = () => {
                                                     <div className="flex items-center">
                                                         {s.profileImage ? (
                                                             <img
-                                                                src={`http://localhost:5000${s.profileImage}`}
+                                                                src={`${API}${s.profileImage}`}
                                                                 alt={s.username}
                                                                 className="h-10 w-10 rounded-full object-cover shadow-md border-2 border-white"
                                                             />
@@ -347,8 +373,11 @@ const StaffList = () => {
                                                             </div>
                                                         )}
                                                         <div className="ml-4">
-                                                            <div className={`text-sm font-bold ${s.isActive ? 'text-gray-900' : 'text-gray-500'}`}>{s.username}</div>
-                                                            <div className="text-xs text-gray-400 flex items-center gap-1"><Mail size={10} /> {s.email}</div>
+                                                            <div className={`text-sm font-bold ${s.isActive ? 'text-gray-900' : 'text-gray-500'}`}>{s.fullName || s.username}</div>
+                                                            <div className="text-xs text-gray-400 flex flex-col">
+                                                                <span className="flex items-center gap-1"><Mail size={10} /> {s.email}</span>
+                                                                <span className="text-[10px] opacity-70">UID: {s.username}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>

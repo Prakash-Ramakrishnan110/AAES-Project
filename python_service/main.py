@@ -170,7 +170,7 @@ def perform_ocr(image_path: str):
 
 @app.get("/")
 def read_root():
-    return {"message": "AAES Python AI Service Running (Ollama Enabled)"}
+    return {"message": "ClassTrack Python AI Service Running (Ollama Enabled)"}
 
 @app.post("/extract_text")
 async def extract_text(file: UploadFile = File(...)):
@@ -196,9 +196,17 @@ async def evaluate_question(
     model_answer: str = Form(...),
     question: str = Form(...),
     max_marks: int = Form(...),
-    keywords: str = Form(default="")
+    keywords: str = Form(default=""),
+    rubric: str = Form(default="{}")
 ):
     try:
+        # Parse rubric and format it for the prompt
+        try:
+            rubric_dict = json.loads(rubric)
+            rubric_text = "\n".join([f"- {k}: {v} Marks" for k, v in rubric_dict.items()])
+        except:
+            rubric_text = "Standard academic evaluation criteria."
+
         # Construct keyword instructions
         keyword_instruction = ""
         if keywords and keywords.strip():
@@ -233,12 +241,14 @@ async def evaluate_question(
         - Do NOT include any text outside JSON.
         {keyword_instruction}
         
-        Evaluation Criteria:
+        Evaluation Rubric & Criteria:
+        {rubric_text}
+        
+        Additionally, consider:
         1. Relevance
         2. Correctness
         3. Completeness
         4. Technical clarity
-        5. Keyword presence (if specified above)
         
         Question:
         "{question}"
@@ -345,6 +355,7 @@ class AssignmentRequest(BaseModel):
     type: str = "Theory"
     keywords: Optional[str] = ""
     question_count: Optional[int] = 5
+    rubric: Optional[dict] = {}
 
 class QuizRequest(BaseModel):
     department: Optional[str] = "General"
@@ -353,6 +364,7 @@ class QuizRequest(BaseModel):
     topic: str
     count: int
     type: str = "MCQ"
+    rubric: Optional[dict] = {}
 
 class PPTRequest(BaseModel):
     department: Optional[str] = "General"
@@ -361,33 +373,36 @@ class PPTRequest(BaseModel):
     topic: str
     slide_count: int
     level: str
+    rubric: Optional[dict] = {}
 
 # --- Generation Endpoints ---
 
 @app.post("/generate/assignment")
 async def generate_assignment(req: AssignmentRequest):
-    if req.type == "Python":
+    if req.type == "Python" or req.type == "C" or req.type == "Java" or req.type == "Programming":
+        lang = req.type if req.type in ["Python", "C", "Java"] else "Python"
         prompt = f"""
-        Generate a university-level Python programming assignment using the following context:
+        Generate a university-level {lang} programming assignment using the following context:
 
         Department: {req.department}
         Subject: {req.subject}
         Semester: {req.semester}
         Topic: {req.topic}
-        Difficulty: {req.difficulty}
+        Difficulty: {req.difficulty} (Easy, Medium, or Hard)
         Total Marks: {req.marks}
 
         Requirements:
-        The problem must require logical reasoning.
+        - The problem must require logical reasoning and be appropriate for the {req.difficulty} level.
+        - If difficulty is 'Hard', include algorithms like sorting, trees, or complex data structures if applicable to the topic.
+        - If difficulty is 'Easy', focus on basic syntax, loops, and simple logic.
 
         Provide:
-        Problem statement
-        Input format
-        Output format
-        Constraints
-        Sample input/output
-        Mark distribution
-        At least 3 test cases
+        1. Problem statement
+        2. Input format
+        3. Output format
+        4. Constraints
+        5. Sample input/output
+        6. At least 3 hidden test cases with mark distribution that sums exactly to {req.marks}.
 
         Return strictly in structured JSON format:
         {{
@@ -399,9 +414,9 @@ async def generate_assignment(req: AssignmentRequest):
             "sample_input": "",
             "sample_output": "",
             "test_cases": [
-                {{"input": "", "expected_output": "", "marks": ""}}
+                {{"input": "", "expected_output": "", "marks": 0}}
             ],
-            "total_marks": ""
+            "total_marks": {req.marks}
         }}
         """
     else:
@@ -418,6 +433,9 @@ async def generate_assignment(req: AssignmentRequest):
         Total Marks: {req.marks}
         Number of Main Questions to Generate: {req.question_count}
         Keywords expected in answers: {req.keywords if req.keywords else "Standard academic concepts"}
+        
+        Evaluation Rubric (Questions should be design to test these):
+        {json.dumps(req.rubric, indent=2)}
 
         Requirements:
         Generate exactly {req.question_count} distinct questions.
@@ -537,6 +555,38 @@ async def generate_ppt(req: PPTRequest):
         return extract_json(response)
     except Exception as e:
         return {"error": "Failed to parse AI response", "raw": response}
+
+class DoubtRequest(BaseModel):
+    question: str
+    context: str
+
+@app.post("/ask_doubt")
+async def ask_doubt(req: DoubtRequest):
+    if not req.question or not req.context:
+        raise HTTPException(status_code=400, detail="Missing question or context")
+    if len(req.question) > 500:
+        raise HTTPException(status_code=400, detail="Question is too long")
+
+    prompt = f"""You are 'ClassTrack AI', an intelligent academic assistant designed to help students understand their study materials.
+
+STRICT RULES:
+1. You must ONLY answer the student's question based on the provided context.
+2. If the answer is not contained in the context, you MUST say "I cannot answer this based on the provided notes." Do not generate external information.
+3. Be concise, educational, and clear.
+4. If asked to summarize, summarize the provided context only.
+
+Context:
+{req.context}
+
+Student Question:
+{req.question}
+
+Your Answer:"""
+
+    response = query_ollama(prompt)
+    if not response:
+        raise HTTPException(status_code=503, detail="AI Service Unavailable")
+    return {"answer": response}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

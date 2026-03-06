@@ -8,7 +8,7 @@ const Subject = require('../models/Subject');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 
-const { runAutoGrading } = require('../utils/pythonRunner');
+const { runAutoGrading, executeCode } = require('../utils/codeRunner');
 const { recalculateRiskForStudent } = require('../services/riskEngine');
 
 
@@ -64,9 +64,10 @@ const submitAssignment = async (req, res) => {
             fileUrl = '/' + req.file.path.replace(/\\/g, '/');
         }
 
-        // --- Python Auto-Grading ---
+        // --- Generalized Auto-Grading (Python, C, Java) ---
         if ((assignment.type === 'python' || assignment.submissionType === 'programming' || assignment.submissionType === 'code') && code) {
-            const gradingResult = await runAutoGrading(code, assignment.formatConfig?.testCases || assignment.testCases);
+            const lang = assignment.formatConfig?.language || 'python';
+            const gradingResult = await runAutoGrading(lang, code, assignment.formatConfig?.testCases || assignment.testCases);
             marks = gradingResult.totalMarks;
             testCaseResults = gradingResult.results;
             status = 'graded';
@@ -222,6 +223,9 @@ const submitAssignment = async (req, res) => {
                         const questionMaxMarks = isString ? Math.round(assignment.maxMarks / questions.length) : (q.marks || Math.round(assignment.maxMarks / questions.length));
                         const questionText = isString ? q : (q.questionText || q.question || 'Unknown Question');
 
+                        // Pass the scaling factor/rubric for this assignment
+                        const rubric = assignment.formatConfig?.rubric || {};
+
                         // Fallback to generic assignment-level model answer if question is just a string, 
                         // as AI theory generation often puts modelAnswer at the root level.
                         const modelAnswer = isString ? (assignment.formatConfig?.modelAnswer || 'No model answer provided.') : (q.modelAnswer || assignment.formatConfig?.modelAnswer || 'No model answer provided.');
@@ -231,6 +235,7 @@ const submitAssignment = async (req, res) => {
                         evalFormData.append('model_answer', modelAnswer);
                         evalFormData.append('question', questionText);
                         evalFormData.append('max_marks', String(questionMaxMarks));
+                        evalFormData.append('rubric', JSON.stringify(rubric));
 
                         // Extract keywords if defined by teacher
                         const keywords = assignment.formatConfig?.keywords || assignment.keywords || '';
@@ -673,6 +678,53 @@ const updateResubmissionStatus = async (req, res) => {
     }
 };
 
+// @desc    Run student code against sample test cases
+// @route   POST /api/submissions/run-samples
+// @access  Private/Student
+const runSampleTests = async (req, res) => {
+    try {
+        const { assignmentId, code, language } = req.body;
+        const assignment = await Assignment.findById(assignmentId);
+
+        if (!assignment) {
+            return res.status(404).json({ message: 'Assignment not found' });
+        }
+
+        // Only run visible sample test cases
+        const sampleCases = (assignment.formatConfig?.testCases || assignment.testCases || [])
+            .filter(tc => !tc.isHidden);
+
+        if (sampleCases.length === 0) {
+            // If no test cases are marked as visibile, use the sample input/output from config
+            const config = assignment.programmingConfig || {};
+            if (config.sampleInput && config.sampleOutput) {
+                sampleCases.push({
+                    input: config.sampleInput,
+                    output: config.sampleOutput,
+                    marks: 0
+                });
+            }
+        }
+
+        const results = [];
+        for (const tc of sampleCases) {
+            const output = await executeCode(language || 'python', code, tc.input);
+            const expected = (tc.output || tc.expectedOutput || '').trim();
+            const actual = output.trim();
+            results.push({
+                input: tc.input,
+                expected: expected,
+                actual: actual,
+                passed: expected === actual
+            });
+        }
+
+        res.json({ results });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     submitAssignment,
     getMySubmissions,
@@ -682,5 +734,6 @@ module.exports = {
     unlockMarks,
     getStudentStats,
     requestResubmission,
-    updateResubmissionStatus
+    updateResubmissionStatus,
+    runSampleTests
 };

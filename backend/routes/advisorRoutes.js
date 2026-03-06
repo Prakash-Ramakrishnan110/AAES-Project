@@ -10,7 +10,7 @@ const {
     getAllClassNotes,
     getMyClassStats,
     getAdvisorAcademicInsights,
-    getClassReportData,
+    getConsolidatedReportData,
     getStudentTimeline
 } = require('../controllers/advisorController');
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -25,7 +25,7 @@ router.get('/assignments', authorize('admin', 'hod'), getAssignments);
 router.get('/my-class', authorize('staff'), getMyClass);
 router.get('/my-class-stats', authorize('staff'), getMyClassStats);
 router.get('/academic-insights', authorize('staff'), getAdvisorAcademicInsights);
-router.get('/report-data', authorize('staff'), getClassReportData);
+router.get('/consolidated-report-data', authorize('admin', 'hod', 'staff'), getConsolidatedReportData);
 router.get('/all-notes', authorize('staff'), getAllClassNotes);
 router.get('/students', authorize('staff'), getAdvisedStudents);
 router.post('/student/:id/notes', authorize('staff'), addMentorshipNote);

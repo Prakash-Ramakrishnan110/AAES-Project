@@ -5,6 +5,8 @@ import { Search, Mail, GraduationCap, Users, BookOpen, ChevronRight, FolderOpen 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const HODDirectory = () => {
     const { token, user } = useContext(AuthContext)!;
     const [activeTab, setActiveTab] = useState<'staff' | 'students'>('staff');
@@ -23,10 +25,10 @@ const HODDirectory = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             if (activeTab === 'staff') {
-                const { data } = await axios.get('http://localhost:5000/api/profile/dept/staff', config);
+                const { data } = await axios.get(`${API}/api/profile/dept/staff`, config);
                 setStaff(data);
             } else {
-                const { data } = await axios.get('http://localhost:5000/api/profile/dept/students', config);
+                const { data } = await axios.get(`${API}/api/profile/dept/students`, config);
                 setStudents(data);
             }
         } catch (error) {
@@ -162,7 +164,7 @@ const HODDirectory = () => {
                                         {/* Avatar */}
                                         <div className={`flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br ${colorClass} flex items-center justify-center text-white text-sm font-bold shadow-sm overflow-hidden`}>
                                             {u.profileImage
-                                                ? <img src={`http://localhost:5000${u.profileImage}`} alt={name} className="w-full h-full object-cover" />
+                                                ? <img src={`${API}${u.profileImage}`} alt={name} className="w-full h-full object-cover" />
                                                 : getInitials(name)
                                             }
                                         </div>

@@ -9,7 +9,8 @@ const {
     unlockMarks,
     getStudentStats,
     requestResubmission,
-    updateResubmissionStatus
+    updateResubmissionStatus,
+    runSampleTests
 } = require('../controllers/submissionController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -58,6 +59,8 @@ router.route('/')
 router.get('/my', protect, authorize('student'), getMySubmissions);
 
 router.get('/stats/student', protect, authorize('student'), getStudentStats);
+
+router.post('/run-samples', protect, authorize('student'), runSampleTests);
 
 router.get('/assignment/:id', protect, authorize('staff'), getSubmissionsForAssignment);
 

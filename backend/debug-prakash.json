@@ -1,0 +1,43 @@
+[
+  {
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "inApp": true,
+        "assignments": true,
+        "announcements": true,
+        "academicAlerts": true,
+        "teachingAlerts": true,
+        "deptAlerts": true,
+        "systemAlerts": true
+      },
+      "appearance": {
+        "theme": "light",
+        "fontSize": "medium",
+        "compactView": false
+      },
+      "privacy": {
+        "showEmail": true,
+        "showPhone": false
+      }
+    },
+    "_id": "699f2b15a94de0bf3866199f",
+    "username": "prakash1935",
+    "password": "$2b$10$7W2F3fFXV..fSB9I2CqQYOkHqUpNksEse6Ja.RDQhZyVrzup9uS9a",
+    "email": "prakash@gmail.com",
+    "fullName": "prakash r",
+    "profileImage": "",
+    "registerNumber": "e22cs006",
+    "role": "student",
+    "department": "CSE",
+    "academicYear": "3rd Year",
+    "semester": "5",
+    "requiresPasswordChange": false,
+    "isActive": true,
+    "createdBy": "699f2956de7205cc1e149fbd",
+    "createdAt": "2026-02-25T17:02:13.187Z",
+    "__v": 0,
+    "lastLogin": "2026-03-05T17:01:52.504Z",
+    "mentor": "699f2adda94de0bf38661994"
+  }
+]

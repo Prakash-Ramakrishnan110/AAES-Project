@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Shield, User, Users, GraduationCap, ChevronDown } from 'lucide-react';
 import Button from '../components/ui/Button';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -31,7 +33,7 @@ const Login = () => {
             // Animation delay
             await new Promise(resolve => setTimeout(resolve, 800));
 
-            const response = await axios.post('http://localhost:5000/api/auth/login', {
+            const response = await axios.post(`${API}/api/auth/login`, {
                 email: emailVal,
                 password: passwordVal
             });
@@ -84,7 +86,7 @@ const Login = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${tempToken}` } };
-            const response = await axios.post('http://localhost:5000/api/auth/change-password', { newPassword }, config);
+            const response = await axios.post(`${API}/api/auth/change-password`, { newPassword }, config);
 
             const { token, ...userData } = response.data;
 
@@ -137,26 +139,19 @@ const Login = () => {
                 <div className="bg-white border border-gray-100 p-8 rounded-2xl shadow-xl">
                     <div className="text-center mb-8">
                         <div className="flex justify-center mb-6">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-xl flex items-center justify-center shadow-lg">
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
-                                        <path d="M4 19.5V4.5C4 4.22386 4.22386 4 4.5 4H9.5C10.3284 4 11 4.67157 11 5.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M20 19.5V4.5C20 4.22386 19.7761 4 19.5 4H14.5C13.6716 4 13 4.67157 13 5.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M11 19.5C11 18.6716 11.6716 18 12.5 18C13.3284 18 14 18.6716 14 19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M7 10L9 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M15 10L17 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M7 14L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M15 14L17 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </div>
-                                <div className="flex flex-col text-left">
-                                    <span className="text-3xl font-extrabold tracking-tight text-slate-900 leading-none">
-                                        AAES<span className="text-indigo-600">.</span>
+                            <div className="flex items-center space-x-4">
+                                <div className="flex flex-col items-center">
+                                    <span className="text-4xl font-serif font-black tracking-tight text-slate-900 leading-none">
+                                        𝐀𝐀𝐄𝐒
+                                    </span>
+                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.25em] leading-none mt-2">
+                                        Academic Analytics & Evaluation System
                                     </span>
                                 </div>
+
                             </div>
                         </div>
-                        <h1 className="text-2xl font-bold font-display text-gray-900 mb-2">Welcome Back</h1>
+                        <h1 className="text-2xl font-bold font-display text-gray-900 mb-2">Institutional Intelligence Portal</h1>
                         <p className="text-gray-500 text-sm">
                             {isChangingPassword ? 'Please secure your account with a new password' : 'Select a demo account to get started'}
                         </p>

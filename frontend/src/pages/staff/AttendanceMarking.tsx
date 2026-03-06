@@ -6,7 +6,7 @@ import { CheckCircle, XCircle, CalendarDays, Clock, ChevronLeft, Save, Check, Al
 import { motion } from 'framer-motion';
 
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 type Status = 'Present' | 'Absent';
 

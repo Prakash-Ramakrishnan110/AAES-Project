@@ -12,6 +12,8 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Settings = () => {
     const { token, user: authUser } = useContext(AuthContext)!;
     const navigate = useNavigate();
@@ -60,7 +62,7 @@ const Settings = () => {
     const fetchSettings = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/auth/profile', config);
+            const { data } = await axios.get(`${API}/api/auth/profile`, config);
             setAccountData({
                 fullName: data.fullName || '',
                 phone: data.phone || '',
@@ -88,7 +90,7 @@ const Settings = () => {
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put('http://localhost:5000/api/auth/settings', {
+            await axios.put(`${API}/api/auth/settings`, {
                 preferences: newPrefs
             }, config);
             setPreferences(newPrefs);
@@ -106,7 +108,7 @@ const Settings = () => {
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put('http://localhost:5000/api/auth/settings', accountData, config);
+            await axios.put(`${API}/api/auth/settings`, accountData, config);
             setToastMessage({ text: 'Account updated successfully', type: 'success' });
         } catch (error: any) {
             setToastMessage({ text: 'Update failed', type: 'error' });
@@ -125,7 +127,7 @@ const Settings = () => {
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:5000/api/auth/change-password', {
+            await axios.post(`${API}/api/auth/change-password`, {
                 newPassword: passwordData.newPassword
             }, config);
             setToastMessage({ text: 'Password updated', type: 'success' });
@@ -522,7 +524,7 @@ const Settings = () => {
             </div>
 
             <footer className="mt-20 text-center text-xs text-gray-400 font-medium">
-                AAES Project Settings &bull; v1.0.0
+                AAES Settings &bull; v1.0.0
             </footer>
         </div>
     );

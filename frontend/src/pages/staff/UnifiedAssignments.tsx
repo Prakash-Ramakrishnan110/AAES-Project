@@ -20,7 +20,7 @@ import QuizBuilder from '../../components/assignments/QuizBuilder';
 import ProgrammingBuilder from '../../components/assignments/ProgrammingBuilder';
 import SeminarBuilder from '../../components/assignments/SeminarBuilder';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const ML_API = 'http://localhost:8000';
 
 interface Subject {
@@ -83,6 +83,11 @@ const UnifiedAssignments = () => {
             randomizeQuestions: false,
             attemptsAllowed: 1
         },
+        quizRubric: {
+            accuracyMarks: 60,
+            conceptMarks: 30,
+            completionMarks: 10
+        },
         programmingConfig: {
             problemStatement: '',
             inputFormat: '',
@@ -90,26 +95,36 @@ const UnifiedAssignments = () => {
             sampleInput: '',
             sampleOutput: '',
             timeLimit: 2,
-            allowedLanguages: ['python', 'c', 'cpp', 'java']
+            allowedLanguages: ['python', 'c', 'java'],
+            language: 'python'
         },
         seminarConfig: {
             presentationDate: '',
             isGroup: false,
             rubric: {
-                contentMarks: 0,
-                presentationMarks: 0,
-                communicationMarks: 0,
-                qaMarks: 0
+                topicSelectionMarks: 15,
+                technicalContentMarks: 25,
+                presentationSkillsMarks: 20,
+                visualQualityMarks: 15,
+                timeManagementMarks: 10,
+                responseToQuestionsMarks: 15
             }
+        },
+        assignmentRubric: {
+            understandingMarks: 25,
+            contentMarks: 25,
+            organizationMarks: 20,
+            presentationMarks: 15,
+            originalityMarks: 15
         },
         pptConfig: {
             topicDescription: '',
             minSlides: 10,
             rubric: {
-                contentMarks: 0,
-                designMarks: 0,
-                explanationMarks: 0,
-                qaMarks: 0
+                contentMarks: 25,
+                designMarks: 25,
+                explanationMarks: 25,
+                qaMarks: 25
             }
         },
 
@@ -209,35 +224,6 @@ const UnifiedAssignments = () => {
         }
     };
 
-    const handleExportGradebook = () => {
-        if (!selectedAssignmentGradebook) return;
-
-        const headers = ["Student Name", "Register Number", "Section", "Status", "Marks", "Submitted At"];
-        const rows = gradebookData.map(row => [
-            row.fullName,
-            row.registerNumber,
-            row.section,
-            row.status,
-            row.marks,
-            row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '—'
-        ]);
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(e => e.join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute("href", url);
-        link.setAttribute("download", `${selectedAssignmentGradebook.assignmentTitle.replace(/\s+/g, '_')}_Gradebook.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
     const fetchMySubjects = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -258,6 +244,82 @@ const UnifiedAssignments = () => {
         fetchMySubjects();
         fetchRecentAssignments();
     }, [fetchMySubjects, fetchRecentAssignments]);
+
+    // Proportional Rubric Scaling Logic
+    useEffect(() => {
+        const mm = formData.maxMarks || 0;
+        if (mm <= 0) return;
+
+        setFormData(prev => {
+            // Calculate current rubric totals to check if scaling is needed 
+            // (prevents infinite loops if some field updates)
+            const arTotal = (prev.assignmentRubric?.understandingMarks || 0) +
+                (prev.assignmentRubric?.contentMarks || 0) +
+                (prev.assignmentRubric?.organizationMarks || 0) +
+                (prev.assignmentRubric?.presentationMarks || 0) +
+                (prev.assignmentRubric?.originalityMarks || 0);
+
+            if (arTotal === mm) return prev; // Already scaled
+
+            const updates: any = {};
+
+            // 1. Assignment Rubric (25, 25, 20, 15, 15 %)
+            const ar_u = Math.round(mm * 0.25);
+            const ar_c = Math.round(mm * 0.25);
+            const ar_o = Math.round(mm * 0.20);
+            const ar_p = Math.round(mm * 0.15);
+            updates.assignmentRubric = {
+                understandingMarks: ar_u,
+                contentMarks: ar_c,
+                organizationMarks: ar_o,
+                presentationMarks: ar_p,
+                originalityMarks: Math.max(0, mm - (ar_u + ar_c + ar_o + ar_p))
+            };
+
+            // 2. Seminar Rubric (15, 25, 20, 15, 10, 15 %)
+            const s_1 = Math.round(mm * 0.15);
+            const s_2 = Math.round(mm * 0.25);
+            const s_3 = Math.round(mm * 0.20);
+            const s_4 = Math.round(mm * 0.15);
+            const s_5 = Math.round(mm * 0.10);
+            updates.seminarConfig = {
+                ...prev.seminarConfig,
+                rubric: {
+                    topicSelectionMarks: s_1,
+                    technicalContentMarks: s_2,
+                    presentationSkillsMarks: s_3,
+                    visualQualityMarks: s_4,
+                    timeManagementMarks: s_5,
+                    responseToQuestionsMarks: Math.max(0, mm - (s_1 + s_2 + s_3 + s_4 + s_5))
+                }
+            };
+
+            // 3. Quiz Rubric (60, 30, 10 %)
+            const q_1 = Math.round(mm * 0.60);
+            const q_2 = Math.round(mm * 0.30);
+            updates.quizRubric = {
+                accuracyMarks: q_1,
+                conceptMarks: q_2,
+                completionMarks: Math.max(0, mm - (q_1 + q_2))
+            };
+
+            // 4. PPT Rubric (25, 25, 25, 25 %)
+            const p_1 = Math.round(mm * 0.25);
+            const p_2 = Math.round(mm * 0.25);
+            const p_3 = Math.round(mm * 0.25);
+            updates.pptConfig = {
+                ...prev.pptConfig,
+                rubric: {
+                    contentMarks: p_1,
+                    designMarks: p_2,
+                    explanationMarks: p_3,
+                    qaMarks: Math.max(0, mm - (p_1 + p_2 + p_3))
+                }
+            };
+
+            return { ...prev, ...updates };
+        });
+    }, [formData.maxMarks]);
 
     const showToast = (text: string, type: 'success' | 'error') => {
         setToast({ text, type });
@@ -283,29 +345,45 @@ const UnifiedAssignments = () => {
             let endpoint = `${ML_API}/generate/assignment`;
             let payload: any = {};
 
+            const getRelevantRubric = () => {
+                if (subType === 'Quiz') return formData.quizRubric;
+                if (subType === 'Seminar') return formData.seminarConfig.rubric;
+                if (subType === 'PPT') return formData.pptConfig.rubric;
+                return formData.assignmentRubric;
+            };
+
             if (subType === 'Quiz') {
                 endpoint = `${ML_API}/generate/quiz`;
                 payload = {
                     ...basePayload,
                     count: formData.aiConfig.questionCount,
-                    type: 'MCQ'
+                    type: 'MCQ',
+                    rubric: getRelevantRubric()
                 };
             } else if (subType === 'PPT') {
                 endpoint = `${ML_API}/generate/ppt`;
                 payload = {
                     ...basePayload,
                     slide_count: formData.aiConfig.slideCount,
-                    level: formData.aiConfig.difficulty
+                    level: formData.aiConfig.difficulty,
+                    rubric: getRelevantRubric()
                 };
             } else {
+                let programmingLang = 'Python';
+                if (subType === 'Programming') {
+                    // Check if a specific language is selected in the UI state
+                    programmingLang = formData.programmingConfig?.language || 'Python';
+                }
+
                 payload = {
                     ...basePayload,
                     academic_year: formData.academicYear,
-                    type: subType === 'Programming' ? 'Python' : 'Theory',
+                    type: subType === 'Programming' ? programmingLang : 'Theory',
                     difficulty: formData.aiConfig.difficulty,
                     marks: formData.maxMarks,
                     keywords: formData.aiConfig.keywords,
-                    question_count: formData.aiConfig.questionCount
+                    question_count: formData.aiConfig.questionCount,
+                    rubric: getRelevantRubric()
                 };
             }
 
@@ -436,6 +514,7 @@ const UnifiedAssignments = () => {
                 formatConfig = {
                     ...formatConfig,
                     questions: formData.questions,
+                    rubric: formData.assignmentRubric,
                     allowedFormats: subType === 'Handwritten' ? ["jpg", "png", "pdf"] : ["doc", "docx", "pdf"]
                 };
             } else if (subType === 'Quiz') {
@@ -444,7 +523,8 @@ const UnifiedAssignments = () => {
                     timeLimit: formData.quizConfig.timeLimitMinutes,
                     attemptsAllowed: formData.quizConfig.attemptsAllowed,
                     randomize: formData.quizConfig.randomizeQuestions,
-                    questions: formData.questions
+                    questions: formData.questions,
+                    rubric: formData.quizRubric
                 };
             } else if (subType === 'Programming') {
                 formatConfig = {
@@ -472,6 +552,8 @@ const UnifiedAssignments = () => {
                 maxMarks: formData.maxMarks,
                 deadline: formData.deadline,
                 submissionType: subType.toLowerCase(),
+                department: formData.department,
+                semester: formData.semester,
                 formatConfig
             };
 

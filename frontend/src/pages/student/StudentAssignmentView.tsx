@@ -226,7 +226,7 @@ const StudentAssignmentView = () => {
             case 'quiz':
                 return <QuizView config={config} onAnswersChange={setQuizAnswers} />;
             case 'code':
-                return <ProgrammingView config={config} onCodeChange={setCode} code={code} />;
+                return <ProgrammingView assignmentId={id || ''} config={config} onCodeChange={setCode} code={code} />;
             case 'seminar':
                 return <SeminarView config={config} onFileChange={setFile} />;
             case 'ppt':

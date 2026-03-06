@@ -30,6 +30,8 @@ interface Interaction {
     riskLevelAtTimeOfInteraction: string;
 }
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const MentorshipGovernance = () => {
     const { token } = useContext(AuthContext)!;
     const [summary, setSummary] = useState({ totalMentees: 0, warningCount: 0, criticalCount: 0, upcomingFollowUps: 0 });
@@ -59,7 +61,7 @@ const MentorshipGovernance = () => {
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/governance/mentor/dashboard', config);
+            const { data } = await axios.get(`${API}/api/governance/mentor/dashboard`, config);
             setSummary(data.summary);
             setMentees(data.mentees);
         } catch (error) {
@@ -73,7 +75,7 @@ const MentorshipGovernance = () => {
         setIsInteractionsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get(`http://localhost:5000/api/governance/mentor/interaction/${studentId}`, config);
+            const { data } = await axios.get(`${API}/api/governance/mentor/interaction/${studentId}`, config);
             setInteractions(data);
         } catch (error) {
             console.error('Error fetching interactions', error);
@@ -92,7 +94,7 @@ const MentorshipGovernance = () => {
         if (!selectedStudent) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:5000/api/governance/mentor/interaction', {
+            await axios.post(`${API}/api/governance/mentor/interaction`, {
                 studentId: selectedStudent.studentId,
                 ...newInteraction
             }, config);

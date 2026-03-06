@@ -25,7 +25,7 @@ const AdvisorNotes = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const API = 'http://localhost:5000';
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     const fetchNotes = useCallback(async () => {
         try {

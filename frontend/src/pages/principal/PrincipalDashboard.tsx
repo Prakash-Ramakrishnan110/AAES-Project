@@ -68,7 +68,7 @@ const PrincipalDashboard = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Institution Governance</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">AAES &ndash; Principal Panel</h1>
                     <p className="text-gray-500 text-sm mt-0.5">
                         Welcome back, {user?.fullName?.split(' ')[0] || 'Principal'}. Here is your institution overview.
                     </p>

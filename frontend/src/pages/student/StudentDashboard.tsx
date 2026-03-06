@@ -87,8 +87,11 @@ const StudentDashboard = () => {
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 md:p-8 shadow-md">
                 <div className="relative z-10">
                     <h1 className="text-2xl md:text-3xl font-bold font-display mb-2">
-                        Welcome back, {user?.username}! 👋
+                        AAES &ndash; Student Dashboard
                     </h1>
+                    <p className="text-xl font-medium text-blue-100 mb-2">
+                        Welcome back, {(user as any)?.fullName || user?.username}! 👋
+                    </p>
                     <p className="text-blue-100 text-base max-w-2xl mb-6">
                         You have <span className="font-bold text-white">{stats.pendingCount} pending assignments</span> this week.
                         Keep up the great work on your learning journey.

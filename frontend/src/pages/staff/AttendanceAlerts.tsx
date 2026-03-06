@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import EmptyState from '../../components/ui/EmptyState';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface AlertStudent {
     studentId: string;

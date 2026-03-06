@@ -3,6 +3,8 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface Department {
     _id: string;
     name: string;
@@ -30,7 +32,7 @@ const Departments = () => {
     const fetchDepartments = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/departments', config);
+            const { data } = await axios.get(`${API}/api/departments`, config);
             setDepartments(data);
         } catch (error) {
             console.error(error);
@@ -47,13 +49,13 @@ const Departments = () => {
             if (editingDept) {
                 // Update existing department
                 await axios.put(
-                    `http://localhost:5000/api/departments/${editingDept._id}`,
+                    `${API}/api/departments/${editingDept._id}`,
                     formData,
                     config
                 );
             } else {
                 // Create new department
-                await axios.post('http://localhost:5000/api/departments', formData, config);
+                await axios.post(`${API}/api/departments`, formData, config);
             }
 
             setShowModal(false);
@@ -79,7 +81,7 @@ const Departments = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:5000/api/departments/${id}`, config);
+            await axios.delete(`${API}/api/departments/${id}`, config);
             fetchDepartments();
             setToastMessage({ text: 'Department deleted', type: 'success' });
             setTimeout(() => setToastMessage(null), 3000);

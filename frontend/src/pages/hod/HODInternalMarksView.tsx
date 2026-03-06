@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { BookOpen, Users, ChevronRight, Award, AlertCircle, CheckCircle, Lock } from 'lucide-react';
+import { BookOpen, Users, ChevronRight, Award, AlertCircle, CheckCircle, Lock, FileBarChart } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const HODInternalMarksView = () => {
     const { token, user } = useContext(AuthContext)!;
@@ -82,6 +82,12 @@ const HODInternalMarksView = () => {
                     <div className="px-4 py-2 bg-gray-50 rounded-2xl border border-gray-200 text-sm font-bold text-gray-500">
                         {unconfiguredSubjects.length} Pending
                     </div>
+                    <button
+                        onClick={() => navigate('/hod/consolidated-reports')}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                    >
+                        <FileBarChart className="w-4 h-4" /> Class-wise Reports
+                    </button>
                 </div>
             </div>
 

@@ -208,10 +208,37 @@ const getHODStats = async (req, res) => {
             ? submissions.reduce((acc, curr) => acc + curr.marks, 0) / submissions.length
             : 0;
 
+        // 4. Average Attendance
+        const Attendance = require('../models/Attendance');
+        const deptSubjects = await Subject.find({ department: hodDepartment });
+        const subIds = deptSubjects.map(s => s._id);
+        const attendanceDocs = await Attendance.find({ subject: { $in: subIds } });
+
+        let totalRecords = 0;
+        let presentCount = 0;
+        attendanceDocs.forEach(doc => {
+            doc.records.forEach(r => {
+                totalRecords++;
+                if (r.status === 'Present') presentCount++;
+            });
+        });
+        const deptAvgAttendance = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
+
+        // 5. Risk Count
+        const StudentRisk = require('../models/StudentRisk');
+        const riskCount = await StudentRisk.countDocuments({
+            // Assuming StudentRisk might have dept or we link via User
+            // Since User has dept, we can find users in dept first
+            student: { $in: studentIds },
+            riskLevel: 'Red'
+        });
+
         res.json({
             staffCount,
             studentCount,
-            avgMarks: Math.round(avgMarks * 10) / 10
+            avgMarks: Math.round(avgMarks * 10) / 10,
+            avgAttendance: Math.round(deptAvgAttendance * 10) / 10,
+            riskCount
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -436,11 +463,32 @@ const getAssignmentPerformanceComparison = async (req, res) => {
                 avgSubmissionRate = Math.round((actualSubmissions / totalPossibleSubmissions) * 100);
             }
 
+            // Calculate Real Attendance Avg
+            const Attendance = require('../models/Attendance');
+            const attendances = await Attendance.find({
+                department: hodDepartment,
+                semester: subject.semester,
+                academicYear: subject.academicYear,
+                subject: subject._id
+            });
+
+            let totalPresent = 0;
+            let totalRecords = 0;
+
+            attendances.forEach(att => {
+                att.records.forEach(rec => {
+                    totalRecords++;
+                    if (rec.status === 'Present') totalPresent++;
+                });
+            });
+
+            const attendanceAvg = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0;
+
             return {
                 subjectName: subject.name,
                 avgMarks,
                 submissionRate: avgSubmissionRate,
-                attendanceAvg: 0 // Placeholder for now
+                attendanceAvg
             };
         }));
 
@@ -467,21 +515,30 @@ const getMentorshipOversight = async (req, res) => {
         const mentorStats = {};
 
         // Aggregate mentee count
-        mentoredStudents.forEach(student => {
-            if (!student.mentor) return;
+        for (const student of mentoredStudents) {
+            if (!student.mentor) continue;
             const mId = student.mentor._id.toString();
             if (!mentorStats[mId]) {
                 mentorStats[mId] = {
                     mentorName: student.mentor.fullName || student.mentor.username,
                     totalMentees: 0,
                     openQueries: 0,
-                    criticalCases: 0, // Placeholder if we don't calculate on the fly here
+                    criticalCases: 0,
                     totalResponseTimeMs: 0,
                     resolvedCount: 0
                 };
             }
             mentorStats[mId].totalMentees++;
-        });
+        }
+
+        // Calculate Critical Cases per Mentor
+        const StudentRisk = require('../models/StudentRisk');
+        for (const mId in mentorStats) {
+            mentorStats[mId].criticalCases = await StudentRisk.countDocuments({
+                mentor: mId,
+                riskLevel: 'Red'
+            });
+        }
 
         // Loop through queries to calculate Open count and Response Times
         queries.forEach(q => {

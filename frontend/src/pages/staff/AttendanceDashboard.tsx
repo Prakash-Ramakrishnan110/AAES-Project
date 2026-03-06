@@ -38,7 +38,7 @@ const AttendanceDashboard = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             // For staff, we just list their subjects as entry points
-            const res = await axios.get(`${API}/api/subjects?staffId=${user?.id}`, config);
+            const res = await axios.get(`${API}/api/subjects?staffId=${user?._id || user?.id}`, config);
             setItems(res.data);
         } catch (error) { console.error(error); }
         finally { setLoading(false); }

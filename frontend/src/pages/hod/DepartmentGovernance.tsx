@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface DeptSummary {
     totalClasses: number;
     totalStudents: number;
@@ -69,7 +71,7 @@ const DepartmentGovernance = () => {
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/governance/hod/dashboard', config);
+            const { data } = await axios.get(`${API}/api/governance/hod/dashboard`, config);
             setSummary(data.departmentSummary);
             setEscalations(data.escalations);
             setMentorPerformance(data.mentorPerformance);
@@ -85,7 +87,7 @@ const DepartmentGovernance = () => {
         setUpdating(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`http://localhost:5000/api/governance/hod/escalation/${selectedEscalation._id}`, {
+            await axios.put(`${API}/api/governance/hod/escalation/${selectedEscalation._id}`, {
                 status: status || selectedEscalation.status,
                 note: directiveNote
             }, config);

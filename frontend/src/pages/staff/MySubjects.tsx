@@ -16,6 +16,8 @@ interface Subject {
     academicYear?: string;
 }
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const MySubjects = () => {
     const { token, user } = useContext(AuthContext)!;
     const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -27,7 +29,7 @@ const MySubjects = () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const staffId = (user as any)?._id || user?.id;
-                const res = await axios.get(`http://localhost:5000/api/subjects?staffId=${staffId}`, config);
+                const res = await axios.get(`${API}/api/subjects?staffId=${staffId}`, config);
                 setSubjects(res.data);
                 setLoading(false);
             } catch (error) {
@@ -112,6 +114,12 @@ const MySubjects = () => {
                                 className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
                             >
                                 <Calculator className="w-3.5 h-3.5" /> Internal Marks
+                            </button>
+                            <button
+                                onClick={() => navigate(`/staff/study-resources/${subject._id}`)}
+                                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 transition-colors"
+                            >
+                                <BookOpen className="w-3.5 h-3.5" /> Study Resources
                             </button>
                             <button
                                 onClick={() => navigate(`/staff/attendance/${subject._id}/summary`)}

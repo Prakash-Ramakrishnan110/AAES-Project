@@ -15,11 +15,12 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AdminDashboard = () => {
     const { token } = useContext(AuthContext)!;
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<any>({
         studentCount: 0,
         staffCount: 0,
         deptCount: 0,
-        subjectCount: 0
+        subjectCount: 0,
+        storage: null
     });
 
     useEffect(() => {
@@ -45,16 +46,18 @@ const AdminDashboard = () => {
         { name: 'Subjects', count: stats.subjectCount },
     ];
 
-    const pieData = [
-        { name: 'Active', value: 95, color: '#10B981' }, // Emerald 500
-        { name: 'Inactive', value: 5, color: '#EF4444' }, // Red 500
+    const pieData = stats.storage ? [
+        { name: 'Used', value: parseFloat(stats.storage.percentUsed), color: '#3B82F6' },
+        { name: 'Available', value: 100 - parseFloat(stats.storage.percentUsed), color: '#E5E7EB' },
+    ] : [
+        { name: 'System', value: 100, color: '#F3F4F6' }
     ];
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold font-display text-gray-900">System Overview</h1>
+                    <h1 className="text-2xl font-bold font-display text-gray-900">AAES &ndash; Admin Dashboard</h1>
                     <p className="text-gray-500">Monitor platform health and user metrics.</p>
                 </div>
                 <div className="flex items-center space-x-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-medium border border-green-200">
@@ -167,28 +170,36 @@ const AdminDashboard = () => {
 
                     <Card title="Storage Usage">
                         <div className="flex items-center justify-center h-48">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={pieData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        <Cell fill="#3B82F6" />
-                                        <Cell fill="#E5E7EB" />
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            {stats.storage ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            <Cell fill="#3B82F6" />
+                                            <Cell fill="#E5E7EB" />
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-gray-300 text-xs italic">Calculating...</div>
+                            )}
                         </div>
                         <div className="text-center mt-[-20px]">
-                            <span className="text-2xl font-bold text-gray-900">35%</span>
-                            <p className="text-xs text-gray-500">Storage Used</p>
+                            <span className="text-2xl font-bold text-gray-900">
+                                {stats.storage ? `${stats.storage.percentUsed}%` : '—'}
+                            </span>
+                            <p className="text-xs text-gray-500">
+                                {stats.storage ? `${stats.storage.totalSizeMB} MB of 1 GB used` : 'Storage information loading'}
+                            </p>
                         </div>
                     </Card>
                 </div>

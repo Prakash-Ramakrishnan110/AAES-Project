@@ -26,6 +26,17 @@ const HandwrittenBuilder: React.FC<Props> = ({ formData, setFormData }) => {
         setFormData({ ...formData, questions: newQs });
     };
 
+    const updateRubric = (field: string, value: number) => {
+        setFormData({
+            ...formData,
+            assignmentRubric: { ...(formData.assignmentRubric || {}), [field]: value }
+        });
+    };
+
+    const r = formData.assignmentRubric || {};
+    const totalRubricMarks = (r.understandingMarks || 0) + (r.contentMarks || 0) + (r.organizationMarks || 0) + (r.presentationMarks || 0) + (r.originalityMarks || 0);
+    const marksMismatch = formData.maxMarks > 0 && totalRubricMarks !== formData.maxMarks;
+
     return (
         <div className="space-y-6">
             <div className="bg-blue-50/50 p-4 border border-blue-100 rounded-xl">
@@ -93,6 +104,44 @@ const HandwrittenBuilder: React.FC<Props> = ({ formData, setFormData }) => {
                         <p className="text-gray-500 text-sm">No questions added yet. Click "+ Add Question" to begin.</p>
                     </div>
                 )}
+            </div>
+
+            <div className="pt-6 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900">Assignment Evaluation Rubric</h3>
+                    <div className={`px-3 py-1 rounded-lg font-bold text-xs ${marksMismatch ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        Rubric Total: {totalRubricMarks} / {formData.maxMarks || 0}
+                    </div>
+                </div>
+
+                {marksMismatch && (
+                    <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm font-bold rounded-lg border border-red-100">
+                        ⚠️ Rubric total ({totalRubricMarks}) must match Assignment Total Marks ({formData.maxMarks || 0}).
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-wider">Understanding (25%)</label>
+                        <input type="number" min="0" value={r.understandingMarks || ''} onChange={e => updateRubric('understandingMarks', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-wider">Content Quality (25%)</label>
+                        <input type="number" min="0" value={r.contentMarks || ''} onChange={e => updateRubric('contentMarks', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-wider">Organization (20%)</label>
+                        <input type="number" min="0" value={r.organizationMarks || ''} onChange={e => updateRubric('organizationMarks', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-wider">Presentation (15%)</label>
+                        <input type="number" min="0" value={r.presentationMarks || ''} onChange={e => updateRubric('presentationMarks', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-wider">Originality (15%)</label>
+                        <input type="number" min="0" value={r.originalityMarks || ''} onChange={e => updateRubric('originalityMarks', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                </div>
             </div>
         </div>
     );

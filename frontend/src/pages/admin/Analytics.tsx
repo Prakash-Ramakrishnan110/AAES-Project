@@ -8,6 +8,8 @@ import {
 } from 'recharts';
 import { Activity, BarChart3, TrendingUp, Presentation } from 'lucide-react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const COLORS = ['#4F46E5', '#EC4899', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6'];
 
 const Analytics = () => {
@@ -27,13 +29,13 @@ const Analytics = () => {
 
                 // Fetch Staff Performance for HOD, Department Performance for Admin
                 const primaryStatUrl = isHOD
-                    ? 'http://localhost:5000/api/analytics/staff/performance'
-                    : 'http://localhost:5000/api/analytics/department';
+                    ? `${API}/api/analytics/staff/performance`
+                    : `${API}/api/analytics/department`;
 
                 const [perfRes, semRes, subjRes] = await Promise.all([
                     axios.get(primaryStatUrl, config),
-                    axios.get('http://localhost:5000/api/analytics/semester', config),
-                    axios.get('http://localhost:5000/api/analytics/subject', config)
+                    axios.get(`${API}/api/analytics/semester`, config),
+                    axios.get(`${API}/api/analytics/subject`, config)
                 ]);
 
                 setPerformanceStats(perfRes.data);

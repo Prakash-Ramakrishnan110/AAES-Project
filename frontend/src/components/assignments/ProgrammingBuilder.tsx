@@ -18,7 +18,8 @@ const ProgrammingBuilder: React.FC<Props> = ({ formData, setFormData }) => {
                     sampleInput: '',
                     sampleOutput: '',
                     timeLimit: 2,
-                    allowedLanguages: ['python', 'c', 'cpp', 'java']
+                    allowedLanguages: ['python', 'c', 'java'],
+                    language: 'python' // Default specific language
                 },
                 testCases: []
             });
@@ -51,13 +52,6 @@ const ProgrammingBuilder: React.FC<Props> = ({ formData, setFormData }) => {
         setFormData({ ...formData, testCases: newCases });
     };
 
-    const toggleLanguage = (lang: string) => {
-        const currentLangs = formData.programmingConfig?.allowedLanguages || [];
-        const newLangs = currentLangs.includes(lang)
-            ? currentLangs.filter((l: string) => l !== lang)
-            : [...currentLangs, lang];
-        updateConfig('allowedLanguages', newLangs);
-    };
 
     const config = formData.programmingConfig || { allowedLanguages: [] };
     const cases = formData.testCases || [];
@@ -132,19 +126,20 @@ const ProgrammingBuilder: React.FC<Props> = ({ formData, setFormData }) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Allowed Languages</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Primary Programming Language</label>
                         <div className="flex gap-2 flex-wrap">
-                            {['python', 'c', 'cpp', 'java'].map(lang => (
+                            {['python', 'c', 'java'].map(lang => (
                                 <button
                                     key={lang}
                                     type="button"
-                                    onClick={() => toggleLanguage(lang)}
-                                    className={`px-3 py-1 text-xs font-bold rounded-full border transition-all ${config.allowedLanguages.includes(lang) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'}`}
+                                    onClick={() => updateConfig('language', lang)}
+                                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${config.language === lang ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'}`}
                                 >
                                     {lang.toUpperCase()}
                                 </button>
                             ))}
                         </div>
+                        <p className="text-[10px] text-gray-400 mt-2 italic">* This language will be used for auto-grading and AI generation.</p>
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1.5">Execution Time Limit (Seconds)</label>

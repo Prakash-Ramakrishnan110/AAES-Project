@@ -34,7 +34,7 @@ export const exportToPDF = (columns: any[], data: any[], fileName: string, title
 
     // Add Title
     doc.setFontSize(18);
-    doc.text(title, 14, 22);
+    doc.text(`AAES Report: ${title}`, 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);

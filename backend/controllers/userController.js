@@ -1,5 +1,27 @@
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const fs = require('fs');
+const path = require('path');
+
+const getDirectorySize = (dirPath) => {
+    let size = 0;
+    try {
+        if (!fs.existsSync(dirPath)) return 0;
+        const files = fs.readdirSync(dirPath);
+        for (const file of files) {
+            const filePath = path.join(dirPath, file);
+            const stats = fs.statSync(filePath);
+            if (stats.isDirectory()) {
+                size += getDirectorySize(filePath);
+            } else {
+                size += stats.size;
+            }
+        }
+    } catch (err) {
+        console.error('Error calculating directory size:', err);
+    }
+    return size;
+};
 
 // Helper: Create Audit Log
 const createAuditLog = async (action, performedBy, targetId, department, details = {}) => {
@@ -231,6 +253,7 @@ const updateUser = async (req, res) => {
             user.department = req.body.department || user.department;
         }
 
+        user.fullName = req.body.fullName || user.fullName;
         user.academicYear = req.body.academicYear || user.academicYear;
         user.semester = req.body.semester || user.semester;
 
@@ -330,11 +353,25 @@ const getSystemStats = async (req, res) => {
         const deptCount = req.user.role === 'hod' ? 1 : await Department.countDocuments(deptQuery);
         const subjectCount = await Subject.countDocuments(subjectQuery);
 
+        // System Health & Storage (Admin only)
+        let storageStats = null;
+        if (req.user.role === 'admin') {
+            const uploadsPath = path.join(__dirname, '../uploads');
+            const totalSize = getDirectorySize(uploadsPath);
+            storageStats = {
+                totalSizeBytes: totalSize,
+                totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
+                capacityBytes: 1024 * 1024 * 1024, // 1GB mock capacity
+                percentUsed: ((totalSize / (1024 * 1024 * 1024)) * 100).toFixed(1)
+            };
+        }
+
         res.json({
             studentCount,
             staffCount,
             deptCount,
-            subjectCount
+            subjectCount,
+            storage: storageStats
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

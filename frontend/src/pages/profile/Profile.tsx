@@ -37,9 +37,10 @@ const Profile = () => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             // If ID is present and different from current user, fetch that user (if HOD/Admin)
             // Otherwise fetch 'me'
+            const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             const endpoint = id && id !== authUser?.id
-                ? `http://localhost:5000/api/profile/user/${id}`
-                : 'http://localhost:5000/api/profile/me';
+                ? `${API}/api/profile/user/${id}`
+                : `${API}/api/profile/me`;
 
             const { data } = await axios.get(endpoint, config);
             setProfile(data);
@@ -67,7 +68,8 @@ const Profile = () => {
                 updatedData.append('profileImage', profileImageFile);
             }
 
-            const { data } = await axios.put('http://localhost:5000/api/profile/me', updatedData, config);
+            const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const { data } = await axios.put(`${API}/api/profile/me`, updatedData, config);
             setProfile({ ...profile, ...data });
             setIsEditing(false);
             setImagePreview(null);
@@ -145,7 +147,7 @@ const Profile = () => {
                                 {imagePreview ? (
                                     <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                 ) : profile.profileImage && profile.profileImage.trim() !== '' ? (
-                                    <img src={`http://localhost:5000${profile.profileImage}`} alt="Profile" className="w-full h-full object-cover" />
+                                    <img src={`${API}${profile.profileImage}`} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
                                     profile.username?.charAt(0).toUpperCase()
                                 )}
@@ -249,8 +251,60 @@ const Profile = () => {
 
                             {/* Academic Info */}
                             <div className="w-full lg:w-2/3 xl:w-3/4 space-y-4">
-                                {profile.role === 'student' && <StudentProfile stats={profile.stats || {}} studentId={id || authUser?.id || ''} token={token || ''} />}
-                                {profile.role === 'staff' && <StaffProfile stats={profile.stats || {}} />}
+                                {profile.role === 'student' && (
+                                    <>
+                                        {/* Student Specific Academic Details summary */}
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+                                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Academic Details</h3>
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Register Number</p>
+                                                    <p className="font-semibold text-gray-900">{profile.registerNumber || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Academic Year</p>
+                                                    <p className="font-semibold text-gray-900">{profile.academicYear || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Semester</p>
+                                                    <p className="font-semibold text-gray-900">{profile.semester || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Batch / Section</p>
+                                                    <p className="font-semibold text-gray-900">{profile.batch || '-'} {profile.section ? `/ ${profile.section}` : ''}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <StudentProfile stats={profile.stats || {}} studentId={id || authUser?.id || ''} token={token || ''} />
+                                    </>
+                                )}
+                                {profile.role === 'staff' && (
+                                    <>
+                                        {/* Staff Specific Handling Details */}
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+                                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Academic Handling</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Academic Year(s)</p>
+                                                    <p className="font-semibold text-gray-900">
+                                                        {profile.stats?.subjectsList?.length > 0
+                                                            ? [...new Set(profile.stats.subjectsList.map((s: any) => s.academicYear || s.year || 'N/A'))].join(', ')
+                                                            : 'No active years'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Semester(s)</p>
+                                                    <p className="font-semibold text-gray-900">
+                                                        {profile.stats?.subjectsList?.length > 0
+                                                            ? [...new Set(profile.stats.subjectsList.map((s: any) => s.semester))].sort().join(', ')
+                                                            : 'No active semesters'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <StaffProfile stats={profile.stats || {}} />
+                                    </>
+                                )}
                                 {profile.role === 'hod' && <HODProfile stats={profile.stats || {}} department={profile.department} />}
                                 {profile.role === 'admin' && <AdminProfile stats={profile.stats || {}} />}
                             </div>

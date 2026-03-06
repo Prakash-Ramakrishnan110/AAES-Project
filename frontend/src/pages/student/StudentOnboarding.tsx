@@ -4,7 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, BookOpen, Layers, Camera, CheckCircle } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const StudentOnboarding = () => {
     const { user, login } = useContext(AuthContext)!;

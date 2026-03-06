@@ -5,6 +5,8 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Plus, Search, User, Mail, Calendar, BookOpen, Briefcase, Trash2, RotateCcw, CheckCircle, XCircle, Camera } from 'lucide-react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface User {
     _id: string;
     username: string;
@@ -56,8 +58,8 @@ const StudentList = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const [studentsRes, deptsRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/users?role=student&status=all', config),
-                axios.get('http://localhost:5000/api/departments', config)
+                axios.get(`${API}/api/users?role=student&status=all`, config),
+                axios.get(`${API}/api/departments`, config)
             ]);
             setStudents(studentsRes.data);
             setDepartments(deptsRes.data);
@@ -71,7 +73,7 @@ const StudentList = () => {
     const fetchStudents = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/users?role=student&status=all', config);
+            const { data } = await axios.get(`${API}/api/users?role=student&status=all`, config);
             setStudents(data);
         } catch (error) { console.error(error); }
     };
@@ -92,7 +94,7 @@ const StudentList = () => {
                 data.append('profileImage', profileImage);
             }
 
-            await axios.post('http://localhost:5000/api/users', data, config);
+            await axios.post(`${API}/api/users`, data, config);
             fetchStudents();
             setFormData({ ...formData, username: '', email: '', password: 'password123', department: '', semester: '1', academicYear: '1st Year' });
             setProfileImage(null);
@@ -108,7 +110,7 @@ const StudentList = () => {
         if (!confirm('Are you sure you want to deactivate this student?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:5000/api/users/${id}`, config);
+            await axios.delete(`${API}/api/users/${id}`, config);
             fetchStudents();
         } catch (error) { console.error(error); }
     };
@@ -117,7 +119,7 @@ const StudentList = () => {
         if (!confirm('Are you sure you want to reactivate this student?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`http://localhost:5000/api/users/${id}`, { isActive: true }, config);
+            await axios.put(`${API}/api/users/${id}`, { isActive: true }, config);
             fetchStudents();
         } catch (error) { console.error(error); }
     };
@@ -161,7 +163,7 @@ const StudentList = () => {
             }
 
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.post(`http://localhost:5000/api/users/bulk-update`, {
+            const res = await axios.post(`${API}/api/users/bulk-update`, {
                 studentIds: Array.from(selectedIds),
                 updates
             }, config);
@@ -472,7 +474,7 @@ const StudentList = () => {
                                                     <div className="flex items-center">
                                                         {s.profileImage ? (
                                                             <img
-                                                                src={`http://localhost:5000${s.profileImage}`}
+                                                                src={`${API}${s.profileImage}`}
                                                                 alt={s.username}
                                                                 className="h-10 w-10 rounded-full object-cover shadow-md border-2 border-white"
                                                             />

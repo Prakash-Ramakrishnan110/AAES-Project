@@ -1,6 +1,140 @@
 const User = require('../models/User');
+const Subject = require('../models/Subject');
 const Assignment = require('../models/Assignment');
 const Submission = require('../models/Submission');
+
+// Helper function to calculate role-specific stats
+const calculateUserStats = async (user) => {
+    let stats = {};
+
+    if (user.role === 'student') {
+        const submissions = await Submission.find({ student: user._id })
+            .populate({
+                path: 'assignment',
+                select: 'title maxMarks subject',
+                populate: { path: 'subject', select: 'name code' }
+            });
+
+        // Group by Subject
+        const subjectPerformance = {};
+        submissions.forEach(sub => {
+            if (!sub.assignment || !sub.assignment.subject) return;
+            const subjName = sub.assignment.subject.name;
+
+            if (!subjectPerformance[subjName]) {
+                subjectPerformance[subjName] = {
+                    totalMarks: 0,
+                    maxMarks: 0,
+                    assignmentCount: 0,
+                    code: sub.assignment.subject.code
+                };
+            }
+
+            if (sub.status === 'graded' || sub.marks > 0) {
+                subjectPerformance[subjName].totalMarks += sub.marks || 0;
+                subjectPerformance[subjName].maxMarks += sub.assignment.maxMarks || 100;
+                subjectPerformance[subjName].assignmentCount++;
+            }
+        });
+
+        const subjects = Object.keys(subjectPerformance).map(name => ({
+            name,
+            code: subjectPerformance[name].code,
+            average: subjectPerformance[name].maxMarks > 0
+                ? Math.round((subjectPerformance[name].totalMarks / subjectPerformance[name].maxMarks) * 100)
+                : 0,
+            assignments: subjectPerformance[name].assignmentCount
+        }));
+
+        const evaluated = submissions.filter(s => s.status === 'graded' || s.marks > 0);
+        const pending = submissions.filter(s => s.status !== 'graded' && s.marks === 0);
+
+        stats = {
+            academicSummary: {
+                totalSubmitted: submissions.length,
+                evaluated: evaluated.length,
+                pending: pending.length,
+                overallAverage: subjects.reduce((acc, curr) => acc + curr.average, 0) / (subjects.length || 1)
+            },
+            subjectPerformance: subjects,
+            recentActivity: submissions.slice(0, 5).map(s => ({
+                assignment: s.assignment?.title,
+                status: s.status,
+                marks: s.marks,
+                date: s.submittedAt
+            }))
+        };
+
+    } else if (user.role === 'staff') {
+        const subjects = await Subject.find({ staff: user._id });
+        const assignmentsCreated = await Assignment.countDocuments({ createdBy: user._id });
+
+        const myAssignments = await Assignment.find({ createdBy: user._id }).select('_id');
+        const myAssignmentIds = myAssignments.map(a => a._id);
+
+        const totalSubmissions = await Submission.countDocuments({ assignment: { $in: myAssignmentIds } });
+        const evaluatedSubmissions = await Submission.countDocuments({
+            assignment: { $in: myAssignmentIds },
+            status: 'graded'
+        });
+
+        stats = {
+            teachingOverview: {
+                subjectsCount: subjects.length,
+                totalStudents: subjects.length * 60,
+                assignmentsCreated
+            },
+            evaluationStats: {
+                totalSubmissionsReceived: totalSubmissions,
+                evaluated: evaluatedSubmissions,
+                pending: totalSubmissions - evaluatedSubmissions,
+                completionRate: totalSubmissions > 0 ? Math.round((evaluatedSubmissions / totalSubmissions) * 100) : 0
+            },
+            subjectsList: subjects.map(s => ({
+                name: s.name,
+                code: s.code,
+                semester: s.semester,
+                academicYear: s.academicYear || s.get?.('academicYear') || 'Not Specified'
+            }))
+        };
+
+    } else if (user.role === 'hod') {
+        const staffCount = await User.countDocuments({ role: 'staff', department: user.department });
+        const studentCount = await User.countDocuments({ role: 'student', department: user.department });
+        const subjectCount = await require('../models/Subject').countDocuments({ department: user.department });
+
+        stats = {
+            deptIntelligence: {
+                totalStaff: staffCount,
+                totalStudents: studentCount,
+                activeSubjects: subjectCount,
+                averageAttendance: '85%'
+            },
+            studentDistribution: {
+                year1: await User.countDocuments({ role: 'student', department: user.department, academicYear: '1st Year' }),
+                year2: await User.countDocuments({ role: 'student', department: user.department, academicYear: '2nd Year' }),
+                year3: await User.countDocuments({ role: 'student', department: user.department, academicYear: '3rd Year' }),
+                year4: await User.countDocuments({ role: 'student', department: user.department, academicYear: '4th Year' })
+            }
+        };
+    } else if (user.role === 'admin') {
+        stats = {
+            globalStats: {
+                totalUsers: await User.countDocuments(),
+                totalDepts: await require('../models/Department').countDocuments(),
+                totalSubjects: await require('../models/Subject').countDocuments(),
+                totalAssignments: await Assignment.countDocuments()
+            },
+            governance: {
+                activeUsers: await User.countDocuments({ isActive: true }),
+                inactiveUsers: await User.countDocuments({ isActive: false }),
+                recentLogins: 15
+            }
+        };
+    }
+
+    return stats;
+};
 
 // @desc    Get current user profile
 // @route   GET /api/profile/me
@@ -12,142 +146,7 @@ const getMyProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        let stats = {};
-
-        // Fetch role-specific stats
-        // Fetch detailed role-specific stats
-        if (user.role === 'student') {
-            const submissions = await Submission.find({ student: user._id })
-                .populate({
-                    path: 'assignment',
-                    select: 'title maxMarks subject',
-                    populate: { path: 'subject', select: 'name code' }
-                });
-
-            const totalAssignments = await Assignment.countDocuments({
-                // Ideally this should filter by student's department/semester/subject, 
-                // but for now we approximated by submissions + pending. 
-                // A better approach is to find all assignments for student's subjects.
-            });
-
-            // Group by Subject
-            const subjectPerformance = {};
-            submissions.forEach(sub => {
-                if (!sub.assignment || !sub.assignment.subject) return;
-                const subjName = sub.assignment.subject.name;
-
-                if (!subjectPerformance[subjName]) {
-                    subjectPerformance[subjName] = {
-                        totalMarks: 0,
-                        maxMarks: 0,
-                        assignmentCount: 0,
-                        code: sub.assignment.subject.code
-                    };
-                }
-
-                if (sub.status === 'Evaluated' || sub.marks > 0) {
-                    subjectPerformance[subjName].totalMarks += sub.marks || 0;
-                    subjectPerformance[subjName].maxMarks += sub.assignment.maxMarks || 100; // Default if missing
-                    subjectPerformance[subjName].assignmentCount++;
-                }
-            });
-
-            const subjects = Object.keys(subjectPerformance).map(name => ({
-                name,
-                code: subjectPerformance[name].code,
-                average: subjectPerformance[name].maxMarks > 0
-                    ? Math.round((subjectPerformance[name].totalMarks / subjectPerformance[name].maxMarks) * 100)
-                    : 0,
-                assignments: subjectPerformance[name].assignmentCount
-            }));
-
-            const evaluated = submissions.filter(s => s.status === 'Evaluated' || s.marks > 0);
-            const pending = submissions.filter(s => s.status !== 'Evaluated' && s.marks === 0);
-
-            stats = {
-                academicSummary: {
-                    totalSubmitted: submissions.length,
-                    evaluated: evaluated.length,
-                    pending: pending.length,
-                    overallAverage: subjects.reduce((acc, curr) => acc + curr.average, 0) / (subjects.length || 1)
-                },
-                subjectPerformance: subjects,
-                recentActivity: submissions.slice(0, 5).map(s => ({
-                    assignment: s.assignment?.title,
-                    status: s.status,
-                    marks: s.marks,
-                    date: s.submittedAt
-                }))
-            };
-
-        } else if (user.role === 'staff') {
-            const subjects = await require('../models/Subject').find({ staff: user._id });
-            const assignmentsCreated = await Assignment.countDocuments({ createdBy: user._id });
-
-            // Get evaluations count (assignments created by this staff that have been graded)
-            // This is complex, simplified: Find assignments by staff, then submissions for those assignments
-            const myAssignments = await Assignment.find({ createdBy: user._id }).select('_id');
-            const myAssignmentIds = myAssignments.map(a => a._id);
-
-            const totalSubmissions = await Submission.countDocuments({ assignment: { $in: myAssignmentIds } });
-            const evaluatedSubmissions = await Submission.countDocuments({
-                assignment: { $in: myAssignmentIds },
-                status: 'Evaluated'
-            });
-
-            stats = {
-                teachingOverview: {
-                    subjectsCount: subjects.length,
-                    totalStudents: subjects.length * 60, // Estimate or aggregate real count
-                    assignmentsCreated
-                },
-                evaluationStats: {
-                    totalSubmissionsReceived: totalSubmissions,
-                    evaluated: evaluatedSubmissions,
-                    pending: totalSubmissions - evaluatedSubmissions,
-                    completionRate: totalSubmissions > 0 ? Math.round((evaluatedSubmissions / totalSubmissions) * 100) : 0
-                },
-                subjectsList: subjects.map(s => ({ name: s.name, code: s.code, semester: s.semester }))
-            };
-
-        } else if (user.role === 'hod') {
-            const staffCount = await User.countDocuments({ role: 'staff', department: user.department });
-            const studentCount = await User.countDocuments({ role: 'student', department: user.department });
-            const subjectCount = await require('../models/Subject').countDocuments({ department: user.department });
-
-            // Calculate Department Average Score (simplified global average)
-            // In real app, filter submissions by students in this dept
-
-            stats = {
-                deptIntelligence: {
-                    totalStaff: staffCount,
-                    totalStudents: studentCount,
-                    activeSubjects: subjectCount,
-                    averageAttendance: '85%' // Mock for now
-                },
-                studentDistribution: {
-                    year1: await User.countDocuments({ role: 'student', department: user.department, academicYear: '1st Year' }),
-                    year2: await User.countDocuments({ role: 'student', department: user.department, academicYear: '2nd Year' }),
-                    year3: await User.countDocuments({ role: 'student', department: user.department, academicYear: '3rd Year' }),
-                    year4: await User.countDocuments({ role: 'student', department: user.department, academicYear: '4th Year' })
-                }
-            };
-        } else if (user.role === 'admin') {
-            stats = {
-                globalStats: {
-                    totalUsers: await User.countDocuments(),
-                    totalDepts: await require('../models/Department').countDocuments(),
-                    totalSubjects: await require('../models/Subject').countDocuments(),
-                    totalAssignments: await Assignment.countDocuments()
-                },
-                governance: {
-                    activeUsers: await User.countDocuments({ isActive: true }),
-                    inactiveUsers: await User.countDocuments({ isActive: false }),
-                    recentLogins: 15 // Mock or implement LoginLog
-                }
-            };
-        }
-
+        const stats = await calculateUserStats(user);
         res.json({ ...user.toObject(), stats });
     } catch (error) {
         console.error(error);
@@ -247,7 +246,8 @@ const getUserProfile = async (req, res) => {
             }
         }
 
-        res.json(targetUser);
+        const stats = await calculateUserStats(targetUser);
+        res.json({ ...targetUser.toObject(), stats });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });

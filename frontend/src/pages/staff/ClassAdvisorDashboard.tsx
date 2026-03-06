@@ -28,7 +28,7 @@ const ClassAdvisorDashboard = () => {
     const [staffList, setStaffList] = useState<any[]>([]);
     const [assigningMentor, setAssigningMentor] = useState(false);
 
-    const API = 'http://localhost:5000';
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     const fetchStaff = async () => {
         try {
@@ -159,15 +159,6 @@ const ClassAdvisorDashboard = () => {
         }
     };
 
-    const getPerformanceStatus = (student: any) => {
-        if (student.avgScore !== null) {
-            if (student.avgScore < RISK_THRESHOLD) return { label: 'Critical', color: 'bg-red-100 text-red-700 border-red-200' };
-            if (student.avgScore < 75) return { label: 'Needs Attention', color: 'bg-amber-100 text-amber-700 border-amber-200' };
-            return { label: 'Consistent', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
-        }
-        return { label: 'N/A', color: 'bg-gray-100 text-gray-400 border-gray-200' };
-    };
-
     if (loading) return (
         <div className="flex items-center justify-center h-64">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -186,8 +177,6 @@ const ClassAdvisorDashboard = () => {
             </p>
         </div>
     );
-
-    const atRiskCount = stats.students.filter((s: any) => s.avgScore !== null && s.avgScore < RISK_THRESHOLD).length;
 
     return (
         <div className="space-y-6 pb-10 relative">

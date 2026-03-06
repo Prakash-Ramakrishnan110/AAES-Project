@@ -23,9 +23,8 @@ const mentorshipQuerySchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
-mentorshipQuerySchema.pre('save', function (next) {
+mentorshipQuerySchema.pre('save', function () {
     this.updatedAt = Date.now();
-    next();
 });
 
 module.exports = mongoose.model('MentorshipQuery', mentorshipQuerySchema);

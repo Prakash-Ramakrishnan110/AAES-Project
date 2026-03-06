@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import EmptyState from '../../components/ui/EmptyState';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface ClassSummary {
     totalStudents: number;
@@ -131,8 +131,8 @@ const ClassGovernance = () => {
     };
 
     const filteredStudents = students.filter(s =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.registerNumber.toLowerCase().includes(searchTerm.toLowerCase())
+        (s.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (s.registerNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
     // CCM Analytics
@@ -228,8 +228,8 @@ const ClassGovernance = () => {
                                                         <p className="text-xs text-gray-500">{student.registerNumber}</p>
                                                     </td>
                                                     <td className="p-4 text-sm text-gray-600 font-medium">{student.mentorName}</td>
-                                                    <td className="p-4 text-sm font-medium">{student.attendancePercentage.toFixed(1)}%</td>
-                                                    <td className="p-4 text-sm font-medium">{student.internalPercentage.toFixed(1)}%</td>
+                                                    <td className="p-4 text-sm font-medium">{(student.attendancePercentage || 0).toFixed(1)}%</td>
+                                                    <td className="p-4 text-sm font-medium">{(student.internalPercentage || 0).toFixed(1)}%</td>
                                                     <td className="p-4">
                                                         <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getRiskColor(student.riskLevel)}`}>{student.riskLevel}</span>
                                                     </td>

@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { ChevronLeft, AlertTriangle, TrendingUp, Users, Download, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const riskStyle = (risk: string) => {
     if (risk === 'high') return 'bg-red-50 text-red-700 border-red-200';

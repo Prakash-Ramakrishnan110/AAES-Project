@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
     Users, GraduationCap, TrendingUp, AlertTriangle,
-    UserPlus, BookOpen, Activity, Star, Zap, FileText, MessageSquare, Download
+    UserPlus, BookOpen, Activity, Star, Zap, FileText, MessageSquare, Download, Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AssignAdvisorModal from './AssignAdvisorModal';
@@ -21,10 +21,12 @@ const HODDashboard = () => {
     const { user, token } = useContext(AuthContext)!;
     const navigate = useNavigate();
 
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<any>({
         staffCount: 0,
         studentCount: 0,
         avgMarks: 0,
+        avgAttendance: 0,
+        riskCount: 0
     });
 
     const [trendData, setTrendData] = useState([]);
@@ -80,10 +82,11 @@ const HODDashboard = () => {
     }, [token]);
 
     const kpis = [
-        { label: 'Total Faculty', value: stats.staffCount, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', link: '/hod/staff' },
-        { label: 'Total Students', value: stats.studentCount, icon: GraduationCap, color: 'text-blue-600', bg: 'bg-blue-50', link: '/hod/students' },
-        { label: 'Avg Performance', value: `${stats.avgMarks}%`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/hod/analytics' },
-        { label: 'Active Advisors', value: advisors.length, icon: Star, color: 'text-purple-600', bg: 'bg-purple-50', link: '/hod/advisors' },
+        { label: 'Total Faculty', value: stats.staffCount || 0, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', link: '/hod/staff' },
+        { label: 'Total Students', value: stats.studentCount || 0, icon: GraduationCap, color: 'text-blue-600', bg: 'bg-blue-50', link: '/hod/students' },
+        { label: 'Avg Performance', value: `${stats.avgMarks || 0}%`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/hod/analytics' },
+        { label: 'Attendance', value: `${stats.avgAttendance || 0}%`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', link: '/hod/attendance' },
+        { label: 'Critical Cases', value: stats.riskCount || 0, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', link: '/hod/analytics' },
     ];
 
     const exportToPDF = () => {
@@ -167,9 +170,11 @@ const HODDashboard = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 font-display">
-                        {user?.department || 'Department'} Dashboard
+                        AAES &ndash; HOD Panel
                     </h1>
-                    <p className="text-gray-500 text-sm mt-0.5">Welcome back, Head of Department. Here is your overview.</p>
+                    <p className="text-gray-500 text-sm mt-0.5">
+                        {user?.department || 'Department'} Department &middot; Welcome back, {(user as any)?.fullName || user?.username}. Here is your overview.
+                    </p>
                 </div>
                 <div className="flex gap-3">
                     <button onClick={exportToPDF}
@@ -197,7 +202,7 @@ const HODDashboard = () => {
             ) : (
                 <>
                     {/* KPI Grid */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                         {kpis.map((kpi, i) => (
                             <motion.div key={kpi.label}
                                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -310,15 +315,19 @@ const HODDashboard = () => {
                                         <h2 className="font-semibold text-gray-800">Attention Required</h2>
                                     </div>
                                     <div className="space-y-3">
-                                        {subjectData.filter((s: any) => s.score > 0 && s.score < 50).length > 0 ? (
-                                            subjectData.filter((s: any) => s.score > 0 && s.score < 50).slice(0, 3).map((subj: any, i: number) => (
+                                        {subjectData.filter((s: any) => (s.score > 0 && s.score < 50) || (s.attendanceAvg > 0 && s.attendanceAvg < 75)).length > 0 ? (
+                                            subjectData.filter((s: any) => (s.score > 0 && s.score < 50) || (s.attendanceAvg > 0 && s.attendanceAvg < 75)).slice(0, 3).map((subj: any, i: number) => (
                                                 <div key={i} className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
                                                     <div className="p-2 bg-white rounded-lg shadow-sm">
-                                                        <TrendingUp className="w-4 h-4 text-red-600" />
+                                                        <AlertTriangle className="w-4 h-4 text-red-600" />
                                                     </div>
                                                     <div>
                                                         <h4 className="font-bold text-red-900 text-sm">{subj.name}</h4>
-                                                        <p className="text-red-700 text-xs">Averaging {subj.score}% — below department targets.</p>
+                                                        <p className="text-red-700 text-xs">
+                                                            {subj.score < 50 ? `Avg Marks: ${subj.score}% — ` : ''}
+                                                            {subj.attendanceAvg < 75 ? `Attendance: ${subj.attendanceAvg}% — ` : ''}
+                                                            Action Required.
+                                                        </p>
                                                     </div>
                                                 </div>
                                             ))
@@ -327,7 +336,7 @@ const HODDashboard = () => {
                                                 <Zap className="w-8 h-8 text-green-500" />
                                                 <div>
                                                     <p className="font-bold">All Disciplines Healthy</p>
-                                                    <p className="text-sm">No subjects are currently flagging performance alerts.</p>
+                                                    <p className="text-sm">No subjects are currently flagging performance or attendance alerts.</p>
                                                 </div>
                                             </div>
                                         )}
@@ -419,11 +428,12 @@ const HODDashboard = () => {
                                             <tr key={i} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-5 py-4 font-semibold text-gray-900">{subject.subjectCode} - {subject.subjectName}</td>
                                                 <td className="px-5 py-4 text-center font-bold text-indigo-600">{subject.avgMarks}%</td>
+                                                <td className="px-5 py-4 text-center font-bold text-teal-600">{subject.attendanceAvg}%</td>
                                                 <td className="px-5 py-4 text-center font-medium">{subject.submissionRate}%</td>
                                                 <td className="px-5 py-4 text-center">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${subject.avgMarks >= 75 ? 'bg-green-100 text-green-700' : subject.avgMarks >= 50 ? 'bg-indigo-100 text-indigo-700' : 'bg-red-100 text-red-700'
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${subject.avgMarks >= 75 && subject.attendanceAvg >= 75 ? 'bg-green-100 text-green-700' : (subject.avgMarks >= 50 && subject.attendanceAvg >= 75) ? 'bg-indigo-100 text-indigo-700' : 'bg-red-100 text-red-700'
                                                         }`}>
-                                                        {subject.avgMarks >= 75 ? 'Excellent' : subject.avgMarks >= 50 ? 'Stable' : 'Critical'}
+                                                        {subject.avgMarks >= 75 && subject.attendanceAvg >= 75 ? 'Excellent' : (subject.avgMarks >= 50 && subject.attendanceAvg >= 75) ? 'Stable' : 'Critical'}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -543,6 +553,7 @@ const HODDashboard = () => {
                                             <tr>
                                                 <th className="px-5 py-3">Mentor</th>
                                                 <th className="px-5 py-3 text-center">Total Mentees</th>
+                                                <th className="px-5 py-3 text-center text-red-600">Critical (Red)</th>
                                                 <th className="px-5 py-3 text-center">Open Queries</th>
                                                 <th className="px-5 py-3 text-center">Avg Response Time</th>
                                             </tr>
@@ -555,10 +566,11 @@ const HODDashboard = () => {
                                             ) : (
                                                 mentorshipOversight.map((mentorItem: any, idx: number) => (
                                                     <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-5 py-4 font-semibold text-gray-900">{mentorItem.mentor.fullName || mentorItem.mentor.username}</td>
+                                                        <td className="px-5 py-4 font-semibold text-gray-900">{mentorItem.mentorName}</td>
                                                         <td className="px-5 py-4 text-center font-bold text-gray-700">{mentorItem.totalMentees}</td>
+                                                        <td className="px-5 py-4 text-center font-bold text-red-600">{mentorItem.criticalCases}</td>
                                                         <td className="px-5 py-4 text-center text-red-600 font-bold">{mentorItem.openQueries}</td>
-                                                        <td className="px-5 py-4 text-center text-gray-500 font-medium">{mentorItem.avgResponseTimeHours > 0 ? `${mentorItem.avgResponseTimeHours} hrs` : 'N/A'}</td>
+                                                        <td className="px-5 py-4 text-center text-gray-500 font-medium">{mentorItem.avgResponseHours > 0 ? `${mentorItem.avgResponseHours} hrs` : 'N/A'}</td>
                                                     </tr>
                                                 ))
                                             )}

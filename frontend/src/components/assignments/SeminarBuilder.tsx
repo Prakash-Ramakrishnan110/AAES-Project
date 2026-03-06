@@ -15,10 +15,12 @@ const SeminarBuilder: React.FC<Props> = ({ formData, setFormData }) => {
                     presentationDate: '',
                     isGroup: false,
                     rubric: {
-                        contentMarks: 0,
-                        presentationMarks: 0,
-                        communicationMarks: 0,
-                        qaMarks: 0
+                        topicSelectionMarks: 0,
+                        technicalContentMarks: 0,
+                        presentationSkillsMarks: 0,
+                        visualQualityMarks: 0,
+                        timeManagementMarks: 0,
+                        responseToQuestionsMarks: 0
                     }
                 }
             });
@@ -44,15 +46,15 @@ const SeminarBuilder: React.FC<Props> = ({ formData, setFormData }) => {
 
     const config = formData.seminarConfig || {};
     const r = config.rubric || {};
-
-    const totalRubricMarks = (r.contentMarks || 0) + (r.presentationMarks || 0) + (r.communicationMarks || 0) + (r.qaMarks || 0);
+    const totalRubricMarks = (r.topicSelectionMarks || 0) + (r.technicalContentMarks || 0) + (r.presentationSkillsMarks || 0) +
+        (r.visualQualityMarks || 0) + (r.timeManagementMarks || 0) + (r.responseToQuestionsMarks || 0);
     const marksMismatch = formData.maxMarks > 0 && totalRubricMarks !== formData.maxMarks;
 
     return (
         <div className="space-y-6">
             <div className="bg-pink-50/50 p-4 border border-pink-100 rounded-xl">
                 <h4 className="font-bold text-pink-900 mb-1">Seminar / Live Presentation Format</h4>
-                <p className="text-sm text-pink-700">Track live presentations that occur in class. Students can optionally upload their slides, but grading is entirely manual based on your rubric.</p>
+                <p className="text-sm text-pink-700">Track live presentations that occur in class. Grading is manual based on the rubric below.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
@@ -82,44 +84,52 @@ const SeminarBuilder: React.FC<Props> = ({ formData, setFormData }) => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Content Integrity</label>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Topic Selection (15%)</label>
                         <input
-                            type="number"
-                            min="0"
-                            value={r.contentMarks || ''}
-                            onChange={e => updateRubric('contentMarks', parseInt(e.target.value) || 0)}
+                            type="number" min="0" value={r.topicSelectionMarks || ''}
+                            onChange={e => updateRubric('topicSelectionMarks', parseInt(e.target.value) || 0)}
                             className={`w-full border ${marksMismatch ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-lg px-3 py-2 text-sm outline-none`}
                         />
                     </div>
                     <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Visual Aids</label>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Technical Content (25%)</label>
                         <input
-                            type="number"
-                            min="0"
-                            value={r.presentationMarks || ''}
-                            onChange={e => updateRubric('presentationMarks', parseInt(e.target.value) || 0)}
+                            type="number" min="0" value={r.technicalContentMarks || ''}
+                            onChange={e => updateRubric('technicalContentMarks', parseInt(e.target.value) || 0)}
                             className={`w-full border ${marksMismatch ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-lg px-3 py-2 text-sm outline-none`}
                         />
                     </div>
                     <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Communication</label>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Presentation Skills (20%)</label>
                         <input
-                            type="number"
-                            min="0"
-                            value={r.communicationMarks || ''}
-                            onChange={e => updateRubric('communicationMarks', parseInt(e.target.value) || 0)}
+                            type="number" min="0" value={r.presentationSkillsMarks || ''}
+                            onChange={e => updateRubric('presentationSkillsMarks', parseInt(e.target.value) || 0)}
                             className={`w-full border ${marksMismatch ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-lg px-3 py-2 text-sm outline-none`}
                         />
                     </div>
                     <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Q&A Handling</label>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">PPT / Visual Quality (15%)</label>
                         <input
-                            type="number"
-                            min="0"
-                            value={r.qaMarks || ''}
-                            onChange={e => updateRubric('qaMarks', parseInt(e.target.value) || 0)}
+                            type="number" min="0" value={r.visualQualityMarks || ''}
+                            onChange={e => updateRubric('visualQualityMarks', parseInt(e.target.value) || 0)}
+                            className={`w-full border ${marksMismatch ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-lg px-3 py-2 text-sm outline-none`}
+                        />
+                    </div>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Time Management (10%)</label>
+                        <input
+                            type="number" min="0" value={r.timeManagementMarks || ''}
+                            onChange={e => updateRubric('timeManagementMarks', parseInt(e.target.value) || 0)}
+                            className={`w-full border ${marksMismatch ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-lg px-3 py-2 text-sm outline-none`}
+                        />
+                    </div>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Response to Q&A (15%)</label>
+                        <input
+                            type="number" min="0" value={r.responseToQuestionsMarks || ''}
+                            onChange={e => updateRubric('responseToQuestionsMarks', parseInt(e.target.value) || 0)}
                             className={`w-full border ${marksMismatch ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-lg px-3 py-2 text-sm outline-none`}
                         />
                     </div>

@@ -13,6 +13,8 @@ const YEAR_COLORS: Record<string, { bg: string; border: string; text: string; ac
     '4th Year': { bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-orange-700', activeBg: 'bg-orange-500', activeBorder: 'border-orange-500' },
 };
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const HODClassAdvisors = () => {
     const { token, user } = useContext(AuthContext)!;
     const [staffList, setStaffList] = useState<any[]>([]);
@@ -30,8 +32,8 @@ const HODClassAdvisors = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const [staffRes, advisorRes] = await Promise.all([
-                axios.get(`http://localhost:5000/api/users?role=staff&status=all`, config),
-                axios.get('http://localhost:5000/api/advisor/assignments', config)
+                axios.get(`${API}/api/users?role=staff&status=all`, config),
+                axios.get(`${API}/api/advisor/assignments`, config)
             ]);
             setStaffList(staffRes.data);
             setAdvisors(advisorRes.data);
@@ -49,7 +51,7 @@ const HODClassAdvisors = () => {
         setSaving(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:5000/api/advisor/assign', {
+            await axios.post(`${API}/api/advisor/assign`, {
                 academicYear: activeYear,
                 staffId: selectedStaff
             }, config);

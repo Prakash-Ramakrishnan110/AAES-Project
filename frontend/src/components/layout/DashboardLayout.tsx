@@ -164,20 +164,12 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
             >
                 <div className="p-4 flex items-center space-x-3 border-b border-gray-100 h-16">
                     <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg flex items-center justify-center shadow-sm">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
-                                <path d="M4 19.5V4.5C4 4.22386 4.22386 4 4.5 4H9.5C10.3284 4 11 4.67157 11 5.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M20 19.5V4.5C20 4.22386 19.7761 4 19.5 4H14.5C13.6716 4 13 4.67157 13 5.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M11 19.5C11 18.6716 11.6716 18 12.5 18C13.3284 18 14 18.6716 14 19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M7 10L9 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M15 10L17 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M7 14L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M15 14L17 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </div>
                         <div className="flex flex-col">
-                            <span className="text-lg font-extrabold tracking-tight text-slate-900 leading-none">
-                                AAES<span className="text-indigo-600">.</span>
+                            <span className="text-xl font-serif font-black tracking-tight text-slate-900 leading-none">
+                                𝐀𝐀𝐄𝐒
+                            </span>
+                            <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
+                                Academic Analytics
                             </span>
                         </div>
                     </div>
@@ -228,20 +220,12 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                             >
                                 <div className="p-4 flex items-center justify-between border-b border-gray-100 h-16">
                                     <div className="flex items-center space-x-2">
-                                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg flex items-center justify-center shadow-sm">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
-                                                <path d="M4 19.5V4.5C4 4.22386 4.22386 4 4.5 4H9.5C10.3284 4 11 4.67157 11 5.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M20 19.5V4.5C20 4.22386 19.7761 4 19.5 4H14.5C13.6716 4 13 4.67157 13 5.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M11 19.5C11 18.6716 11.6716 18 12.5 18C13.3284 18 14 18.6716 14 19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M7 10L9 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M15 10L17 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M7 14L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M15 14L17 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                        </div>
                                         <div className="flex flex-col">
-                                            <span className="text-lg font-extrabold tracking-tight text-slate-900 leading-none">
-                                                AAES<span className="text-indigo-600">.</span>
+                                            <span className="text-xl font-serif font-black tracking-tight text-slate-900 leading-none">
+                                                𝐀𝐀𝐄𝐒
+                                            </span>
+                                            <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
+                                                Academic Analytics
                                             </span>
                                         </div>
                                     </div>
@@ -367,7 +351,14 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                                     {user?.username?.charAt(0).toUpperCase() || 'U'}
                                 </div>
                                 <div className="hidden md:block text-left">
-                                    <p className="text-sm font-medium text-gray-700 leading-none">{user?.fullName || user?.username}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-gray-700 leading-none">{user?.fullName || user?.username}</p>
+                                        {(user?.academicYear || user?.semester) && (
+                                            <span className="px-1.5 py-0.5 bg-gray-100 text-[9px] font-bold text-gray-500 rounded uppercase tracking-wider">
+                                                {user.academicYear && `${user.academicYear}`} {user.semester && `· S${user.semester}`}
+                                            </span>
+                                        )}
+                                    </div>
                                     {user?.role === 'staff' && user?.isAdvisor ? (
                                         <p className="text-xs text-indigo-600 mt-0.5 font-medium">
                                             Staff · Class Advisor – {user.advisorYear}

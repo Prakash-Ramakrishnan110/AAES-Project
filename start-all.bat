@@ -68,4 +68,8 @@ echo.
 timeout /t 10 /nobreak >nul
 start "" "http://localhost:3050"
 
+echo.
+echo  Opening MongoDB Compass...
+start "" "C:\Users\praka\AppData\Local\MongoDBCompass\MongoDBCompass.exe" "mongodb://127.0.0.1:27017/aaes"
+
 pause

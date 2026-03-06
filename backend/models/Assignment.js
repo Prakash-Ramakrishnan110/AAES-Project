@@ -15,6 +15,14 @@ const assignmentSchema = new mongoose.Schema({
         ref: 'Subject',
         required: true
     },
+    department: {
+        type: String,
+        required: true
+    },
+    semester: {
+        type: String,
+        required: true
+    },
     section: {
         type: String,
         default: 'All' // 'All' or specific section like 'A', 'B'

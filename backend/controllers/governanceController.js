@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const MentorStudentMap = require('../models/MentorStudentMap');
 const ClassAdvisor = require('../models/ClassAdvisor');
@@ -221,7 +222,7 @@ exports.getAdvisorDashboard = async (req, res) => {
 
         // Fetch total interactions per mentor
         for (let mId in mentorStats) {
-            const iCount = await MentorshipInteraction.countDocuments({ mentor: mongoose.Types.ObjectId(mId) });
+            const iCount = await MentorshipInteraction.countDocuments({ mentor: new mongoose.Types.ObjectId(mId) });
             mentorStats[mId].interactionCount = iCount;
         }
 

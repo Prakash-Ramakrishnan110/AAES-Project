@@ -46,15 +46,24 @@ const createAssignment = async (req, res) => {
             }
         }
 
+        console.log("Creating Assignment with data:", {
+            title,
+            subjectId,
+            dept: subject.department,
+            sem: subject.semester
+        });
+
         const assignment = await Assignment.create({
             title,
             description,
             subject: subjectId,
+            department: subject.department || 'Unknown',
+            semester: subject.semester || 'Unknown',
             section: section || 'All',
             createdBy: req.user.id,
             maxMarks,
             deadline,
-            submissionType,
+            submissionType: submissionType === 'programming' ? 'code' : submissionType,
             formatConfig
         });
 

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import { lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -23,6 +23,7 @@ import StaffLayout from './components/layout/StaffLayout';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import InternalMarksEntry from './pages/staff/InternalMarksEntry';
 import MySubjects from './pages/staff/MySubjects';
+import StudyResources from './pages/staff/StudyResources';
 import Evaluation from './pages/staff/Evaluation';
 import UnifiedAssignments from './pages/staff/UnifiedAssignments';
 import ClassAdvisorDashboard from './pages/staff/ClassAdvisorDashboard';
@@ -45,6 +46,8 @@ import StudentLayout from './components/layout/StudentLayout';
 import StudentAssignmentList from './pages/student/StudentAssignmentList';
 import StudentAssignmentView from './pages/student/StudentAssignmentView';
 import StudentDashboard from './pages/student/StudentDashboard';
+import StudentStudyResources from './pages/student/StudentStudyResources';
+import StudentDocumentViewer from './pages/student/StudentDocumentViewer';
 import StudentOnboarding from './pages/student/StudentOnboarding';
 import HODLayout from './components/layout/HODLayout';
 import HODDashboard from './pages/hod/HODDashboard';
@@ -57,6 +60,7 @@ import HODDirectory from './pages/hod/HODDirectory';
 import HODClassAdvisors from './pages/hod/HODClassAdvisors';
 import HODAnalytics from './pages/hod/HODAnalytics';
 import HODInternalMarksView from './pages/hod/HODInternalMarksView';
+import HODConsolidatedReports from './pages/hod/HODConsolidatedReports';
 import Profile from './pages/profile/Profile';
 import Settings from './pages/profile/Settings';
 import StudentMarksView from './pages/student/StudentMarksView';
@@ -119,6 +123,7 @@ function App() {
                   <Route path="analytics" element={<HODAnalytics />} />
                   <Route path="governance" element={<DepartmentGovernance />} />
                   <Route path="internal-marks" element={<HODInternalMarksView />} />
+                  <Route path="consolidated-reports" element={<HODConsolidatedReports />} />
                 </Route>
               </Route>
 
@@ -132,6 +137,7 @@ function App() {
                   <Route path="attendance/:subjectId" element={<AttendanceMarking />} />
                   <Route path="internal-marks/:subjectId" element={<InternalMarksEntry />} />
                   <Route path="attendance/:subjectId/summary" element={<SubjectAttendanceSummary />} />
+                  <Route path="study-resources/:subjectId" element={<StudyResources />} />
                   <Route path="class-governance" element={<ClassGovernance />} />
                   <Route path="attendance-alerts" element={<AttendanceAlerts />} />
                   <Route path="mentor-assignment" element={<MentorAssignment />} />
@@ -152,6 +158,8 @@ function App() {
                   <Route path="dashboard" element={<StudentDashboard />} />
                   <Route path="assignments" element={<StudentAssignmentList />} />
                   <Route path="assignments/:id" element={<StudentAssignmentView />} />
+                  <Route path="resources" element={<StudentStudyResources />} />
+                  <Route path="resources/:id" element={<StudentDocumentViewer />} />
                   <Route path="attendance" element={<AttendanceDashboard />} />
                   <Route path="marks" element={<StudentMarksView />} />
                   <Route path="internal-marks" element={<StudentInternalMarks />} />

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface Component {
     name: string;
@@ -170,8 +170,8 @@ const InternalPatternManager = () => {
                                 onClick={togglePatternLock}
                                 title={pattern.patternLocked ? 'Click to unlock and edit components' : 'Click to lock component structure'}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${pattern.patternLocked
-                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600'
+                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600'
                                     }`}
                             >
                                 {pattern.patternLocked ? <Lock className="w-4 h-4" /> : <Calculator className="w-4 h-4" />}

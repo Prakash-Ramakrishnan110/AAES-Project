@@ -19,6 +19,7 @@ interface StaffStatsProps {
             name: string;
             code: string;
             semester: string;
+            academicYear: string;
         }>;
     };
 }
@@ -40,8 +41,10 @@ const StaffProfile: React.FC<StaffStatsProps> = ({ stats }) => {
                         </div>
                         <div className="p-2 bg-white/20 rounded-lg"><BookOpen size={24} /></div>
                     </div>
-                    <div className="mt-4 text-xs text-indigo-100">
-                        Across {subjects.map(s => `Sem ${s.semester}`).join(', ')}
+                    <div className="mt-4 text-xs text-indigo-100 italic">
+                        {subjects.length > 0
+                            ? `Handling: ${[...new Set(subjects.map(s => s.academicYear))].join(', ')} • Sems: ${[...new Set(subjects.map(s => s.semester))].sort().join(', ')}`
+                            : 'No active subjects'}
                     </div>
                 </motion.div>
 
@@ -82,7 +85,7 @@ const StaffProfile: React.FC<StaffStatsProps> = ({ stats }) => {
                             <div key={idx} className="bg-gray-50 p-4 rounded-lg flex justify-between items-center">
                                 <div>
                                     <h4 className="font-semibold text-gray-800">{sub.name}</h4>
-                                    <p className="text-xs text-gray-500">{sub.code}</p>
+                                    <p className="text-xs text-gray-500">{sub.code} • {sub.academicYear}</p>
                                 </div>
                                 <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium">
                                     Semester {sub.semester}

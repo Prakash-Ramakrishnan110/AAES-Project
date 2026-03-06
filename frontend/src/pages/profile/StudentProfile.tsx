@@ -110,7 +110,7 @@ const StudentProfile: React.FC<StudentStatsProps> = ({ stats, studentId, token }
                             <div key={idx} className="border-l-2 border-indigo-200 pl-4 py-1">
                                 <p className="text-sm font-medium text-gray-800 truncate">{item.assignment}</p>
                                 <div className="flex justify-between items-center mt-1">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${item.status === 'Evaluated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${item.status === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                                         }`}>
                                         {item.status}
                                     </span>

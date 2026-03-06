@@ -12,17 +12,19 @@ const Attendance = require('../models/Attendance');
 const Assignment = require('../models/Assignment');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const Submission = require('../models/Submission');
+
 
 /**
- * Calculate risk level from the three percentages.
- * GREEN:  attendance >= 75 AND internal >= 50 AND assignment >= 60
- * YELLOW: attendance <  75 OR  internal <  50 OR  assignment <  60
- * RED:    attendance <  60 OR  internal <  40 OR  assignment <  40
+ * Calculate risk level from the average marks.
+ * Average >= 70% → LOW RISK (Green)
+ * Average >= 40% and < 70% → MEDIUM RISK (Yellow)
+ * Average < 40% → HIGH RISK (Red)
  */
-function computeRiskLevel(attendancePct, internalPct, assignmentPct) {
-    if (attendancePct < 60 || internalPct < 40 || assignmentPct < 40) return 'Red';
-    if (attendancePct < 75 || internalPct < 50 || assignmentPct < 60) return 'Yellow';
-    return 'Green';
+function computeRiskLevel(averagePct) {
+    if (averagePct >= 70) return 'Green';
+    if (averagePct >= 40) return 'Yellow';
+    return 'Red';
 }
 
 /**
@@ -80,7 +82,8 @@ async function recalculateRiskForStudent(studentId, semester, academicYear) {
             const assignmentPercent = relevantAssignments === 0 ? 100 : Math.min(100, (gradedSubmissions / relevantAssignments) * 100);
 
             // ─── 4. Compute risk ─────────────────────────────────────────────────
-            const riskLevel = computeRiskLevel(attendancePercent, internalPercent, assignmentPercent);
+            const averagePct = (attendancePercent + internalPercent + assignmentPercent) / 3;
+            const riskLevel = computeRiskLevel(averagePct);
 
             // ─── 5. Upsert StudentRisk cache ─────────────────────────────────────
             const existing = await StudentRisk.findOne({ student: studentId, semester: sem, academicYear: year });

@@ -8,6 +8,8 @@ import { Plus, Search, Book, Hash, Calendar, Layers, Briefcase, UserPlus, Settin
 
 import StaffAssignmentModal from '../../components/ui/StaffAssignmentModal';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const HODSubjects = () => {
     const [subjects, setSubjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ const HODSubjects = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const { data } = await axios.get(
-                `http://localhost:5000/api/subjects?department=${user?.department}`,
+                `${API}/api/subjects?department=${user?.department}`,
                 config
             );
             setSubjects(data);
@@ -49,7 +51,7 @@ const HODSubjects = () => {
         e.preventDefault();
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:5000/api/subjects', formData, config);
+            await axios.post(`${API}/api/subjects`, formData, config);
             fetchSubjects();
             setFormData({ ...formData, name: '', code: '' });
             showToast('Subject added successfully', 'success');

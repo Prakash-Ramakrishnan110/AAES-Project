@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Plus, Search, Book, Hash, Calendar, Layers, Briefcase, Trash2, UserPlus, AlertCircle } from 'lucide-react';
 import StaffAssignmentModal from '../../components/ui/StaffAssignmentModal';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface Subject {
     _id: string;
     name: string;
@@ -43,8 +45,8 @@ const SubjectList = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const [subjectsRes, deptsRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/subjects', config),
-                axios.get('http://localhost:5000/api/departments', config)
+                axios.get(`${API}/api/subjects`, config),
+                axios.get(`${API}/api/departments`, config)
             ]);
             setSubjects(subjectsRes.data);
             setDepartments(deptsRes.data);
@@ -58,7 +60,7 @@ const SubjectList = () => {
     const fetchSubjects = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/subjects', config);
+            const { data } = await axios.get(`${API}/api/subjects`, config);
             setSubjects(data);
         } catch (error) { console.error(error); }
     };
@@ -67,7 +69,7 @@ const SubjectList = () => {
         e.preventDefault();
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:5000/api/subjects', formData, config);
+            await axios.post(`${API}/api/subjects`, formData, config);
             fetchSubjects();
             setFormData({ ...formData, name: '', code: '' });
             showToast('Subject added successfully', 'success');
@@ -83,7 +85,7 @@ const SubjectList = () => {
         if (!confirm('Are you sure you want to delete this subject?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:5000/api/subjects/${id}`, config);
+            await axios.delete(`${API}/api/subjects/${id}`, config);
             fetchSubjects();
         } catch (error) { console.error(error); }
     };

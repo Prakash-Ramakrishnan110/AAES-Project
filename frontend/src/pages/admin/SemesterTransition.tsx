@@ -2,6 +2,8 @@ import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const SemesterTransition = () => {
     const { token } = useContext(AuthContext)!;
     const [departments, setDepartments] = useState<any[]>([]);
@@ -17,7 +19,7 @@ const SemesterTransition = () => {
         const fetchDepartments = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data } = await axios.get('http://localhost:5000/api/departments', config);
+                const { data } = await axios.get(`${API}/api/departments`, config);
                 setDepartments(data);
             } catch (error) {
                 console.error(error);
@@ -35,7 +37,7 @@ const SemesterTransition = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const { data } = await axios.post('http://localhost:5000/api/users/promote', formData, config);
+            const { data } = await axios.post(`${API}/api/users/promote`, formData, config);
             setResult(`✓ ${data.message}. ${data.count} student(s) promoted.`);
             setFormData({ ...formData, currentSemester: formData.newSemester, newSemester: String(parseInt(formData.newSemester) + 1) });
         } catch (error: any) {

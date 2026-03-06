@@ -207,7 +207,7 @@ const getMyClassStats = async (req, res) => {
         }).select('-password');
 
         const studentStats = await Promise.all(students.map(async (student) => {
-            const submissions = await Submission.find({ student: student._id, status: 'Evaluated' })
+            const submissions = await Submission.find({ student: student._id, status: 'graded' })
                 .populate('assignment', 'maxMarks');
 
             let totalScore = 0;
@@ -280,7 +280,7 @@ const getAdvisorAcademicInsights = async (req, res) => {
         });
 
         const insights = await Promise.all(subjects.map(async (subject) => {
-            const submissions = await Submission.find({ status: 'Evaluated' })
+            const submissions = await Submission.find({ status: 'graded' })
                 .populate({
                     path: 'assignment',
                     match: { subject: subject._id }
@@ -320,67 +320,114 @@ const getAdvisorAcademicInsights = async (req, res) => {
     }
 };
 
-// @desc    Get raw data for class reports
-const getClassReportData = async (req, res) => {
+// @desc    Get detailed consolidated report data
+const getConsolidatedReportData = async (req, res) => {
     try {
-        const assignment = await ClassAdvisor.findOne({ staff: req.user.id });
-        if (!assignment) {
-            return res.status(403).json({ message: 'Access Denied: Not a Class Advisor' });
-        }
+        const { department, academicYear, semester, section, reportType } = req.query;
 
+        // Find students in the class
+        const query = { role: 'student' };
+        if (department) query.department = department;
+        if (academicYear) query.academicYear = academicYear;
+        if (semester) query.semester = semester;
+        if (section) query.section = section;
+
+        const students = await User.find(query).select('fullName registerNumber department semester section academicYear');
+
+        const Subject = require('../models/Subject');
+        const subjects = await Subject.find({
+            department,
+            academicYear,
+            semester: semester
+        }).select('name code');
+
+        const InternalMark = require('../models/InternalMark');
         const Attendance = require('../models/Attendance');
-        const Submission = require('../models/Submission');
-        const User = require('../models/User');
-
-        const students = await User.find({
-            role: 'student',
-            department: assignment.department,
-            academicYear: assignment.academicYear
-        }).select('fullName username email registerNumber semester');
 
         const reportData = await Promise.all(students.map(async (student) => {
-            const attendanceRecords = await Attendance.find({
-                'students.student': student._id
-            });
-
-            const totalSessions = attendanceRecords.length;
-            const attendedSessions = attendanceRecords.filter(record =>
-                record.students.find(s => s.student.toString() === student._id.toString() && s.status === 'Present')
-            ).length;
-
-            const attendancePercentage = totalSessions > 0 ? Math.round((attendedSessions / totalSessions) * 100) : 0;
-
-            const submissions = await Submission.find({ student: student._id, status: 'Evaluated' })
-                .populate('assignment', 'maxMarks');
-
-            let totalScore = 0;
-            let totalMax = 0;
-            submissions.forEach(sub => {
-                if (sub.assignment) {
-                    totalScore += sub.marks || 0;
-                    totalMax += sub.assignment.maxMarks || 100;
-                }
-            });
-
-            const internalPercentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
-
-            let status = 'Consistent';
-            if (attendancePercentage < 60 || internalPercentage < 40) status = 'Critical';
-            else if (attendancePercentage < 75 || internalPercentage < 60) status = 'Needs Attention';
-
-            return {
-                name: student.fullName || student.username,
-                registerNumber: student.registerNumber || 'N/A',
-                email: student.email,
-                attendance: attendancePercentage,
-                internal: internalPercentage,
-                status
+            const dataRow = {
+                rollNo: student.registerNumber,
+                studentName: student.fullName,
             };
+
+            if (reportType === 'internal' || !reportType) {
+                const studentMarks = await InternalMark.find({
+                    student: student._id,
+                    academicYear: student.academicYear,
+                    semester: student.semester
+                }).populate('subject', 'name');
+
+                let totalObtained = 0;
+                const subjectMarkData = {};
+
+                subjects.forEach(sub => {
+                    const mark = studentMarks.find(m => m.subject._id.toString() === sub._id.toString());
+                    const cia1 = mark ? (mark.cia1 || 0) : 0;
+                    const cia2 = mark ? (mark.cia2 || 0) : 0;
+                    subjectMarkData[sub.code] = { cia1, cia2 };
+                    totalObtained += cia1 + cia2;
+                });
+
+                const average = subjects.length > 0 ? (totalObtained / (subjects.length * 2)) : 0;
+                dataRow.subjects = subjectMarkData;
+                dataRow.total = totalObtained;
+                dataRow.average = average.toFixed(2);
+            }
+
+            if (reportType === 'attendance' || !reportType) {
+                const attendanceQuery = { 'records.student': student._id };
+                if (req.query.month) {
+                    const [yearPart, monthPart] = req.query.month.split('-');
+                    const startDate = new Date(yearPart, monthPart - 1, 1);
+                    const endDate = new Date(yearPart, monthPart, 0);
+                    attendanceQuery.date = { $gte: startDate, $lte: endDate };
+                }
+
+                const attendances = await Attendance.find(attendanceQuery);
+                let presentCount = 0;
+                let totalCount = 0;
+                attendances.forEach(att => {
+                    const rec = att.records.find(r => r.student.toString() === student._id.toString());
+                    if (rec) {
+                        totalCount++;
+                        if (rec.status === 'Present') presentCount++;
+                    }
+                });
+                dataRow.attendance = totalCount > 0 ? ((presentCount / totalCount) * 100).toFixed(2) : "0.00";
+                dataRow.totalWorkingDays = totalCount;
+                dataRow.presentDays = presentCount;
+            }
+
+            // Risk Calculation logic
+            let risk = 'LOW';
+            let color = 'Green';
+            const avgVal = parseFloat(dataRow.average || 0);
+            const attVal = parseFloat(dataRow.attendance || 0);
+
+            if (avgVal < 10 || attVal < 75) {
+                risk = 'HIGH';
+                color = 'Red';
+            } else if (avgVal < 15 || attVal < 85) {
+                risk = 'MEDIUM';
+                color = 'Yellow';
+            }
+            dataRow.risk = risk;
+            dataRow.color = color;
+
+            return dataRow;
         }));
 
         res.json({
-            class: `${assignment.department} - ${assignment.academicYear}`,
-            generatedAt: new Date(),
+            header: {
+                title: 'AAES – AI Powered Academic Evaluation System',
+                subtitle: reportType === 'attendance' ? 'Monthly Attendance Report' : (reportType === 'internal' ? 'Internal Assessment Report' : 'Consolidated Academic Report'),
+                department,
+                year: academicYear,
+                section,
+                semester,
+                reportType
+            },
+            subjects: subjects.map(s => ({ name: s.name, code: s.code })),
             data: reportData
         });
     } catch (error) {
@@ -506,7 +553,7 @@ module.exports = {
     getAllClassNotes,
     getMyClassStats,
     getAdvisorAcademicInsights,
-    getClassReportData,
+    getConsolidatedReportData,
     getStudentTimeline
 };
 

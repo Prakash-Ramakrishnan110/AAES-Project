@@ -37,6 +37,9 @@ const governanceRoutes = require('./routes/governanceRoutes');
 const internalRoutes = require('./routes/internalRoutes');
 const reEvaluationRoutes = require('./routes/reEvaluationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const studyMaterialRoutes = require('./routes/studyMaterialRoutes');
+const aiChatRoutes = require('./routes/aiChatRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 const cron = require('node-cron');
 const { promoteStaleEscalations } = require('./services/escalationEngine');
 
@@ -57,6 +60,12 @@ app.use('/api/governance', governanceRoutes);
 app.use('/api/internal', internalRoutes);
 app.use('/api/re-evaluation', reEvaluationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/study-materials', studyMaterialRoutes);
+app.use('/api/ai-chat', aiChatRoutes);
+app.use('/api/reports', reportRoutes);
+
+const studyResourceRoutes = require('./routes/studyResources');
+app.use('/api/study-resources', studyResourceRoutes);
 
 // Daily Cron Job: Promote stale escalations (e.g., every day at midnight)
 cron.schedule('0 0 * * *', () => {
@@ -64,6 +73,15 @@ cron.schedule('0 0 * * *', () => {
     promoteStaleEscalations();
 });
 
+
+app.get('/api/ping', (req, res) => {
+    res.json({
+        msg: 'AAES Backend is Running',
+        version: '1.0.2',
+        timestamp: '2026-03-05 15:00',
+        patched: true
+    });
+});
 
 app.get('/', (req, res) => {
     res.send('AAES Backend is Running');
