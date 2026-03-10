@@ -53,8 +53,11 @@ const SeminarBuilder: React.FC<Props> = ({ formData, setFormData }) => {
     return (
         <div className="space-y-6">
             <div className="bg-pink-50/50 p-4 border border-pink-100 rounded-xl">
-                <h4 className="font-bold text-pink-900 mb-1">Seminar / Live Presentation Format</h4>
-                <p className="text-sm text-pink-700">Track live presentations that occur in class. Grading is manual based on the rubric below.</p>
+                <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-bold text-pink-900">Seminar / Live Presentation Format</h4>
+                    <span className="text-[9px] font-black text-pink-600 uppercase tracking-widest bg-white/50 border border-pink-100 px-1.5 py-0.5 rounded shadow-sm">Advanced AI Brain</span>
+                </div>
+                <p className="text-sm text-pink-700">Track live presentations that occur in class. Topic generation uses our most advanced reasoning model.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-5 border border-gray-200 rounded-xl shadow-sm">

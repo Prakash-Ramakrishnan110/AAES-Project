@@ -51,9 +51,12 @@ const getUsers = async (req, res) => {
         if (department) query.department = department;
         if (role) query.role = role;
     }
-    // 2. HOD - Department-Level Full Visibility
+    // 2. HOD - Department-Level Full Visibility (Or global staff if requested)
     else if (req.user.role === 'hod') {
-        query.department = req.user.department;
+        const isGlobal = req.query.global === 'true';
+        if (!isGlobal || role !== 'staff') {
+            query.department = req.user.department;
+        }
         if (role) query.role = role;
     }
     // 3. STAFF - Subject-Based Student Visibility
@@ -164,7 +167,7 @@ const bulkUpdateStudents = async (req, res) => {
 // @route   POST /api/users
 // @access  Private/Admin/HOD
 const createUser = async (req, res) => {
-    let { username, fullName, email, password, role, department, academicYear, semester, registerNumber, staffId } = req.body;
+    let { username, fullName, email, password, role, department, academicYear, semester, batch, section, registerNumber, staffId } = req.body;
 
     // Governance: HOD Restrictions
     if (req.user.role === 'hod') {
@@ -196,6 +199,8 @@ const createUser = async (req, res) => {
         department,
         academicYear,
         semester,
+        batch,
+        section,
         registerNumber,
         staffId,
         profileImage,
@@ -295,17 +300,33 @@ const updateUser = async (req, res) => {
 // @route   DELETE /api/users/:id
 // @access  Private/Admin/HOD
 const deleteUser = async (req, res) => {
-    const user = await User.findById(req.params.id);
+    try {
+        const user = await User.findById(req.params.id);
+        const { permanent } = req.query;
 
-    if (user) {
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
         // Governance: HOD Restrictions
         if (req.user.role === 'hod') {
-            if (user.department.toString() !== req.user.department.toString()) {
+            const userDept = user.department?.toString() || '';
+            const hodDept = req.user.department?.toString() || '';
+
+            if (userDept !== hodDept) {
+                console.warn(`HOD ${req.user.username} (Dept: ${hodDept}) tried to delete user ${user.username} (Dept: ${userDept})`);
                 return res.status(403).json({ message: 'Not authorized to delete users from other departments' });
             }
         }
 
-        // Governance: Soft Delete
+        if (permanent === 'true') {
+            // Permanent Delete
+            await User.findByIdAndDelete(req.params.id);
+            await createAuditLog('PERMANENT_DELETE_USER', req.user.id, user._id, user.department, { email: user.email, role: user.role });
+            return res.json({ message: 'User permanently deleted' });
+        }
+
+        // Governance: Soft Delete (Deactivate)
         user.isActive = false;
         await user.save();
 
@@ -313,8 +334,9 @@ const deleteUser = async (req, res) => {
         await createAuditLog('SOFT_DELETE_USER', req.user.id, user._id, user.department, { email: user.email });
 
         res.json({ message: 'User deactivated (Soft Delete)' });
-    } else {
-        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Delete User Error:', error);
+        res.status(500).json({ message: 'Server error during user deletion', error: error.message });
     }
 };
 
@@ -355,7 +377,17 @@ const getSystemStats = async (req, res) => {
 
         // System Health & Storage (Admin only)
         let storageStats = null;
+        let systemHealth = {
+            database: 'Unknown',
+            apiServer: 'Unknown',
+            aiEngine: 'Unknown'
+        };
+
         if (req.user.role === 'admin') {
+            const os = require('os');
+            const mongoose = require('mongoose');
+
+            // Storage
             const uploadsPath = path.join(__dirname, '../uploads');
             const totalSize = getDirectorySize(uploadsPath);
             storageStats = {
@@ -364,6 +396,31 @@ const getSystemStats = async (req, res) => {
                 capacityBytes: 1024 * 1024 * 1024, // 1GB mock capacity
                 percentUsed: ((totalSize / (1024 * 1024 * 1024)) * 100).toFixed(1)
             };
+
+            // DB Health
+            systemHealth.database = mongoose.connection.readyState === 1 ? 'Healthy' : 'Disconnected';
+
+            // Server Memory
+            const totalMem = os.totalmem();
+            const freeMem = os.freemem();
+            const usedMemPercent = (((totalMem - freeMem) / totalMem) * 100).toFixed(1);
+            systemHealth.apiServer = `${usedMemPercent}% RAM Used`;
+
+            // AI Engine (Ping Python service)
+            try {
+                const Settings = require('../models/Settings');
+                const settings = await Settings.findOne({ isInitialized: true }) || { aiEngineUrl: 'http://localhost:8000' };
+                const aiEndpointBase = settings.aiEngineUrl.endsWith('/') ? settings.aiEngineUrl.slice(0, -1) : settings.aiEngineUrl;
+
+                const start = Date.now();
+                const aiRes = await fetch(`${aiEndpointBase}/`, { method: 'GET', signal: AbortSignal.timeout(2000) });
+                const aiLatency = Date.now() - start;
+                systemHealth.aiEngine = aiRes.ok ? 'Ready' : 'Offline';
+                systemHealth.aiEngineLatencyMs = aiLatency;
+            } catch (err) {
+                systemHealth.aiEngine = 'Offline';
+                systemHealth.aiEngineLatencyMs = -1;
+            }
         }
 
         res.json({
@@ -371,7 +428,8 @@ const getSystemStats = async (req, res) => {
             staffCount,
             deptCount,
             subjectCount,
-            storage: storageStats
+            storage: storageStats,
+            systemHealth
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -465,6 +523,66 @@ const getStaffProfile = async (req, res) => {
     }
 };
 
+// @desc    Get system audit logs
+// @route   GET /api/users/audit-logs
+// @access  Private/Admin
+const getAuditLogs = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const startIndex = (page - 1) * limit;
+
+        const { action, role, startDate, endDate } = req.query;
+
+        // Build filter object
+        const filter = {};
+
+        if (action && action !== 'ALL') {
+            // Rough text match for action categories if needed, or exact match
+            if (action === 'CREATE') filter.action = { $regex: 'CREATE|ADD', $options: 'i' };
+            else if (action === 'UPDATE') filter.action = { $regex: 'UPDATE|EDIT|PROMOTE', $options: 'i' };
+            else if (action === 'DELETE') filter.action = { $regex: 'DELETE|REMOVE', $options: 'i' };
+            else filter.action = action;
+        }
+
+        if (startDate || endDate) {
+            filter.timestamp = {};
+            if (startDate) filter.timestamp.$gte = new Date(startDate);
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.timestamp.$lte = end;
+            }
+        }
+
+        if (role && role !== 'ALL') {
+            const User = require('../models/User'); // Required if not already imported at top
+            const matchingUsers = await User.find({ role: role.toLowerCase() }).select('_id');
+            filter.performedBy = { $in: matchingUsers.map(u => u._id) };
+        }
+
+        const total = await AuditLog.countDocuments(filter);
+
+        let query = AuditLog.find(filter)
+            .populate('performedBy', 'username email role')
+            .sort({ timestamp: -1 })
+            .skip(startIndex)
+            .limit(limit);
+
+        const logs = await query;
+
+        res.json({
+            logs,
+            page,
+            pages: Math.ceil(total / limit),
+            total
+        });
+    } catch (error) {
+        console.error('getAuditLogs error:', error);
+        res.status(500).json({ message: 'Server error retrieving audit logs' });
+    }
+};
+
 module.exports = {
     getUsers,
     createUser,
@@ -473,5 +591,6 @@ module.exports = {
     getSystemStats,
     promoteStudents,
     getStaffProfile,
-    bulkUpdateStudents
+    bulkUpdateStudents,
+    getAuditLogs
 };

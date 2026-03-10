@@ -8,7 +8,7 @@ const {
     getDepartmentStudents
 } = require('../controllers/profileController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const { upload } = require('../middleware/uploadMiddleware');
 
 router.use(protect); // All routes require login
 
@@ -21,7 +21,7 @@ router.route('/me')
 router.get('/dept/staff', authorize('hod', 'admin'), getDepartmentStaff);
 router.get('/dept/students', authorize('hod', 'admin'), getDepartmentStudents);
 
-// Specific User Profile (Admin/HOD/Staff)
-router.get('/user/:id', authorize('hod', 'admin', 'staff'), getUserProfile);
+// Specific User Profile (Admin/HOD/Staff/Principal)
+router.get('/user/:id', authorize('hod', 'admin', 'staff', 'principal'), getUserProfile);
 
 module.exports = router;

@@ -20,23 +20,30 @@ const AdminDashboard = () => {
         staffCount: 0,
         deptCount: 0,
         subjectCount: 0,
-        storage: null
+        storage: null,
+        systemHealth: { database: 'Loading...', apiServer: 'Loading...', aiEngine: 'Loading...' }
     });
 
     useEffect(() => {
+        let isMounted = true;
         const fetchStats = async () => {
             try {
-                // Mock data fallback if API fails or is empty for demo purposes
-                // setStats({ studentCount: 1240, staffCount: 85, deptCount: 8, subjectCount: 42 });
-
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const res = await axios.get(`${API}/api/users/stats/system`, config);
-                setStats(res.data);
+                if (isMounted) setStats(res.data);
             } catch (error) {
                 console.error(error);
             }
         };
+
         fetchStats();
+        // Poll every 30 seconds
+        const intervalId = setInterval(fetchStats, 30000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
     }, [token]);
 
     const barData = [
@@ -137,7 +144,9 @@ const AdminDashboard = () => {
                                         <div className="text-xs text-gray-500">MongoDB Cluster</div>
                                     </div>
                                 </div>
-                                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">Healthy</span>
+                                <span className={`text-xs font-bold px-2 py-1 rounded ${stats.systemHealth.database === 'Healthy' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                                    {stats.systemHealth.database}
+                                </span>
                             </div>
 
                             <div className="flex items-center justify-between">
@@ -150,7 +159,9 @@ const AdminDashboard = () => {
                                         <div className="text-xs text-gray-500">Node.js / Express</div>
                                     </div>
                                 </div>
-                                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">99.9% Uptime</span>
+                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                    {stats.systemHealth.apiServer}
+                                </span>
                             </div>
 
                             <div className="flex items-center justify-between">
@@ -163,7 +174,9 @@ const AdminDashboard = () => {
                                         <div className="text-xs text-gray-500">Python / Ollama</div>
                                     </div>
                                 </div>
-                                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">Ready</span>
+                                <span className={`text-xs font-bold px-2 py-1 rounded ${stats.systemHealth.aiEngine === 'Ready' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                                    {stats.systemHealth.aiEngine}
+                                </span>
                             </div>
                         </div>
                     </Card>

@@ -27,6 +27,11 @@ const notificationSchema = new mongoose.Schema({
     },
     link: {
         type: String // Optional link to redirect user
+    },
+    priority: {
+        type: String,
+        enum: ['Normal', 'High', 'Emergency'],
+        default: 'Normal'
     }
 }, { timestamps: true });
 

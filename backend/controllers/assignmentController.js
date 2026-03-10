@@ -2,6 +2,7 @@ const Assignment = require('../models/Assignment');
 const Subject = require('../models/Subject');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
+const ReEvaluationRequest = require('../models/ReEvaluationRequest');
 
 // @desc    Create a new assignment
 // @route   POST /api/assignments
@@ -239,7 +240,8 @@ const getAssignmentGradebook = async (req, res) => {
         const studentFilter = {
             role: 'student',
             department: subject.department,
-            semester: subject.semester
+            semester: subject.semester,
+            isActive: true
         };
 
         // Section filter - Case insensitive to be safe
@@ -282,7 +284,8 @@ const getAssignmentGradebook = async (req, res) => {
 // @access  Private/Staff
 const getStaffStats = async (req, res) => {
     try {
-        const staffId = req.user.id;
+        const userId = req.user._id || req.user.id;
+        const staffId = userId;
 
         // 1. My Subjects
         // We need to query subjects where 'staff' array contains this user
@@ -304,11 +307,19 @@ const getStaffStats = async (req, res) => {
         const gradedCount = submissions.filter(s => s.status === 'graded').length;
         const pendingCount = submissionCount - gradedCount;
 
+        // 4. Pending Re-evaluations for my subjects
+        const pendingReEval = await ReEvaluationRequest.countDocuments({
+            subject: { $in: subjectIds },
+            status: 'Pending'
+        });
+        const pendingTotal = pendingCount + pendingReEval;
+
         res.json({
             subjectCount,
             assignmentCount,
             submissionCount,
-            pendingGrading: pendingCount
+            pendingGrading: pendingTotal,
+            pendingReEval
         });
 
     } catch (error) {

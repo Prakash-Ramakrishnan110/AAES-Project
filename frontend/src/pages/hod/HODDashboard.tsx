@@ -161,7 +161,7 @@ const HODDashboard = () => {
         { icon: UserPlus, label: 'Add Student', desc: 'Enroll new students to dept', color: 'from-blue-500 to-blue-600', link: '/hod/students' },
         { icon: Star, label: 'Assign Advisors', desc: 'Manage class responsibilities', color: 'from-purple-500 to-purple-600', action: () => setShowAdvisorModal(true) },
         { icon: BookOpen, label: 'Department Directory', desc: 'View all staff and student list', color: 'from-indigo-500 to-indigo-600', link: '/hod/directory' },
-        { icon: Activity, label: 'Detailed Analytics', desc: 'Deep dive into performance', color: 'from-teal-500 to-teal-600', link: '/hod/analytics' },
+        { icon: Activity, label: 'Class Activity Log', desc: 'Monitor department class logs', color: 'from-teal-500 to-teal-600', link: '/hod/activity-log' },
     ];
 
     return (
@@ -253,9 +253,9 @@ const HODDashboard = () => {
                                         <TrendingUp className="w-4 h-4 text-teal-600" />
                                         <h2 className="font-semibold text-gray-800">Performance Trend (Semester)</h2>
                                     </div>
-                                    <div className="p-6 h-80">
-                                        {trendData.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
+                                    <div className="p-6">
+                                        {trendData && trendData.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height={320}>
                                                 <LineChart data={trendData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                                     <XAxis dataKey="semester" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} dy={10} />
@@ -284,9 +284,9 @@ const HODDashboard = () => {
                                         <BarChart2 className="w-4 h-4 text-indigo-600" />
                                         <h2 className="font-semibold text-gray-800">Subject Averages</h2>
                                     </div>
-                                    <div className="p-5 h-80">
-                                        {subjectData.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
+                                    <div className="p-5">
+                                        {subjectData && subjectData.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height={320}>
                                                 <BarChart data={subjectData} layout="vertical" margin={{ left: 10 }}>
                                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                                                     <XAxis type="number" domain={[0, 100]} hide />
@@ -300,7 +300,7 @@ const HODDashboard = () => {
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-gray-400 text-sm">No subject metrics</div>
+                                            <div className="flex h-full items-center justify-center text-gray-400 text-sm">No subject data available</div>
                                         )}
                                     </div>
                                 </div>

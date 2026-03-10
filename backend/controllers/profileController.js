@@ -174,7 +174,8 @@ const updateMyProfile = async (req, res) => {
 
         // Handle profile image upload
         if (req.file) {
-            user.profileImage = `/uploads/profiles/${req.file.filename}`;
+            // multer stores the file in 'uploads/' not 'uploads/profiles/'
+            user.profileImage = `/uploads/${req.file.filename}`;
         } else if (req.body.profileImage) {
             user.profileImage = req.body.profileImage;
         }
@@ -229,16 +230,29 @@ const getUserProfile = async (req, res) => {
                 }
 
                 const Subject = require('../models/Subject');
-                const assignedSubjects = await Subject.find({ staff: req.user.id });
+                const ClassAdvisor = require('../models/ClassAdvisor');
 
-                const isMapped = assignedSubjects.some(sub =>
+                // Check if staff handles any subject for this student's class
+                const assignedSubjects = await Subject.find({ staff: req.user.id });
+                const isSubjectTeacher = assignedSubjects.some(sub =>
                     sub.department === targetUser.department &&
                     sub.semester === targetUser.semester &&
                     sub.academicYear === targetUser.academicYear
                 );
 
-                if (!isMapped) {
-                    return res.status(403).json({ message: 'Access Denied: Student not enrolled in your subjects' });
+                if (isSubjectTeacher) {
+                    // Allowed
+                } else {
+                    // Check if staff is the official Class Advisor for this student's year/dept
+                    const advisorRecord = await ClassAdvisor.findOne({
+                        staff: req.user.id,
+                        department: targetUser.department,
+                        academicYear: targetUser.academicYear
+                    });
+
+                    if (!advisorRecord) {
+                        return res.status(403).json({ message: 'Access Denied: You are not authorized to view this student profile' });
+                    }
                 }
             } else {
                 // Student cannot view arbitrary profiles via this endpoint

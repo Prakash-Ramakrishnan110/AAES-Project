@@ -29,14 +29,7 @@ const StudentDocumentViewer = () => {
     const [isAiLoading, setIsAiLoading] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        fetchResource();
-    }, [id, token]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    const hasAutoSummarized = useRef(false);
 
     const fetchResource = async () => {
         try {
@@ -82,6 +75,24 @@ const StudentDocumentViewer = () => {
             setIsAiLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchResource();
+    }, [id, token]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    useEffect(() => {
+        if (resource && resource.extractedText && !hasAutoSummarized.current && messages.length === 1) {
+            hasAutoSummarized.current = true;
+            // Delay slightly for better UX feel
+            setTimeout(() => {
+                handleSend("Please provide a very brief, 3-bullet point summary of this document and suggest what I should focus on.");
+            }, 1000);
+        }
+    }, [resource]);
 
     const quickActions = [
         "Summarize this document",
@@ -152,13 +163,19 @@ const StudentDocumentViewer = () => {
 
                 {/* Right Side: AI Assistant Chat */}
                 <div className="w-full lg:w-[450px] flex flex-col bg-white shrink-0 relative shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-10">
-                    <div className="px-5 py-4 border-b border-indigo-50 bg-white flex items-center gap-3 shrink-0">
-                        <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-md shadow-indigo-200/50">
-                            <Sparkles className="w-4 h-4" />
-                        </div>
-                        <div>
-                            <h2 className="font-bold text-gray-900 text-[15px] tracking-tight">AAES AI</h2>
-                            <p className="text-[11px] text-indigo-600 uppercase tracking-wider font-bold mt-0.5">Secure Document Query</p>
+                    <div className="px-5 py-4 border-b border-indigo-50 bg-white flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-md shadow-indigo-200/50 relative">
+                                <Sparkles className="w-4 h-4" />
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-gray-900 text-[15px] tracking-tight">AAES AI Assistant</h2>
+                                <p className="text-[10px] text-indigo-600 uppercase tracking-widest font-bold mt-0.5 flex items-center gap-1">
+                                    <span className="w-1 h-1 bg-indigo-400 rounded-full" />
+                                    Deep Document RAG Active
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -246,10 +263,14 @@ const StudentDocumentViewer = () => {
                                 <Send className="w-4 h-4 ml-0.5" />
                             </button>
                         </form>
-                        <div className="flex items-center justify-center gap-1 mt-3">
-                            <AlertCircle className="w-3 h-3 text-gray-400" />
-                            <p className="text-[10px] text-gray-400 font-medium">
-                                AI responses are generated strictly from the provided document context.
+                        <div className="flex items-center justify-center gap-1.5 mt-3">
+                            <div className="flex gap-1">
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse" />
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse [animation-delay:0.2s]" />
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse [animation-delay:0.4s]" />
+                            </div>
+                            <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-tight">
+                                AI searches specific segments of this document for precision
                             </p>
                         </div>
                     </div>

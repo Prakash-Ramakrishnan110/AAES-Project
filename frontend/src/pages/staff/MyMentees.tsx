@@ -13,7 +13,7 @@ const MyMentees = () => {
 
     const [selectedMentee, setSelectedMentee] = useState<any>(null);
     const [queries, setQueries] = useState<any[]>([]);
-    const [replyText, setReplyText] = useState('');
+    const [replyTexts, setReplyTexts] = useState<{ [key: string]: string }>({});
     const [submittingReply, setSubmittingReply] = useState<string | null>(null);
 
     const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -43,7 +43,7 @@ const MyMentees = () => {
                 // Sort by risk (Critical first)
                 enhancedData.sort((a: any, b: any) => b.riskLevel - a.riskLevel);
                 setMentees(enhancedData);
-            } catch (err) { }
+            } catch (err) { console.error('Error fetching mentees:', err); }
             setLoading(false);
         };
         fetchMentees();
@@ -61,14 +61,17 @@ const MyMentees = () => {
     };
 
     const handleReplyQuery = async (queryId: string) => {
-        if (!replyText.trim()) return;
+        const text = replyTexts[queryId] || '';
+        if (!text.trim()) return;
         setSubmittingReply(queryId);
         try {
-            const res = await axios.put(`${API}/api/mentorship/${queryId}/reply`, { reply: replyText, status: 'Resolved' }, config);
+            const res = await axios.put(`${API}/api/mentorship/${queryId}`, { reply: text, status: 'Resolved' }, config);
             setQueries(queries.map(q => q._id === queryId ? res.data : q));
-            setReplyText('');
+            setReplyTexts(prev => ({ ...prev, [queryId]: '' }));
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Error sending reply');
+            const msg = err.response?.data?.message || err.message || 'Error sending reply';
+            alert(`Failed to reply: ${msg}`);
+            console.error('Reply error:', err);
         } finally {
             setSubmittingReply(null);
         }
@@ -192,10 +195,14 @@ const MyMentees = () => {
                                                     {q.status === 'Open' ? (
                                                         <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
                                                             <input type="text" placeholder="Reply to resolve..."
-                                                                value={replyText} onChange={e => setReplyText(e.target.value)}
+                                                                value={replyTexts[q._id] || ''}
+                                                                onChange={e => setReplyTexts(prev => ({ ...prev, [q._id]: e.target.value }))}
                                                                 className="flex-1 text-xs px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-indigo-500" />
-                                                            <button onClick={() => handleReplyQuery(q._id)} disabled={submittingReply === q._id || !replyText.trim()}
-                                                                className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                                                            <button
+                                                                onClick={() => handleReplyQuery(q._id)}
+                                                                disabled={submittingReply === q._id || !(replyTexts[q._id] || '').trim()}
+                                                                className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                                            >
                                                                 {submittingReply === q._id ? 'Sending...' : 'Resolve'}
                                                             </button>
                                                         </div>

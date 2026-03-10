@@ -33,7 +33,8 @@ if not os.path.exists(UPLOAD_DIR):
 
 # Ollama Configuration
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "gemma3:1b" # Updated to match user's installed model
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
+ADVANCED_OLLAMA_MODEL = os.getenv("ADVANCED_OLLAMA_MODEL", "qwen3:8b")
 
 def extract_json(text: str):
     """Deeply extracts and cleans JSON from LLM output."""
@@ -108,15 +109,20 @@ def extract_json(text: str):
     logger.info(f"Attempting JSON parse on text of length {len(clean_text)}")
     return json.loads(clean_text)
 
-def query_ollama(prompt: str):
+def query_ollama(prompt: str, model: str = None):
     """Sends a prompt to Ollama and returns the JSON response."""
+    selected_model = model if model else OLLAMA_MODEL
     try:
         payload = {
-            "model": OLLAMA_MODEL,
+            "model": selected_model,
             "prompt": prompt,
             "stream": False,
-            "format": "json" # Force JSON output mode if supported by model/version, otherwise instruct in prompt
+            "format": "json",
+            "options": {
+                "num_predict": 2048 # Increase output limit to prevent truncation for long lists
+            }
         }
+        logger.info(f"Querying model: {selected_model}")
         response = requests.post(OLLAMA_URL, json=payload)
         response.raise_for_status()
         return response.json()['response']
@@ -125,9 +131,24 @@ def query_ollama(prompt: str):
         return None
 
 import fitz  # PyMuPDF
+from PIL import ImageEnhance, ImageFilter, ImageOps
+
+def preprocess_image_for_ocr(img):
+    """Deep academic preprocessing for OCR."""
+    # 1. Convert to Grayscale
+    img = img.convert('L')
+    # 2. Normalize contrast automatically
+    img = ImageOps.autocontrast(img)
+    # 3. Enhance Contrast significantly
+    enhancer = ImageEnhance.Contrast(img)
+    img = enhancer.enhance(2.5)
+    # 4. Sharpen for better character definition
+    img = img.filter(ImageFilter.SHARPEN)
+    img = img.filter(ImageFilter.DETAIL)
+    return img
 
 def perform_ocr(image_path: str):
-    """Extracts text from an image or PDF file."""
+    """Extracts text from an image or PDF file using High-Res 3.5x scaling and adaptive PSM."""
     try:
         ext = image_path.lower().split('.')[-1]
         
@@ -142,11 +163,23 @@ def perform_ocr(image_path: str):
                     text += page_text + "\n"
                     continue
                 
-                # 2. If no text found, assume it is a scanned image inside a PDF and try OCR
+                # 2. Scanned PDF logic
                 try:
-                    pix = page.get_pixmap()
+                    # Upgrade to 3.5x zoom (High fidelity)
+                    zoom = 3.5
+                    mat = fitz.Matrix(zoom, zoom)
+                    pix = page.get_pixmap(matrix=mat)
                     img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                    ocr_text = pytesseract.image_to_string(img).strip()
+                    
+                    img = preprocess_image_for_ocr(img)
+                    
+                    # Adaptive PSM: Start with PSM 6 (Uniform Block)
+                    ocr_text = pytesseract.image_to_string(img, config=r'--oem 3 --psm 6').strip()
+                    
+                    # Fallback if text is suspiciously short (potential layout issue)
+                    if len(ocr_text) < 50:
+                        ocr_text = pytesseract.image_to_string(img, config=r'--oem 3 --psm 3').strip()
+                        
                     if ocr_text:
                         text += ocr_text + "\n"
                 except Exception as e:
@@ -158,8 +191,15 @@ def perform_ocr(image_path: str):
         # Handle Image files
         else:
             try:
-                text = pytesseract.image_to_string(Image.open(image_path))
-                return text.strip()
+                img = Image.open(image_path)
+                img = preprocess_image_for_ocr(img)
+                
+                # Adaptive PSM for images
+                ocr_text = pytesseract.image_to_string(img, config=r'--oem 3 --psm 6').strip()
+                if len(ocr_text) < 50:
+                    ocr_text = pytesseract.image_to_string(img, config=r'--oem 3 --psm 3').strip()
+                
+                return ocr_text
             except Exception as e:
                 logger.error(f"Failed to extract text from image due to OCR error: {e}")
                 return ""
@@ -380,6 +420,7 @@ class PPTRequest(BaseModel):
 @app.post("/generate/assignment")
 async def generate_assignment(req: AssignmentRequest):
     if req.type == "Python" or req.type == "C" or req.type == "Java" or req.type == "Programming":
+        # ... (programming prompt remains same)
         lang = req.type if req.type in ["Python", "C", "Java"] else "Python"
         prompt = f"""
         Generate a university-level {lang} programming assignment using the following context:
@@ -419,43 +460,64 @@ async def generate_assignment(req: AssignmentRequest):
             "total_marks": {req.marks}
         }}
         """
+    elif req.type == "Seminar":
+        prompt = f"""
+        Act as an academic assistant. Generate exactly {req.question_count} presentation topics.
+
+        CONTEXT:
+        Subject: {req.subject}
+        Topic: {req.topic}
+
+        RULES:
+        1. OUTPUT EXACTLY {req.question_count} TOPICS.
+        2. USE NUMBERING (1., 2., 3., etc) to keep track of the count.
+        3. Professional titles only.
+        4. Provide one 'modelAnswer' summarizing the guidelines.
+
+        JSON FORMAT:
+        {{
+            "title": "Seminar: {req.subject}",
+            "questions": ["1. Topic A", "2. Topic B", "3. Topic C"],
+            "modelAnswer": "Brief guidelines."
+        }}
+        """
     else:
         prompt = f"""
-        Generate a university-level assignment using the following academic context:
-
+        Generate a university-level descriptive theory assignment.
+        
+        CONTEXT:
         Department: {req.department}
         Subject: {req.subject}
         Semester: {req.semester}
-        Academic Year: {req.academic_year}
-        Assignment Type: Theory / Descriptive
         Topic: {req.topic}
         Difficulty: {req.difficulty}
         Total Marks: {req.marks}
-        Number of Main Questions to Generate: {req.question_count}
-        Keywords expected in answers: {req.keywords if req.keywords else "Standard academic concepts"}
+        Desired Question Count: {req.question_count}
+        Keywords to include: {req.keywords if req.keywords else "Standard academic concepts"}
         
-        Evaluation Rubric (Questions should be design to test these):
-        {json.dumps(req.rubric, indent=2)}
-
-        Requirements:
-        Generate exactly {req.question_count} distinct questions.
-        The questions must align strictly with the given topic and keywords.
-        Each question must be clear, structured, and academically valid.
+        STRICT REQUIREMENTS:
+        1. Generate EXACTLY {req.question_count} distinct questions. Use numbering (1., 2., 3...) to ensure accuracy.
+        2. Each question must be a complete academic sentence.
+        3. Align questions with {req.difficulty} difficulty level.
+        4. Provide a detailed combined model answer for ALL questions.
         
-        Provide a structured model answer for each question that includes the requested keywords.
-
-        Return output strictly in this JSON format matching the schema below:
+        OUTPUT FORMAT (Return strictly valid JSON):
         {{
-            "title": "Assignment Title",
+            "title": "[A compelling academic title for the assignment]",
             "questions": [
-                "1. [Question text here]",
-                "2. [Question text here]"
+                "[Question 1 text]",
+                "[Question 2 text]"
             ],
-            "modelAnswer": "[Detailed combined model answer for all questions, highlighting the keywords]"
+            "modelAnswer": "[Detailed combined response showing how to answer these questions using the specified keywords]"
         }}
         """
 
-    response = query_ollama(prompt)
+    # Select model based on difficulty and type
+    is_hard = req.difficulty.lower() == "hard"
+    is_seminar = req.type == "Seminar"
+    target_model = ADVANCED_OLLAMA_MODEL if (is_hard or is_seminar) else OLLAMA_MODEL
+
+    response = query_ollama(prompt, model=target_model)
     if not response:
         raise HTTPException(status_code=503, detail="AI Service Unavailable")
     
@@ -481,35 +543,34 @@ async def generate_assignment(req: AssignmentRequest):
 @app.post("/generate/quiz")
 async def generate_quiz(req: QuizRequest):
     prompt = f"""
-    Generate an academic quiz using:
+    Generate a university-level MCQ quiz.
 
-    Department: {req.department}
+    CONTEXT:
     Subject: {req.subject}
-    Semester: {req.semester}
     Topic: {req.topic}
-    Number of Questions: {req.count}
-    Difficulty: "Medium"
+    Difficulty: Medium
+    Count: {req.count}
 
-    Requirements:
-    - Generate EXACTLY {req.count} multiple choice questions.
-    - The "options" array MUST contain exactly 4 string elements corresponding to the choices.
-    - Do NOT put the correct answer or the explanation inside the "options" array.
-    - Provide the "correct_answer" and "explanation" as separate fields.
-
-    Return ONLY a valid JSON object matching the exact structure below. Do not include markdown:
+    STRICT REQUIREMENTS:
+    1. Generate EXACTLY {req.count} multiple choice questions.
+    2. "options" must be a list of EXACTLY 4 strings.
+    3. DO NOT include "A.", "B.", "C." prefixes in options.
+    4. "correct_answer" must exactly match one of the strings in the "options" list.
+    
+    OUTPUT FORMAT (Return strictly valid JSON):
     {{
-        "quiz_title": "string",
+        "quiz_title": "[Title of the Quiz]",
         "questions": [
             {{
-                "question": "string",
-                "options": ["string", "string", "string", "string"],
-                "correct_answer": "string",
-                "explanation": "string"
+                "question": "[Question text]",
+                "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
+                "correct_answer": "Opt1",
+                "explanation": "[Brief academic explanation]"
             }}
         ]
     }}
     """
-    response = query_ollama(prompt)
+    response = query_ollama(prompt, model=ADVANCED_OLLAMA_MODEL)
     if not response:
         raise HTTPException(status_code=503, detail="AI Service Unavailable")
 
@@ -532,7 +593,7 @@ async def generate_ppt(req: PPTRequest):
     Requirements:
     Each slide must contain:
     Slide title
-    4–6 bullet points
+    4-6 bullet points
     Content must match semester level
     Include summary slide at end
 
@@ -547,10 +608,9 @@ async def generate_ppt(req: PPTRequest):
         ]
     }}
     """
-    response = query_ollama(prompt)
+    response = query_ollama(prompt, model=ADVANCED_OLLAMA_MODEL)
     if not response:
         raise HTTPException(status_code=503, detail="AI Service Unavailable")
-
     try:
         return extract_json(response)
     except Exception as e:
@@ -560,30 +620,52 @@ class DoubtRequest(BaseModel):
     question: str
     context: str
 
+@app.post("/retrieve")
+async def retrieve_context(
+    query: str = Form(...),
+    corpus: str = Form(...) # JSON string of documents/chunks
+):
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+        
+        docs = json.loads(corpus)
+        if not docs or len(docs) == 0:
+            return {"results": []}
+            
+        # Combine query with documents
+        texts = [query] + [d["text"] for d in docs]
+        
+        vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf_matrix = vectorizer.fit_transform(texts)
+        
+        # Similarity of query (index 0) with all docs (index 1+)
+        cosine_sim = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
+        
+        # Get top 5 indices
+        top_indices = cosine_sim.argsort()[-5:][::-1]
+        
+        results = []
+        for idx in top_indices:
+            if cosine_sim[idx] > 0.05: # Confidence threshold
+                results.append({
+                    "text": docs[idx]["text"],
+                    "score": float(cosine_sim[idx]),
+                    "metadata": docs[idx].get("metadata", {})
+                })
+                
+        return {"results": results}
+    except Exception as e:
+        logger.error(f"Retrieval Error: {e}")
+        return {"results": [], "error": str(e)}
+
 @app.post("/ask_doubt")
 async def ask_doubt(req: DoubtRequest):
     if not req.question or not req.context:
         raise HTTPException(status_code=400, detail="Missing question or context")
-    if len(req.question) > 500:
-        raise HTTPException(status_code=400, detail="Question is too long")
-
-    prompt = f"""You are 'ClassTrack AI', an intelligent academic assistant designed to help students understand their study materials.
-
-STRICT RULES:
-1. You must ONLY answer the student's question based on the provided context.
-2. If the answer is not contained in the context, you MUST say "I cannot answer this based on the provided notes." Do not generate external information.
-3. Be concise, educational, and clear.
-4. If asked to summarize, summarize the provided context only.
-
-Context:
-{req.context}
-
-Student Question:
-{req.question}
-
-Your Answer:"""
-
-    response = query_ollama(prompt)
+    
+    prompt = f"Context: {req.context}\nQuestion: {req.question}\nAnswer:"
+    response = query_ollama(prompt, model=OLLAMA_MODEL)
     if not response:
         raise HTTPException(status_code=503, detail="AI Service Unavailable")
     return {"answer": response}

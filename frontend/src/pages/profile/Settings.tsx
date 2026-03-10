@@ -108,10 +108,20 @@ const Settings = () => {
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`${API}/api/auth/settings`, accountData, config);
-            setToastMessage({ text: 'Account updated successfully', type: 'success' });
+            const { data } = await axios.put(`${API}/api/auth/settings`, accountData, config);
+            // Refresh form values from the server's response to confirm what was saved
+            setAccountData({
+                fullName: data.fullName || '',
+                phone: data.phone || '',
+                bloodGroup: data.bloodGroup || '',
+                schooling: data.schooling || '',
+                currentCgpa: data.currentCgpa || '',
+                historyOfArrears: data.historyOfArrears || ''
+            });
+            setToastMessage({ text: `Profile saved successfully`, type: 'success' });
         } catch (error: any) {
-            setToastMessage({ text: 'Update failed', type: 'error' });
+            const msg = error.response?.data?.message || 'Update failed';
+            setToastMessage({ text: msg, type: 'error' });
         } finally {
             setIsLoading(false);
             setTimeout(() => setToastMessage(null), 3000);
@@ -124,13 +134,18 @@ const Settings = () => {
             setToastMessage({ text: 'Passwords do not match', type: 'error' });
             return;
         }
+        if (passwordData.newPassword.length < 6) {
+            setToastMessage({ text: 'Password must be at least 6 characters', type: 'error' });
+            return;
+        }
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             await axios.post(`${API}/api/auth/change-password`, {
+                currentPassword: passwordData.currentPassword,
                 newPassword: passwordData.newPassword
             }, config);
-            setToastMessage({ text: 'Password updated', type: 'success' });
+            setToastMessage({ text: 'Password updated successfully', type: 'success' });
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } catch (error: any) {
             setToastMessage({ text: error.response?.data?.message || 'Update failed', type: 'error' });

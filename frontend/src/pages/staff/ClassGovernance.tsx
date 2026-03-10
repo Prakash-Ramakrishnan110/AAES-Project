@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, AlertTriangle, AlertOctagon, Activity, Search, BookOpen, MessageSquare, Calendar, Plus, X, CheckCircle, Clock } from 'lucide-react';
+import { Users, AlertTriangle, AlertOctagon, Activity, Search, BookOpen, MessageSquare, Calendar, Plus, X, CheckCircle, Clock, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import EmptyState from '../../components/ui/EmptyState';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -48,6 +49,7 @@ interface CCMRecord {
 const CATEGORIES = ['Academic', 'Infrastructure', 'Faculty', 'Exam'];
 
 const ClassGovernance = () => {
+    const navigate = useNavigate();
     const { token } = useContext(AuthContext)!;
     const toast = useToast();
     const [summary, setSummary] = useState<ClassSummary | null>(null);
@@ -154,6 +156,20 @@ const ClassGovernance = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 border-b-2 border-purple-600 inline-block pb-1">Class Governance</h1>
                     <p className="text-gray-500 text-sm mt-2">Monitor class health, mentor activity, and committee meetings.</p>
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => navigate('/staff/advisor/documents')}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors text-sm font-semibold border border-amber-100 shadow-sm"
+                    >
+                        <FileText className="w-4 h-4" /> Student Documents
+                    </button>
+                    <button
+                        onClick={fetchDashboardData}
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-gray-600 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold border border-gray-200 shadow-sm"
+                    >
+                        <Activity className="w-4 h-4" /> Refresh
+                    </button>
                 </div>
             </div>
 

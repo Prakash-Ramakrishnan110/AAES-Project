@@ -107,7 +107,7 @@ const Login = () => {
     };
 
     const handleDemoLogin = (role: string) => {
-        let creds = { email: '', password: 'password123' };
+        const creds = { email: '', password: 'password123' };
         switch (role) {
             case 'admin': creds.email = 'admin@aaes.com'; break;
             case 'hod': creds.email = 'hod.cse@aaes.com'; break;
@@ -139,19 +139,19 @@ const Login = () => {
                 <div className="bg-white border border-gray-100 p-8 rounded-2xl shadow-xl">
                     <div className="text-center mb-8">
                         <div className="flex justify-center mb-6">
-                            <div className="flex items-center space-x-4">
-                                <div className="flex flex-col items-center">
-                                    <span className="text-4xl font-serif font-black tracking-tight text-slate-900 leading-none">
-                                        𝐀𝐀𝐄𝐒
+                            <div className="flex items-center space-x-3">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                                <div className="flex flex-col items-start">
+                                    <span className="text-2xl font-black tracking-tight text-slate-900 leading-none">
+                                        AAES
                                     </span>
-                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.25em] leading-none mt-2">
-                                        Academic Analytics & Evaluation System
+                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
+                                        Academic Analytics
                                     </span>
                                 </div>
-
                             </div>
                         </div>
-                        <h1 className="text-2xl font-bold font-display text-gray-900 mb-2">Institutional Intelligence Portal</h1>
+                        <h1 className="text-2xl font-bold font-sans text-gray-900 mb-2">Institutional Intelligence Portal</h1>
                         <p className="text-gray-500 text-sm">
                             {isChangingPassword ? 'Please secure your account with a new password' : 'Select a demo account to get started'}
                         </p>

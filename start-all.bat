@@ -67,6 +67,7 @@ echo.
 
 timeout /t 10 /nobreak >nul
 start "" "http://localhost:3050"
+start "" "http://localhost:5000"
 
 echo.
 echo  Opening MongoDB Compass...

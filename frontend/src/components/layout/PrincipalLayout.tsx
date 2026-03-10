@@ -1,12 +1,14 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import {
-    LayoutDashboard, Building2, Globe
+    LayoutDashboard, Building2, Globe, Bell
 } from 'lucide-react';
 
 const PrincipalLayout = () => {
     const menuItems = [
         { icon: <LayoutDashboard className="w-5 h-5" />, label: "Executive Dashboard", to: "/principal/dashboard" },
+        { icon: <Bell className="w-5 h-5" />, label: "Communications", to: "/principal/communications" },
         {
             icon: <Globe className="w-5 h-5" />,
             label: "Institutional Insights",
@@ -14,6 +16,7 @@ const PrincipalLayout = () => {
             items: [
                 { label: "Global Analytics", to: "/principal/analytics" },
                 { label: "Institutional Risk", to: "/principal/risk" },
+                { label: "Class Activity Log", to: "/principal/activity-log" },
                 { label: "Audit Logs", to: "/principal/audit" },
             ]
         },
@@ -22,8 +25,8 @@ const PrincipalLayout = () => {
             label: "Administration",
             to: "/principal/departments",
             items: [
-                { label: "Infrastructure", to: "/principal/departments" },
                 { label: "Administrative Staff", to: "/principal/staff" },
+                { label: "Leave Management", to: "/principal/leaves" },
                 { label: "System Settings", to: "/principal/settings" },
             ]
         },
@@ -31,7 +34,13 @@ const PrincipalLayout = () => {
 
     return (
         <DashboardLayout menuItems={menuItems} role="Principal">
-            <Outlet />
+            <Suspense fallback={
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            }>
+                <Outlet />
+            </Suspense>
         </DashboardLayout>
     );
 };

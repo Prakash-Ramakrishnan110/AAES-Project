@@ -11,16 +11,28 @@ const storage = multer.diskStorage({
     }
 });
 
-// Check file type
-function checkFileType(file, cb) {
-    const filetypes = /jpeg|jpg|png|gif/;
+// Check document file type (PDF and Images)
+function checkDocumentFileType(file, cb) {
+    const filetypes = /jpeg|jpg|png|pdf/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
+    const mimetype = /image\/(jpeg|jpg|png)|application\/pdf/.test(file.mimetype);
 
     if (mimetype && extname) {
         return cb(null, true);
     } else {
-        cb('Error: Images Only!');
+        cb(new Error('Error: Documents Only! Supported formats: jpg, jpeg, png, pdf'));
+    }
+}
+
+function checkFileType(file, cb) {
+    const filetypes = /jpeg|jpg|png/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = /image\/(jpeg|jpg|png)/.test(file.mimetype);
+
+    if (mimetype && extname) {
+        return cb(null, true);
+    } else {
+        cb(new Error('Error: Images Only!'));
     }
 }
 
@@ -33,4 +45,13 @@ const upload = multer({
     }
 });
 
-module.exports = upload;
+// Init document upload
+const documentUpload = multer({
+    storage: storage,
+    limits: { fileSize: 10000000 }, // 10MB limit for docs
+    fileFilter: function (req, file, cb) {
+        checkDocumentFileType(file, cb);
+    }
+});
+
+module.exports = { upload, documentUpload };

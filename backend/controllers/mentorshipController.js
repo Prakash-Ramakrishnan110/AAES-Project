@@ -91,9 +91,14 @@ const createQuery = async (req, res) => {
 const replyQuery = async (req, res) => {
     try {
         const { reply, status, followUpDate } = req.body;
+        console.log(`[DEBUG] Reply Attempt: QueryID=${req.params.id}, UserID=${req.user._id}, Role=${req.user.role}`);
+
         const query = await MentorshipQuery.findById(req.params.id);
 
-        if (!query) return res.status(404).json({ message: 'Query not found' });
+        if (!query) {
+            console.log(`[DEBUG] Query not found: ${req.params.id}`);
+            return res.status(404).json({ message: 'Query not found' });
+        }
 
         // Lock already resolved queries
         if (query.status === 'Resolved') {
@@ -101,7 +106,12 @@ const replyQuery = async (req, res) => {
         }
 
         // Only the assigned mentor can reply, not HOD/Admin.
-        if (req.user.role !== 'staff' || query.mentor.toString() !== req.user.id.toString()) {
+        const isMatch = query.mentor.toString() === req.user.id.toString();
+        console.log(`[DEBUG] Mentor Match: ${isMatch} (Query.mentor=${query.mentor}, User.id=${req.user.id})`);
+
+        if (req.user.role !== 'staff' || !isMatch) {
+            const reason = req.user.role !== 'staff' ? 'Role is not staff' : 'Mentor ID mismatch';
+            await createAuditLog('REPLY_FAILED_AUTH', req.user.id, query._id, query.department, { reason });
             return res.status(403).json({ message: 'Only the assigned mentor can reply to this query' });
         }
 
@@ -115,11 +125,14 @@ const replyQuery = async (req, res) => {
         if (followUpDate) query.followUpDate = followUpDate;
 
         await query.save();
+        console.log(`[DEBUG] Query saved successfully: ${query._id}`);
 
         await createAuditLog('REPLY_MENTORSHIP_QUERY', req.user.id, query._id, query.department, { status });
 
         res.json(query);
     } catch (error) {
+        console.error(`[DEBUG] Reply Error:`, error);
+        await createAuditLog('REPLY_FAILED_ERROR', req.user.id, req.params.id, 'UNKNOWN', { error: error.message });
         res.status(400).json({ message: error.message });
     }
 };
@@ -184,7 +197,7 @@ const assignMentors = async (req, res) => {
 // @access  Private/Staff
 const getMyMentees = async (req, res) => {
     try {
-        const mentees = await User.find({ mentor: req.user.id })
+        const mentees = await User.find({ mentor: req.user.id, isActive: true })
             .select('username fullName registerNumber department profileImage academicYear semester');
 
         // Wrap the students to preserve frontend compatibility

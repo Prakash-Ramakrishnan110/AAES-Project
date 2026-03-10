@@ -174,7 +174,8 @@ exports.getAdvisorDashboard = async (req, res) => {
         const students = await User.find({
             role: 'student',
             department: advisorRecord.department,
-            academicYear: advisorRecord.academicYear
+            academicYear: advisorRecord.academicYear,
+            isActive: true
         }).populate('mentor', 'fullName username');
 
         let totalStudents = students.length;
@@ -250,7 +251,7 @@ exports.getHODGovernanceDashboard = async (req, res) => {
     try {
         const department = req.user.department;
 
-        const students = await User.find({ role: 'student', department });
+        const students = await User.find({ role: 'student', department, isActive: true });
         const staff = await User.find({ role: 'staff', department });
         const classAdvisors = await ClassAdvisor.find({ department });
 
@@ -345,7 +346,7 @@ exports.updateEscalation = async (req, res) => {
 exports.getPrincipalDashboard = async (req, res) => {
     try {
         // Institution-wide aggregates
-        const students = await User.find({ role: 'student' });
+        const students = await User.find({ role: 'student', isActive: true });
         const risks = await StudentRisk.find({});
         const escalations = await Escalation.find({ status: { $ne: 'Closed' } });
 
@@ -372,7 +373,7 @@ exports.getPrincipalDashboard = async (req, res) => {
                 totalStudents: students.length,
                 totalRed,
                 totalYellow,
-                totalGreen,
+                totalGreen: Math.max(0, students.length - (totalRed + totalYellow)),
                 activeEscalations: escalations.length
             },
             departmentComparison: Object.entries(deptStats).map(([dept, data]) => ({
@@ -396,27 +397,20 @@ exports.getPrincipalDashboard = async (req, res) => {
  ================================================== */
 
 // GET Infrastructure Summary
+const Infrastructure = require('../models/Infrastructure');
 exports.getPrincipalInfrastructure = async (req, res) => {
     try {
-        const departments = await User.distinct('department');
-        const infrastructure = [];
+        const infrastructure = await Infrastructure.find({});
 
-        for (const dept of departments) {
-            if (!dept) continue;
-            const [staffCount, studentCount, subjectCount] = await Promise.all([
-                User.countDocuments({ department: dept, role: 'staff' }),
-                User.countDocuments({ department: dept, role: 'student' }),
-                Subject.countDocuments({ department: dept })
-            ]);
-
-            infrastructure.push({
-                name: dept,
-                staffCount,
-                studentCount,
-                subjectCount,
-                resourceHealth: Math.floor(Math.random() * (100 - 85 + 1) + 85), // simulated resource health
-                lastAudit: new Date()
-            });
+        // If empty, seed some initial data for the user
+        if (infrastructure.length === 0) {
+            const seed = [
+                { name: 'Main IT Lab', type: 'IT Hub', location: 'Block A, 2nd Floor', status: 'Functional', utilizationRate: 85 },
+                { name: 'Physics Lab', type: 'Laboratory', location: 'Block B, Ground Floor', status: 'Functional', utilizationRate: 60 },
+                { name: 'Conference Hall', type: 'Auditorium', location: 'C-Block', status: 'Maintenance', utilizationRate: 0 }
+            ];
+            await Infrastructure.insertMany(seed);
+            return res.json(seed);
         }
 
         res.json(infrastructure);
@@ -425,10 +419,23 @@ exports.getPrincipalInfrastructure = async (req, res) => {
     }
 };
 
+// GET Institutional Goals (KPIs)
+const Settings = require('../models/Settings');
+exports.getInstitutionalGoals = async (req, res) => {
+    try {
+        const settings = await Settings.findOne({ isInitialized: true });
+        res.json(settings ? settings.institutionalGoals : []);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // GET Institutional Staff Overview
 exports.getPrincipalStaff = async (req, res) => {
     try {
-        const hods = await User.find({ role: 'hod' }).select('fullName username email department lastLogin');
+        const hods = await User.find({ role: 'hod' }).select('fullName username email department lastLogin profileImage academicYear');
+        const facultyMembers = await User.find({ role: 'staff' }).select('fullName username email department lastLogin profileImage academicYear');
+
         const staffDistribution = await User.aggregate([
             { $match: { role: 'staff' } },
             { $group: { _id: '$department', count: { $sum: 1 } } }
@@ -436,6 +443,8 @@ exports.getPrincipalStaff = async (req, res) => {
 
         res.json({
             hods,
+            staff: facultyMembers,
+            allStaff: facultyMembers, // Adding another key for safety
             distribution: (staffDistribution || []).map(d => ({ department: d._id, count: d.count }))
         });
     } catch (error) {

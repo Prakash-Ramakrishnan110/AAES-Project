@@ -4,7 +4,8 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ShieldAlert, TrendingUp, Info,
-    ChevronRight, Map, Filter, Download, X, Save
+    Download, X, Save,
+    AlertTriangle, Target
 } from 'lucide-react';
 import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
@@ -12,7 +13,6 @@ import {
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const PrincipalRisk = () => {
@@ -60,7 +60,7 @@ const PrincipalRisk = () => {
                 head: [['Department', 'Total Students', 'Critical (Red)', 'Warning (Yellow)', 'Risk Score']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [220, 38, 38] }
+                headStyles: { fillColor: [79, 70, 229] }
             });
 
             doc.save(`Institutional_Risk_Report_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -70,8 +70,11 @@ const PrincipalRisk = () => {
     };
 
     if (loading || !stats) return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center justify-center min-h-screen bg-slate-50">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest">Calibrating Risk Sensors...</p>
+            </div>
         </div>
     );
 
@@ -84,222 +87,219 @@ const PrincipalRisk = () => {
     })).sort((a: any, b: any) => b.riskScore - a.riskScore);
 
     return (
-        <div className="p-5 space-y-5 max-w-7xl mx-auto">
-            {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3"
-            >
-                <div>
-                    <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5 text-red-600" /> Institutional Risk Intel
-                    </h1>
-                    <p className="text-slate-500 text-sm mt-0.5">Heatmaps and predictive analysis of academic vulnerability.</p>
+        <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 font-sans selection:bg-indigo-100">
+            {/* Unified Top Header Context */}
+            <header className="bg-white border-b border-slate-200 px-8 py-6 shadow-sm sticky top-0 z-40 w-full">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 uppercase first-letter:uppercase">
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3 lowercase first-letter:uppercase">
+                            <AlertTriangle className="w-5 h-5 text-indigo-600" /> Risk Intelligence
+                        </h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Predictive Vulnerability Analysis</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={exportToPDF}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
+                        >
+                            <Download className="w-3.5 h-3.5" /> Export Report
+                        </button>
+                        <button
+                            onClick={() => setShowThresholdModal(true)}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-slate-200"
+                        >
+                            <Target className="w-3.5 h-3.5" /> Policy Thresholds
+                        </button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={exportToPDF}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition-colors"
+            </header>
+
+            <main className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-10">
+                {/* Risk Distribution Heatmap */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="lg:col-span-3 bg-white border border-slate-200 p-8 rounded-2xl shadow-sm relative overflow-hidden"
                     >
-                        <Download className="w-3.5 h-3.5" /> Export PDF
-                    </button>
-                    <button
-                        onClick={() => setShowThresholdModal(true)}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold shadow hover:bg-red-700 transition-all"
-                    >
-                        <Filter className="w-3.5 h-3.5" /> Adjust Thresholds
-                    </button>
-                </div>
-            </motion.div>
-
-            {/* Risk Distribution Heatmap */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="lg:col-span-3 bg-white border border-slate-100 p-5 rounded-2xl shadow-sm relative overflow-hidden"
-                >
-                    <div className="mb-5 flex justify-between items-center">
-                        <div>
-                            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Institutional Heatmap</h2>
-                            <p className="text-slate-400 font-medium text-[11px] mt-0.5">Cross-departmental vulnerability score comparison.</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 bg-red-500 rounded-full" />
-                                <span className="text-[10px] font-bold uppercase text-slate-400">Critical</span>
+                        <div className="mb-8 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Institutional Risk Heatmap</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Cross-departmental vulnerability score comparison</p>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 bg-amber-400 rounded-full" />
-                                <span className="text-[10px] font-bold uppercase text-slate-400">Warning</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={heatmapData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                                    angle={-35}
-                                    textAnchor="end"
-                                />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} />
-                                <Tooltip
-                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                    content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                            const d = payload[0].payload;
-                                            return (
-                                                <div className="bg-slate-900 p-3 rounded-xl shadow-xl text-white text-xs">
-                                                    <p className="font-bold uppercase tracking-widest border-b border-white/10 pb-1.5 mb-1.5">{d.name}</p>
-                                                    <div className="space-y-1">
-                                                        <div className="flex justify-between gap-6"><span className="text-red-400">Critical:</span><span className="font-bold">{d.critical}</span></div>
-                                                        <div className="flex justify-between gap-6"><span className="text-amber-400">Warning:</span><span className="font-bold">{d.warning}</span></div>
-                                                        <div className="flex justify-between gap-6 border-t border-white/10 pt-1"><span className="text-indigo-300">Risk Score:</span><span className="font-bold text-indigo-400">{d.riskScore}%</span></div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }}
-                                />
-                                <Bar dataKey="critical" stackId="a" fill="#EF4444" barSize={30} />
-                                <Bar dataKey="warning" stackId="a" fill="#F59E0B" radius={[6, 6, 0, 0]} barSize={30} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </motion.div>
-
-                {/* Vertical Stat Strip */}
-                <div className="space-y-4">
-                    <div className="bg-red-600 p-5 rounded-2xl text-white shadow-lg">
-                        <TrendingUp className="w-5 h-5 mb-3 opacity-70" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Highest Vulnerability</p>
-                        <h3 className="text-base font-bold mt-1 leading-tight">{heatmapData[0]?.name}</h3>
-                        <div className="mt-4 flex items-baseline gap-1.5">
-                            <span className="text-2xl font-bold">{heatmapData[0]?.riskScore}%</span>
-                            <span className="text-[11px] font-medium opacity-60">dept score</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                            <Map className="w-3.5 h-3.5 text-indigo-600" /> Critical Hotspots
-                        </h4>
-                        <div className="space-y-3">
-                            {heatmapData.slice(0, 4).map((dept: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between group cursor-pointer">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                        <span className="text-xs font-medium text-slate-600 group-hover:text-indigo-600 transition-colors">{dept.name}</span>
-                                    </div>
-                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 transition-transform group-hover:translate-x-1" />
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 bg-rose-500 rounded-full" />
+                                    <span className="text-[10px] font-bold uppercase text-slate-400">Critical</span>
                                 </div>
-                            ))}
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 bg-amber-400 rounded-full" />
+                                    <span className="text-[10px] font-bold uppercase text-slate-400">Warning</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="bg-slate-900 p-5 rounded-2xl text-white relative overflow-hidden">
-                        <div className="relative z-10">
-                            <Info className="w-4 h-4 text-indigo-400 mb-3" />
-                            <p className="text-xs font-medium leading-relaxed opacity-80">
-                                Predictions suggest <span className="text-red-400 font-bold">2.1% across-dept risk growth</span> if assessment patterns remain un-published.
-                            </p>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={heatmapData} margin={{ top: 10, right: 20, left: -20, bottom: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                                        angle={-35}
+                                        textAnchor="end"
+                                    />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(79, 70, 229, 0.04)' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const d = payload[0].payload;
+                                                return (
+                                                    <div className="bg-white p-4 rounded-xl shadow-2xl border border-slate-100 min-w-[180px]">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 border-b border-slate-50 pb-2">{d.name}</p>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-rose-600 uppercase">Critical</span><span className="text-sm font-black text-slate-900">{d.critical}</span></div>
+                                                            <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-amber-500 uppercase">Warning</span><span className="text-sm font-black text-slate-900">{d.warning}</span></div>
+                                                            <div className="flex justify-between items-center pt-2 border-t border-slate-50"><span className="text-[10px] font-black text-indigo-600 uppercase">Risk Index</span><span className="text-sm font-black text-indigo-600">{d.riskScore}%</span></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Bar dataKey="critical" stackId="a" fill="#f43f5e" barSize={32} />
+                                    <Bar dataKey="warning" stackId="a" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={32} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
-                        <div className="absolute -top-8 -right-8 w-24 h-24 bg-indigo-500/20 rounded-full blur-2xl" />
+                    </motion.div>
+
+                    {/* Risk Stat Cards */}
+                    <div className="space-y-6">
+                        <div className="bg-rose-600 p-8 rounded-2xl text-white shadow-lg shadow-rose-100 relative overflow-hidden group">
+                            <div className="relative z-10">
+                                <TrendingUp className="w-5 h-5 mb-4 opacity-60" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Peak Vulnerability</p>
+                                <h3 className="text-xl font-bold mt-1 tracking-tight leading-tight">{heatmapData[0]?.name}</h3>
+                                <div className="mt-6 flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold tracking-tighter">{heatmapData[0]?.riskScore}%</span>
+                                    <span className="text-[10px] font-bold opacity-60 uppercase">Institutional Stress</span>
+                                </div>
+                            </div>
+                            <ShieldAlert className="absolute -right-6 -bottom-6 w-32 h-32 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
+                        </div>
+
+                        <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-6">
+                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <Target className="w-3.5 h-3.5 text-indigo-600" /> Critical Hotspots
+                            </h4>
+                            <div className="space-y-4">
+                                {heatmapData.slice(0, 4).map((dept: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-xl transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                            <span className="text-xs font-bold text-slate-700 uppercase tracking-tight">{dept.name}</span>
+                                        </div>
+                                        <span className="text-[10px] font-black text-rose-600">{dept.riskScore}%</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-900 p-8 rounded-[2rem] text-white relative overflow-hidden group">
+                            <div className="relative z-10">
+                                <Info className="w-5 h-5 text-indigo-400 mb-4" />
+                                <p className="text-xs font-medium leading-relaxed opacity-80 italic">
+                                    "Probabilistic analysis indicates a <span className="text-rose-400 font-bold underline underline-offset-4">2.1% volatility surge</span> if departmental HOD interventions are delayed beyond the next assessment cycle."
+                                </p>
+                            </div>
+                            <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-colors" />
+                        </div>
                     </div>
-                </div>
-            </div>
+                </div >
+            </main >
 
             {/* Threshold Adjustment Modal */}
             <AnimatePresence>
-                {showThresholdModal && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowThresholdModal(false)}
-                            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60]"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden border border-slate-100"
-                        >
-                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                                    <Filter className="w-4 h-4 text-red-600" /> Adjust Risk Thresholds
-                                </h3>
-                                <button onClick={() => setShowThresholdModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                                    <X className="w-5 h-5 text-slate-400" />
-                                </button>
-                            </div>
-                            <div className="p-6 space-y-6">
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs font-bold text-red-900 uppercase">Critical (Red)</span>
-                                            <span className="text-lg font-bold text-red-600">{thresholds.critical}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="50"
-                                            value={thresholds.critical}
-                                            onChange={(e) => setThresholds({ ...thresholds, critical: parseInt(e.target.value) })}
-                                            className="w-full accent-red-600 h-1.5 bg-red-200 rounded-lg appearance-none cursor-pointer"
-                                        />
-                                        <p className="text-[10px] text-red-700/60 mt-2 font-medium">Departments exceeding this percentage of red-state students are flagged as critical.</p>
+                {
+                    showThresholdModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                className="bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden"
+                            >
+                                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900 tracking-tight">Governance Thresholds</h3>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Risk Level Calibration</p>
                                     </div>
-
-                                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs font-bold text-amber-900 uppercase">Warning (Yellow)</span>
-                                            <span className="text-lg font-bold text-amber-600">{thresholds.warning}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            value={thresholds.warning}
-                                            onChange={(e) => setThresholds({ ...thresholds, warning: parseInt(e.target.value) })}
-                                            className="w-full accent-amber-500 h-1.5 bg-amber-200 rounded-lg appearance-none cursor-pointer"
-                                        />
-                                        <p className="text-[10px] text-amber-700/60 mt-2 font-medium">Combined red and yellow students above this threshold trigger Institutional Warnings.</p>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[11px] text-slate-500 leading-relaxed italic">
-                                        <Info className="w-3.5 h-3.5 inline mr-1 text-indigo-500" />
-                                        Adjusting these thresholds simulates institutional risk reporting. Final policy changes must be saved in the <span className="font-bold">Control Center</span>.
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button onClick={() => setShowThresholdModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200 transition-colors">
-                                        Discard
-                                    </button>
-                                    <button onClick={() => setShowThresholdModal(false)} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
-                                        <Save className="w-4 h-4" /> Save Simulation
+                                    <button onClick={() => setShowThresholdModal(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
+                                        <X className="w-6 h-6" />
                                     </button>
                                 </div>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
+                                <div className="p-10 space-y-8">
+                                    <div className="space-y-6">
+                                        <div className="p-6 bg-rose-50 rounded-2xl border border-rose-100">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="text-[10px] font-bold text-rose-900 uppercase tracking-widest">Critical Alert Floor</span>
+                                                <span className="text-xl font-bold text-rose-600">{thresholds.critical}%</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="50"
+                                                value={thresholds.critical}
+                                                onChange={(e) => setThresholds({ ...thresholds, critical: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-rose-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                                            />
+                                            <p className="text-[9px] text-rose-700/60 mt-4 font-bold uppercase tracking-tight">Units exceeding this red-node concentration trigger auto-escalation.</p>
+                                        </div>
+
+                                        <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="text-[10px] font-bold text-amber-900 uppercase tracking-widest">Institutional Warning Ceiling</span>
+                                                <span className="text-xl font-bold text-amber-600">{thresholds.warning}%</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                value={thresholds.warning}
+                                                onChange={(e) => setThresholds({ ...thresholds, warning: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                            />
+                                            <p className="text-[9px] text-amber-700/60 mt-4 font-bold uppercase tracking-tight">Total institutional stress levels above this limit trigger board review.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex gap-3 items-start">
+                                        <Info className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
+                                        <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                                            Adjusting these thresholds will recalibrate the institutional intelligence engine. Changes are simulated until formally committed via systemic policy update.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <button onClick={() => setShowThresholdModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                                            Discard
+                                        </button>
+                                        <button onClick={() => setShowThresholdModal(false)} className="flex-1 py-4 bg-slate-900 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200">
+                                            <Save className="w-4 h-4" /> Save Simulation
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
             </AnimatePresence>
         </div>
     );
 };
 
 export default PrincipalRisk;
-

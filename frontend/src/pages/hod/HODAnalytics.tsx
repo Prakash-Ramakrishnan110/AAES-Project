@@ -115,24 +115,28 @@ const HODAnalytics = () => {
                         <p className="text-sm text-gray-500">Average marks across {isHOD ? 'all faculty in your department' : 'all active departments'}</p>
                     </div>
                     <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={performanceStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.8} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey={isHOD ? "staff" : "department"} axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                    cursor={{ fill: 'rgba(79, 70, 229, 0.05)' }}
-                                />
-                                <Bar dataKey="avgMarks" fill="url(#colorAvg)" radius={[6, 6, 0, 0]} name="Avg Marks" barSize={40} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {performanceStats.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={320}>
+                                <BarChart data={performanceStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.8} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                    <XAxis dataKey={isHOD ? "staff" : "department"} axisLine={false} tickLine={false} />
+                                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                        cursor={{ fill: 'rgba(79, 70, 229, 0.05)' }}
+                                    />
+                                    <Bar dataKey="avgMarks" fill="url(#colorAvg)" radius={[6, 6, 0, 0]} name="Avg Marks" barSize={40} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400">No performance data available</div>
+                        )}
                     </div>
                 </motion.div>
 
@@ -148,23 +152,27 @@ const HODAnalytics = () => {
                         <p className="text-sm text-gray-500">Performance growth over academic semesters</p>
                     </div>
                     <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={semesterStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorSem" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#EC4899" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#EC4899" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey="semester" axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                />
-                                <Area type="monotone" dataKey="avgMarks" stroke="#EC4899" strokeWidth={3} fill="url(#colorSem)" name="Avg Marks" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {semesterStats.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={320}>
+                                <AreaChart data={semesterStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorSem" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#EC4899" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#EC4899" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                    <XAxis dataKey="semester" axisLine={false} tickLine={false} />
+                                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Area type="monotone" dataKey="avgMarks" stroke="#EC4899" strokeWidth={3} fill="url(#colorSem)" name="Avg Marks" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400">No trend data available</div>
+                        )}
                     </div>
                 </motion.div>
 
@@ -180,28 +188,32 @@ const HODAnalytics = () => {
                         <p className="text-sm text-gray-500">Volume of evaluated submissions across subjects</p>
                     </div>
                     <div className="h-96 flex flex-col lg:flex-row items-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={subjectStats}
-                                    innerRadius={90}
-                                    outerRadius={130}
-                                    paddingAngle={5}
-                                    dataKey="totalSubmissions"
-                                    nameKey="subject"
-                                    cx="50%"
-                                    cy="50%"
-                                >
-                                    {subjectStats.map((_entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                />
-                                <Legend verticalAlign="middle" align="right" layout="vertical" />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        {subjectStats.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={384}>
+                                <PieChart>
+                                    <Pie
+                                        data={subjectStats}
+                                        innerRadius={90}
+                                        outerRadius={130}
+                                        paddingAngle={5}
+                                        dataKey="totalSubmissions"
+                                        nameKey="subject"
+                                        cx="50%"
+                                        cy="50%"
+                                    >
+                                        {subjectStats.map((_entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Legend verticalAlign="middle" align="right" layout="vertical" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center w-full h-full text-gray-400">No submission distribution data</div>
+                        )}
                     </div>
                 </motion.div>
 

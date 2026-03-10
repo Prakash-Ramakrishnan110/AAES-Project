@@ -1,13 +1,6 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Re-declare jspdf with autotable plugin if needed by TS
-declare module 'jspdf' {
-    interface jsPDF {
-        autoTable: (options: any) => jsPDF;
-    }
-}
+import autoTable from 'jspdf-autotable';
 
 /**
  * Export JSON data to Excel
@@ -23,32 +16,75 @@ export const exportToExcel = (data: any[], fileName: string, sheetName: string =
 };
 
 /**
- * Export JSON data to PDF (Table format)
+ * Export JSON data to PDF (Academic Table format)
  * @param columns Array of column headers/keys e.g. [{ header: 'Name', dataKey: 'name' }]
  * @param data Array of objects
  * @param fileName Name of the file (without extension)
  * @param title Title of the PDF document
  */
 export const exportToPDF = (columns: any[], data: any[], fileName: string, title: string) => {
-    const doc = new jsPDF();
+    try {
+        const doc = new jsPDF('landscape');
 
-    // Add Title
-    doc.setFontSize(18);
-    doc.text(`AAES Report: ${title}`, 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+        // Add Academic Header
+        doc.setFontSize(22);
+        doc.setTextColor(33, 37, 41); // Dark Gray
+        doc.text('Advanced Academic Evaluation System', 14, 22);
 
-    doc.autoTable({
-        columns: columns,
-        body: data,
-        startY: 35,
-        theme: 'grid',
-        headStyles: { fillColor: [79, 70, 229] }, // Indigo-600
-        styles: { fontSize: 9 }
-    });
+        doc.setFontSize(14);
+        doc.setTextColor(79, 70, 229); // Indigo 600
+        doc.text(`Official Report: ${title}`, 14, 32);
 
-    doc.save(`${fileName}_${new Date().getTime()}.pdf`);
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139); // Slate 500
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 40);
+
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(226, 232, 240); // Slate 200
+        doc.line(14, 45, 280, 45);
+
+        // Generate Table
+        autoTable(doc, {
+            columns: columns,
+            body: data,
+            startY: 50,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [79, 70, 229], // Indigo 600
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            bodyStyles: {
+                textColor: 50,
+                halign: 'center'
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252] // Slate 50
+            },
+            styles: {
+                fontSize: 10,
+                cellPadding: 4,
+                lineColor: [226, 232, 240], // Slate 200
+                lineWidth: 0.1
+            },
+            margin: { top: 50, left: 14, right: 14, bottom: 20 },
+            didDrawPage: function (data) {
+                // Footer
+                doc.setFontSize(8);
+                doc.setTextColor(148, 163, 184); // Slate 400
+                doc.text(
+                    `Page ${data.pageNumber} • Confidential Academic Record`,
+                    data.settings.margin.left,
+                    doc.internal.pageSize.height - 10
+                );
+            }
+        });
+
+        doc.save(`${fileName}_${new Date().getTime()}.pdf`);
+    } catch (error) {
+        console.error("PDF Generation failed:", error);
+    }
 };
 
 /**

@@ -354,11 +354,13 @@ const Evaluation = () => {
                                                             </div>
                                                             <div>
                                                                 <p className="text-sm font-bold text-indigo-900">Attached Document</p>
-                                                                <p className="text-xs text-indigo-600">Student uploaded a file for this submission</p>
+                                                                <p className="text-xs text-indigo-600 truncate max-w-[200px] md:max-w-md" title={selectedSubmission.fileUrl?.split('/').pop()?.split('-').slice(1).join('-') || 'Document'}>
+                                                                    File: {selectedSubmission.fileUrl?.split('/').pop()?.split('-').slice(1).join('-') || 'Uploaded Document'}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                         <a
-                                                            href={`${API}${selectedSubmission.fileUrl}`}
+                                                            href={selectedSubmission.fileUrl?.startsWith('http') ? selectedSubmission.fileUrl : `${API.endsWith('/') ? API.slice(0, -1) : API}/${selectedSubmission.fileUrl?.startsWith('/') ? selectedSubmission.fileUrl.slice(1) : selectedSubmission.fileUrl}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="px-4 py-2 bg-white text-indigo-600 text-sm font-bold rounded-lg border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors"

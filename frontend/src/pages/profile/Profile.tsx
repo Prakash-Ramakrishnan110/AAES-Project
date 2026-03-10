@@ -11,6 +11,8 @@ import HODProfile from './HODProfile';
 import AdminProfile from './AdminProfile';
 import { motion } from 'framer-motion';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Profile = () => {
     const { token, user: authUser, updateUser } = useContext(AuthContext)!;
     const { id } = useParams(); // For viewing other users (Admin/HOD)
@@ -28,6 +30,11 @@ const Profile = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+    // Advisor-specific student editing
+    const [isAdvisorEditingReg, setIsAdvisorEditingReg] = useState(false);
+    const [tempRegNumber, setTempRegNumber] = useState('');
+    const [isUpdatingReg, setIsUpdatingReg] = useState(false);
+
     useEffect(() => {
         fetchProfile();
     }, [id]);
@@ -37,7 +44,6 @@ const Profile = () => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             // If ID is present and different from current user, fetch that user (if HOD/Admin)
             // Otherwise fetch 'me'
-            const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             const endpoint = id && id !== authUser?.id
                 ? `${API}/api/profile/user/${id}`
                 : `${API}/api/profile/me`;
@@ -68,7 +74,6 @@ const Profile = () => {
                 updatedData.append('profileImage', profileImageFile);
             }
 
-            const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             const { data } = await axios.put(`${API}/api/profile/me`, updatedData, config);
             setProfile({ ...profile, ...data });
             setIsEditing(false);
@@ -85,7 +90,24 @@ const Profile = () => {
         } catch (error) {
             console.error(error);
             setToastMessage({ text: 'Failed to update profile', type: 'error' });
+        }
+    };
+
+    const handleAdvisorRegUpdate = async () => {
+        if (!tempRegNumber.trim()) return;
+        setIsUpdatingReg(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.put(`${API}/api/advisor/student/${profile._id}/register-number`, { registerNumber: tempRegNumber }, config);
+            setProfile({ ...profile, registerNumber: tempRegNumber });
+            setIsAdvisorEditingReg(false);
+            setToastMessage({ text: 'Register Number Updated!', type: 'success' });
             setTimeout(() => setToastMessage(null), 3000);
+        } catch (error: any) {
+            setToastMessage({ text: error.response?.data?.message || 'Update failed', type: 'error' });
+            setTimeout(() => setToastMessage(null), 3000);
+        } finally {
+            setIsUpdatingReg(false);
         }
     };
 
@@ -161,7 +183,48 @@ const Profile = () => {
                         <div className="flex-1 pt-2 md:pt-0">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">{profile.fullName || profile.username}</h1>
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="text-2xl font-bold text-gray-900">{profile.fullName || profile.username}</h1>
+                                        <div className="flex items-center gap-2">
+                                            {isAdvisorEditingReg ? (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <input
+                                                        value={tempRegNumber}
+                                                        onChange={e => setTempRegNumber(e.target.value)}
+                                                        className="px-2 py-0.5 text-[10px] font-bold border border-indigo-300 rounded outline-none focus:ring-1 focus:ring-indigo-400 w-24"
+                                                        placeholder="Enter ID..."
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={handleAdvisorRegUpdate} disabled={isUpdatingReg} className="p-1 bg-green-500 text-white rounded hover:bg-green-600">
+                                                        <Save className="w-3 h-3" />
+                                                    </button>
+                                                    <button onClick={() => setIsAdvisorEditingReg(false)} className="p-1 bg-gray-400 text-white rounded hover:bg-gray-500">
+                                                        <ArrowLeft className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {profile.registerNumber && (
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-bold tracking-wider uppercase border border-gray-200 mt-1">
+                                                            {profile.registerNumber}
+                                                        </span>
+                                                    )}
+                                                    {authUser?.role === 'staff' && profile.role === 'student' && !isOwnProfile && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setTempRegNumber(profile.registerNumber || '');
+                                                                setIsAdvisorEditingReg(true);
+                                                            }}
+                                                            className="p-1 text-gray-400 hover:text-indigo-600 transition-colors mt-1"
+                                                            title="Edit Register Number"
+                                                        >
+                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
                                     <div className="flex items-center gap-2 text-gray-500 mt-1">
                                         <span className="capitalize px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-bold tracking-wider border border-blue-100">
                                             {profile.role}

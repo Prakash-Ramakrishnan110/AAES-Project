@@ -1,12 +1,13 @@
 import { Outlet } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import {
-    LayoutDashboard, Library, BarChart3, ClipboardList, BookOpen
+    LayoutDashboard, Library, Clock, BriefcaseMedical, FileBadge, Bell
 } from 'lucide-react';
 
 const StudentLayout = () => {
     const menuItems = [
         { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", to: "/student/dashboard" },
+        { icon: <Bell className="w-5 h-5" />, label: "Communications", to: "/student/communications" },
         {
             icon: <Library className="w-5 h-5" />,
             label: "Coursework",
@@ -17,13 +18,19 @@ const StudentLayout = () => {
             ]
         },
         {
-            icon: <BarChart3 className="w-5 h-5" />,
-            label: "Academic Performance",
-            to: "/student/attendance",
-            items: [
-                { label: "Attendance", to: "/student/attendance" },
-                { label: "Internal Marks", to: "/student/internal-marks" },
-            ]
+            icon: <BriefcaseMedical className="w-5 h-5" />,
+            label: "Leave Applications",
+            to: "/student/leaves"
+        },
+        {
+            icon: <Clock className="w-5 h-5" />,
+            label: "Attendance",
+            to: "/student/attendance"
+        },
+        {
+            icon: <FileBadge className="w-5 h-5" />,
+            label: "My Documents",
+            to: "/student/documents"
         },
     ];
 

@@ -82,7 +82,8 @@ const getMyClass = async (req, res) => {
         const studentCount = await User.countDocuments({
             role: 'student',
             department: assignment.department,
-            academicYear: assignment.academicYear
+            academicYear: assignment.academicYear,
+            isActive: true
         });
 
         res.json({
@@ -104,13 +105,20 @@ const getAdvisedStudents = async (req, res) => {
             return res.status(403).json({ message: 'Access Denied: Not a Class Advisor' });
         }
 
-        const students = await User.find({
+        // 1. Explicit students
+        const explicitStudents = await User.find({ classAdvisor: req.user.id, role: 'student' }).select('-password');
+        
+        // 2. Dept/Year students
+        const studentsByDeptYear = await User.find({
             role: 'student',
             department: assignment.department,
             academicYear: assignment.academicYear
         }).select('-password');
 
-        res.json(students);
+        // Combine
+        const combined = [...new Map([...explicitStudents, ...studentsByDeptYear].map(s => [s._id.toString(), s])).values()];
+
+        res.json(combined);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -134,7 +142,8 @@ const addMentorshipNote = async (req, res) => {
             _id: studentId,
             role: 'student',
             department: assignment.department,
-            academicYear: assignment.academicYear
+            academicYear: assignment.academicYear,
+            isActive: true
         });
 
         if (!student) {
@@ -200,11 +209,15 @@ const getMyClassStats = async (req, res) => {
         const Submission = require('../models/Submission');
         const User = require('../models/User');
 
-        const students = await User.find({
+        // Dual Lookup logic
+        const explicitStudentsForStats = await User.find({ classAdvisor: req.user.id, role: 'student' }).select('-password');
+        const studentsByDeptYearForStats = await User.find({
             role: 'student',
             department: assignment.department,
             academicYear: assignment.academicYear
         }).select('-password');
+
+        const students = [...new Map([...explicitStudentsForStats, ...studentsByDeptYearForStats].map(s => [s._id.toString(), s])).values()];
 
         const studentStats = await Promise.all(students.map(async (student) => {
             const submissions = await Submission.find({ student: student._id, status: 'graded' })
@@ -310,7 +323,7 @@ const getAdvisorAcademicInsights = async (req, res) => {
                 avgMarks,
                 highest: Math.round(Math.max(...marks)),
                 lowest: Math.round(Math.min(...marks)),
-                submissionRate: Math.round((subjectSubmissions.length / (await User.countDocuments({ role: 'student', department: assignment.department, academicYear: assignment.academicYear }))) * 100)
+                submissionRate: Math.round((subjectSubmissions.length / (await User.countDocuments({ role: 'student', department: assignment.department, academicYear: assignment.academicYear, isActive: true }))) * 100)
             };
         }));
 
@@ -323,10 +336,24 @@ const getAdvisorAcademicInsights = async (req, res) => {
 // @desc    Get detailed consolidated report data
 const getConsolidatedReportData = async (req, res) => {
     try {
-        const { department, academicYear, semester, section, reportType } = req.query;
+        let { department, academicYear, semester, section, reportType } = req.query;
+
+        // If user is staff, verify they are a class advisor and restrict to their year/dept
+        if (req.user.role === 'staff') {
+            const assignment = await ClassAdvisor.findOne({ staff: req.user.id });
+            if (!assignment) {
+                return res.status(403).json({ message: 'Access Denied: Not a Class Advisor' });
+            }
+            // Override with advisor's assigned values to prevent viewing other years/depts
+            department = assignment.department;
+            academicYear = assignment.academicYear;
+        } else if (req.user.role === 'hod') {
+            // HOD is restricted to their department
+            department = req.user.department;
+        }
 
         // Find students in the class
-        const query = { role: 'student' };
+        const query = { role: 'student', isActive: true };
         if (department) query.department = department;
         if (academicYear) query.academicYear = academicYear;
         if (semester) query.semester = semester;
@@ -527,7 +554,8 @@ const getAllClassNotes = async (req, res) => {
         const students = await User.find({
             role: 'student',
             department: assignment.department,
-            academicYear: assignment.academicYear
+            academicYear: assignment.academicYear,
+            isActive: true
         }).select('_id');
 
         const studentIds = students.map(s => s._id);
@@ -538,6 +566,41 @@ const getAllClassNotes = async (req, res) => {
             .sort({ createdAt: -1 });
 
         res.json(notes);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update student register number
+const updateStudentRegisterNumber = async (req, res) => {
+    try {
+        const studentId = req.params.id;
+        const { registerNumber } = req.body;
+
+        if (!registerNumber) {
+            return res.status(400).json({ message: 'Register number is required' });
+        }
+
+        const student = await User.findById(studentId);
+        if (!student || student.role !== 'student') {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        // Access Control: Must be the Class Advisor for this student's year/dept
+        const assignment = await ClassAdvisor.findOne({ 
+            staff: req.user.id,
+            department: student.department,
+            academicYear: student.academicYear
+        });
+
+        if (!assignment) {
+            return res.status(403).json({ message: 'Access Denied: You are not authorized to update this student information' });
+        }
+
+        student.registerNumber = registerNumber;
+        await student.save();
+
+        res.json({ message: 'Register number updated successfully', registerNumber: student.registerNumber });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -554,6 +617,7 @@ module.exports = {
     getMyClassStats,
     getAdvisorAcademicInsights,
     getConsolidatedReportData,
-    getStudentTimeline
+    getStudentTimeline,
+    updateStudentRegisterNumber
 };
 

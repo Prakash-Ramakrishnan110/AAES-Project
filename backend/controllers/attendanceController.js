@@ -153,7 +153,8 @@ const getSubjectSummary = async (req, res) => {
             role: 'student',
             department: subject.department,
             semester: subject.semester,
-            academicYear: subject.academicYear
+            academicYear: subject.academicYear,
+            isActive: true
         }).select('username fullName registerNumber email');
 
         // Calculate per-student attendance
@@ -163,7 +164,7 @@ const getSubjectSummary = async (req, res) => {
             sessions.forEach(session => {
                 const record = session.records.find(r => r.student.toString() === student._id.toString());
                 if (record) {
-                    if (record.status === 'Present') present++;
+                    if (record.status === 'Present' || record.status === 'OD') present++;
                     else absent++;
                 }
             });
@@ -256,7 +257,8 @@ const getAdvisorView = async (req, res) => {
         const students = await User.find({
             role: 'student',
             department: advisor.department,
-            academicYear: advisor.academicYear
+            academicYear: advisor.academicYear,
+            isActive: true
         }).select('username fullName registerNumber email semester');
 
         const allSessions = await Attendance.find({
@@ -400,6 +402,9 @@ const getStudentsForSubject = async (req, res) => {
             }
         }
 
+        const queryDate = req.query.date ? new Date(req.query.date) : new Date();
+        queryDate.setHours(0, 0, 0, 0);
+
         const students = await User.find({
             role: 'student',
             department: subject.department,
@@ -407,9 +412,26 @@ const getStudentsForSubject = async (req, res) => {
             isActive: true
         }).select('username fullName registerNumber email');
 
+        const StudentLeave = require('../models/StudentLeave');
+
+        // Enrich students with leave/OD status for this date
+        const enrichedStudents = await Promise.all(students.map(async (student) => {
+            const leave = await StudentLeave.findOne({
+                studentId: student._id,
+                status: 'Approved',
+                startDate: { $lte: queryDate },
+                endDate: { $gte: queryDate }
+            });
+
+            return {
+                ...student.toObject(),
+                recommendedStatus: leave ? (leave.leaveType === 'OD' ? 'OD' : 'Leave') : 'Present'
+            };
+        }));
+
         res.json({
             subject: { _id: subject._id, name: subject.name, code: subject.code, department: subject.department, semester: subject.semester, academicYear: subject.academicYear },
-            students
+            students: enrichedStudents
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

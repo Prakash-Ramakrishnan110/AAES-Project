@@ -10,8 +10,8 @@ const AdvisorReports = () => {
     const [loading, setLoading] = useState(false);
     const [reportData, setReportData] = useState<any>(null);
     const [filters, setFilters] = useState({
-        department: user?.department || '',
-        academicYear: user?.academicYear || '',
+        department: user?.role === 'staff' ? (user.advisorDepartment || user.department || '') : (user?.department || ''),
+        academicYear: user?.role === 'staff' ? (user.advisorYear || '') : (user?.academicYear || ''),
         semester: '',
         section: '',
         month: '',
@@ -99,7 +99,8 @@ const AdvisorReports = () => {
                             placeholder="e.g. 2023-2024"
                             value={filters.academicYear}
                             onChange={(e) => setFilters({ ...filters, academicYear: e.target.value })}
-                            className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                            disabled={user?.role === 'staff'}
+                            className={`w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all ${user?.role === 'staff' ? 'opacity-60 cursor-not-allowed' : ''}`}
                         />
                     </div>
                     <div>

@@ -20,6 +20,8 @@ interface User {
     isAdvisor?: boolean;
     advisorYear?: string;
     advisorDepartment?: string;
+    batch?: string;
+    section?: string;
 }
 
 interface AuthContextType {
@@ -31,11 +33,20 @@ interface AuthContextType {
     isAuthenticated: boolean;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
+
+    const logout = () => {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+    };
 
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
@@ -57,14 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userData);
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(userData));
-    };
-
-    const logout = () => {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
     };
 
     const updateUser = (updates: Partial<User>) => {

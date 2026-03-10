@@ -1,5 +1,6 @@
 const ReEvaluationRequest = require('../models/ReEvaluationRequest');
 const Submission = require('../models/Submission');
+const Subject = require('../models/Subject');
 const AuditLog = require('../models/AuditLog');
 const Notification = require('../models/Notification');
 
@@ -44,17 +45,26 @@ const getRequests = async (req, res) => {
     try {
         let query = {};
 
+        const userId = req.user._id || req.user.id;
+
         if (req.user.role === 'student') {
-            query.student = req.user._id;
+            query.student = userId;
         } else if (req.user.role === 'staff') {
-            // In a full implementation, filter by subjects taught by staff
-            // For now, return all for simplicity or add filtering
+            // Filter by subjects assigned to this staff
+            const staffSubjects = await Subject.find({ staff: userId }).select('_id');
+            const subjectIds = staffSubjects.map(s => s._id);
+            query.subject = { $in: subjectIds };
+        } else if (req.user.role === 'hod') {
+            // HODs should see all requests from their department
+            const deptSubjects = await Subject.find({ department: req.user.department }).select('_id');
+            const subjectIds = deptSubjects.map(s => s._id);
+            query.subject = { $in: subjectIds };
         }
 
         const requests = await ReEvaluationRequest.find(query)
-            .populate('student', 'username fullName')
+            .populate('student', 'username fullName registerNumber')
             .populate('assignment', 'title')
-            .populate('subject', 'name')
+            .populate('subject', 'name code')
             .sort({ createdAt: -1 });
 
         res.json(requests);

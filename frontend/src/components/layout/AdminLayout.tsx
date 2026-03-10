@@ -1,10 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
-import { LayoutDashboard, Building, Users, Upload } from 'lucide-react';
+import { LayoutDashboard, Building, Users, Upload, Bell } from 'lucide-react';
 
 const AdminLayout = () => {
     const menuItems = [
         { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", to: "/admin/dashboard" },
+        { icon: <Bell className="w-5 h-5" />, label: "Communications", to: "/admin/communications" },
         {
             icon: <Building className="w-5 h-5" />,
             label: "Institutional Setup",
@@ -30,6 +31,8 @@ const AdminLayout = () => {
             items: [
                 { label: "Data Import", to: "/admin/bulk-upload" },
                 { label: "Performance Analytics", to: "/admin/analytics" },
+                { label: "System Audit Logs", to: "/admin/audit-logs" },
+                { label: "Global Settings & Data", to: "/admin/settings" },
                 { label: "Academic Transitions", to: "/admin/semester-transition" },
             ]
         },

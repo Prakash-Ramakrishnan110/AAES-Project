@@ -2,13 +2,10 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ChevronRight,
     Search,
     Shield,
     BarChart3,
-    GraduationCap,
     Brain,
-    Layers,
     ArrowRight,
     PlayCircle,
     CheckCircle2,
@@ -32,22 +29,19 @@ const LandingPage = () => {
         transition: { duration: 0.6 }
     };
 
-    const staggerContainer = {
-        animate: { transition: { staggerChildren: 0.1 } }
-    };
-
     return (
         <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden">
             {/* Navigation */}
             <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'
                 }`}>
                 <div className="container mx-auto px-6 flex justify-between items-center">
-                    <Link to="/" className="flex items-center space-x-2 group">
+                    <Link to="/" className="flex items-center space-x-3 group">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={scrolled ? 'text-blue-600' : 'text-emerald-400'}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                         <div className="flex flex-col">
-                            <span className={`text-2xl font-serif font-black tracking-tight leading-none ${scrolled ? 'text-slate-900' : 'text-white'}`}>
-                                𝐀𝐀𝐄𝐒
+                            <span className={`text-2xl font-bold tracking-tight leading-none ${scrolled ? 'text-slate-900' : 'text-white'}`}>
+                                AAES
                             </span>
-                            <span className={`text-[8px] uppercase font-bold tracking-widest leading-none mt-1 ${scrolled ? 'text-indigo-600' : 'text-mongodb-spring-green'}`}>
+                            <span className={`text-[8px] uppercase font-bold tracking-widest leading-none mt-1 ${scrolled ? 'text-indigo-600' : 'text-emerald-400'}`}>
                                 Academic Intelligence
                             </span>
                         </div>
@@ -62,8 +56,8 @@ const LandingPage = () => {
                             </a>
                         ))}
                         <Link to="/login" className={`px-5 py-2 rounded-lg text-sm font-bold transition-all border ${scrolled
-                                ? 'border-slate-200 text-slate-900 hover:bg-slate-50'
-                                : 'border-slate-700 text-white hover:border-slate-500'
+                            ? 'border-slate-200 text-slate-900 hover:bg-slate-50'
+                            : 'border-slate-700 text-white hover:border-slate-500'
                             }`}>
                             Sign In
                         </Link>
@@ -95,10 +89,10 @@ const LandingPage = () => {
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8, delay: 0.2 }}
-                            className="text-5xl md:text-7xl lg:text-8xl font-serif font-black text-white mb-8 tracking-tight leading-[1.1]"
+                            className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 tracking-tight leading-[1.1]"
                         >
                             Unified Academic <br />
-                            <span className="text-mongodb-spring-green">Intelligence System.</span>
+                            <span className="text-emerald-400">Intelligence System.</span>
                         </motion.h1>
 
                         <motion.p
@@ -158,7 +152,7 @@ const LandingPage = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 grayscale opacity-50 contrast-125">
                         {['University of Oxford', 'Harvard Institute', 'MIT Labs', 'Stanford Edu'].map((univ) => (
                             <div key={univ} className="flex justify-center items-center">
-                                <span className="font-serif font-black text-xl italic text-slate-400 tracking-tighter">{univ}</span>
+                                <span className="font-bold text-xl text-slate-400 tracking-tighter">{univ}</span>
                             </div>
                         ))}
                     </div>
@@ -170,8 +164,8 @@ const LandingPage = () => {
                 <div className="container mx-auto px-6 relative z-10">
                     <div className="text-center max-w-3xl mx-auto mb-20">
                         <h2 className="text-sm font-bold text-mongodb-digital-blue uppercase tracking-[0.2em] mb-4">The Platform</h2>
-                        <h2 className="text-4xl md:text-5xl font-serif font-black text-slate-900 mb-6 tracking-tight">
-                            Built for the next generation of <span className="text-mongodb-forest-green">Academic Excellence.</span>
+                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">
+                            Built for the next generation of <span className="text-emerald-600">Academic Excellence.</span>
                         </h2>
                         <p className="text-lg text-slate-600 leading-relaxed">
                             Everything you need to run high-stakes examinations, manage complex logistics,
@@ -279,10 +273,10 @@ const LandingPage = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-16">
                         <div className="col-span-2">
                             <div className="flex flex-col mb-6">
-                                <span className="text-3xl font-serif font-black tracking-tight text-white leading-none">
-                                    𝐀𝐀𝐄𝐒
+                                <span className="text-3xl font-bold tracking-tight text-white leading-none">
+                                    AAES
                                 </span>
-                                <span className="text-[9px] uppercase font-bold text-mongodb-spring-green tracking-widest leading-none mt-2">
+                                <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-widest leading-none mt-2">
                                     Academic Analytics System
                                 </span>
                             </div>
@@ -328,7 +322,7 @@ const LandingPage = () => {
                         className="fixed inset-0 bg-mongodb-navy z-[100] p-6 flex flex-col"
                     >
                         <div className="flex justify-between items-center mb-12">
-                            <span className="text-2xl font-serif font-black text-white">𝐀𝐀𝐄𝐒</span>
+                            <span className="text-2xl font-bold text-white uppercase">AAES</span>
                             <button onClick={() => setMobileMenuOpen(false)}><X className="text-white" /></button>
                         </div>
                         <div className="flex flex-col space-y-8">
@@ -353,7 +347,7 @@ const FeatureCard = ({ icon, title, description }: { icon: any, title: string, d
         <div className="w-14 h-14 bg-mongodb-navy rounded-2xl flex items-center justify-center text-mongodb-spring-green mb-8 group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-emerald-500/10">
             {icon}
         </div>
-        <h3 className="text-xl md:text-2xl font-serif font-black text-slate-900 mb-4 tracking-tight leading-none group-hover:text-mongodb-forest-green transition-colors">
+        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-4 tracking-tight leading-none transition-colors">
             {title}
         </h3>
         <p className="text-slate-600 leading-relaxed text-sm">

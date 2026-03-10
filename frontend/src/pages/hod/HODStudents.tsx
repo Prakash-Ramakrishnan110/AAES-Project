@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Search, Mail, Trash2, RotateCcw,
-    Upload, Download, FileText, CheckCircle, AlertTriangle, X, Users
+    Upload, Download, FileText, CheckCircle, AlertTriangle, X, Users, XCircle
 } from 'lucide-react';
 
 interface Student {
@@ -44,6 +44,7 @@ const HODStudents = () => {
     const [yearFilter, setYearFilter] = useState('');
     const [batchFilter, setBatchFilter] = useState('');
     const [sectionFilter, setSectionFilter] = useState('');
+    const [showInactive, setShowInactive] = useState(false);
 
     // Bulk Selection State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -61,11 +62,13 @@ const HODStudents = () => {
         username: string; fullName: string; email: string;
         password: string; registerNumber: string;
         semester: string; academicYear: string;
+        batch: string; section: string;
         profileImage: File | null;
     }>({
         username: '', fullName: '', email: '',
         password: 'password123', registerNumber: '',
         semester: '1', academicYear: '1st Year',
+        batch: '', section: '',
         profileImage: null
     });
     const [submitting, setSubmitting] = useState(false);
@@ -171,6 +174,8 @@ const HODStudents = () => {
             formDataToSubmit.append('semester', formData.semester);
             formDataToSubmit.append('academicYear', formData.academicYear);
             formDataToSubmit.append('registerNumber', formData.registerNumber);
+            formDataToSubmit.append('batch', formData.batch);
+            formDataToSubmit.append('section', formData.section);
             formDataToSubmit.append('department', user?.department || '');
             if (formData.profileImage) {
                 formDataToSubmit.append('profileImage', formData.profileImage);
@@ -188,6 +193,7 @@ const HODStudents = () => {
                 username: '', fullName: '', email: '',
                 password: 'password123', registerNumber: '',
                 semester: '1', academicYear: '1st Year',
+                batch: '', section: '',
                 profileImage: null
             });
             fetchStudents();
@@ -203,9 +209,9 @@ const HODStudents = () => {
 
     // --- Bulk CSV Upload ---
     const downloadTemplate = () => {
-        const csv = 'username,fullName,email,registerNumber,semester,academicYear,password\n' +
-            'john_doe,John Doe,john@example.com,2024CS001,1,1st Year,password123\n' +
-            'jane_smith,Jane Smith,jane@example.com,2024CS002,1,1st Year,password123';
+        const csv = 'username,fullName,email,registerNumber,semester,academicYear,batch,section,password\n' +
+            'john_doe,John Doe,john@example.com,2024CS001,1,1st Year,2024-2028,A,password123\n' +
+            'jane_smith,Jane Smith,jane@example.com,2024CS002,1,1st Year,2024-2028,B,password123';
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -250,6 +256,8 @@ const HODStudents = () => {
                         role: 'student',
                         semester: col(row, 'semester') || '1',
                         academicYear: col(row, 'academicyear') || col(row, 'academic_year') || '1st Year',
+                        batch: col(row, 'batch') || '',
+                        section: col(row, 'section') || '',
                         department: user?.department
                     }, {
                         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -273,11 +281,22 @@ const HODStudents = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Deactivate this student?')) return;
+        if (!confirm('Are you sure you want to deactivate this student? They remain in database but cannot access dashboard.')) return;
         try {
-            await axios.delete(`${API}/api/users/${id}`, config);
+            await axios.delete(`${API}/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
             fetchStudents();
-        } catch { }
+            showToast('Student deactivated successfully', 'success');
+        } catch (error) { showToast('Error deactivating student', 'error'); }
+    };
+
+    const handlePermanentDelete = async (id: string) => {
+        if (!confirm('CRITICAL: Permanently delete this student? This removes ALL records (attendance, marks, submissions) forever.')) return;
+        if (!confirm('This is irreversible. Final confirmation to PERMANENTLY DELETE student?')) return;
+        try {
+            await axios.delete(`${API}/api/users/${id}?permanent=true`, { headers: { Authorization: `Bearer ${token}` } });
+            fetchStudents();
+            showToast('Student permanently deleted', 'success');
+        } catch (error) { showToast('Error deleting student', 'error'); }
     };
 
     const handleReactivate = async (id: string) => {
@@ -285,14 +304,15 @@ const HODStudents = () => {
         try {
             await axios.put(`${API}/api/users/${id}`, { isActive: true }, config);
             fetchStudents();
-        } catch { }
+        } catch (error) { console.error(error); }
     };
 
     const filteredStudents = students.filter(s =>
-        (s.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (s.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (yearFilter === '' || s.academicYear === yearFilter)
+    ((s.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (yearFilter === '' || s.academicYear === yearFilter) &&
+        (showInactive || s.isActive))
     );
 
     return (
@@ -459,6 +479,24 @@ const HODStudents = () => {
                                             className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
                                         />
                                     </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Batch</label>
+                                            <input type="text" placeholder="e.g. 2024-2028"
+                                                value={formData.batch}
+                                                onChange={e => setFormData({ ...formData, batch: e.target.value })}
+                                                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Section</label>
+                                            <input type="text" placeholder="e.g. A"
+                                                value={formData.section}
+                                                onChange={e => setFormData({ ...formData, section: e.target.value })}
+                                                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Profile Image</label>
                                         <input type="file" accept="image/*"
@@ -471,7 +509,14 @@ const HODStudents = () => {
                                         <div className="grid grid-cols-4 gap-1.5">
                                             {SEMESTERS.map(s => (
                                                 <button key={s} type="button"
-                                                    onClick={() => setFormData({ ...formData, semester: s })}
+                                                    onClick={() => {
+                                                        const sem = parseInt(s);
+                                                        let year = '1st Year';
+                                                        if (sem > 2) year = '2nd Year';
+                                                        if (sem > 4) year = '3rd Year';
+                                                        if (sem > 6) year = '4th Year';
+                                                        setFormData({ ...formData, semester: s, academicYear: year });
+                                                    }}
                                                     className={`py-2 text-xs font-bold rounded-xl border transition-all ${formData.semester === s
                                                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200'
                                                         : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
@@ -483,18 +528,20 @@ const HODStudents = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Year of Study</label>
-                                        <div className="grid grid-cols-2 gap-1.5">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Year of Study</label>
+                                            <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold">AUTO-SELECTED</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1.5 opacity-80 pointer-events-none">
                                             {YEARS.map(y => (
-                                                <button key={y} type="button"
-                                                    onClick={() => setFormData({ ...formData, academicYear: y })}
-                                                    className={`py-2 text-xs font-bold rounded-xl border transition-all ${formData.academicYear === y
-                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200'
-                                                        : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                                <div key={y}
+                                                    className={`py-2 text-center text-xs font-bold rounded-xl border transition-all ${formData.academicYear === y
+                                                        ? 'bg-indigo-100 text-indigo-700 border-indigo-300 shadow-sm'
+                                                        : 'bg-gray-50 text-gray-400 border-gray-100'
                                                         }`}
                                                 >
                                                     {y}
-                                                </button>
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
@@ -609,6 +656,12 @@ const HODStudents = () => {
                                     className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-transparent" />
                                 <input type="text" placeholder="Sec" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}
                                     className="w-16 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-transparent" />
+                                <button
+                                    onClick={() => setShowInactive(!showInactive)}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${showInactive ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
+                                >
+                                    {showInactive ? 'Showing All' : 'Hide Inactive'}
+                                </button>
                             </div>
                         </div>
 
@@ -698,19 +751,29 @@ const HODStudents = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right" onClick={e => e.stopPropagation()}>
-                                                    {s.isActive ? (
-                                                        <button onClick={() => handleDelete(s._id)}
-                                                            className="flex items-center gap-1 ml-auto text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                                                    <div className="flex justify-end gap-2">
+                                                        {s.isActive ? (
+                                                            <button onClick={() => handleDelete(s._id)}
+                                                                className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-1.5 rounded-lg transition-colors"
+                                                                title="Deactivate account"
+                                                            >
+                                                                <XCircle className="w-3 h-3" /> Deactivate
+                                                            </button>
+                                                        ) : (
+                                                            <button onClick={() => handleReactivate(s._id)}
+                                                                className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-1.5 rounded-lg transition-colors"
+                                                                title="Reactivate account"
+                                                            >
+                                                                <RotateCcw className="w-3 h-3" /> Reactivate
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => handlePermanentDelete(s._id)}
+                                                            className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-1.5 rounded-lg transition-colors"
+                                                            title="Permanently remove from database"
                                                         >
-                                                            <Trash2 className="w-3 h-3" /> Deactivate
+                                                            <Trash2 className="w-3 h-3" /> Delete
                                                         </button>
-                                                    ) : (
-                                                        <button onClick={() => handleReactivate(s._id)}
-                                                            className="flex items-center gap-1 ml-auto text-xs font-semibold text-green-600 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg transition-colors"
-                                                        >
-                                                            <RotateCcw className="w-3 h-3" /> Reactivate
-                                                        </button>
-                                                    )}
+                                                    </div>
                                                 </td>
                                             </motion.tr>
                                         ))}

@@ -21,6 +21,7 @@ router.get('/principal/dashboard', protect, authorize('principal'), governanceCo
 router.get('/principal/infrastructure', protect, authorize('principal'), governanceController.getPrincipalInfrastructure);
 router.get('/principal/staff', protect, authorize('principal'), governanceController.getPrincipalStaff);
 router.get('/principal/audit-logs', protect, authorize('principal'), governanceController.getPrincipalAuditLogs);
+router.get('/principal/goals', protect, authorize('principal', 'admin'), governanceController.getInstitutionalGoals);
 
 module.exports = router;
 

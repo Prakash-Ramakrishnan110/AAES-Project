@@ -164,9 +164,10 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
             >
                 <div className="p-4 flex items-center space-x-3 border-b border-gray-100 h-16">
                     <div className="flex items-center space-x-2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                         <div className="flex flex-col">
-                            <span className="text-xl font-serif font-black tracking-tight text-slate-900 leading-none">
-                                𝐀𝐀𝐄𝐒
+                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">
+                                AAES
                             </span>
                             <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
                                 Academic Analytics
@@ -220,9 +221,10 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                             >
                                 <div className="p-4 flex items-center justify-between border-b border-gray-100 h-16">
                                     <div className="flex items-center space-x-2">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                                         <div className="flex flex-col">
-                                            <span className="text-xl font-serif font-black tracking-tight text-slate-900 leading-none">
-                                                𝐀𝐀𝐄𝐒
+                                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">
+                                                AAES
                                             </span>
                                             <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
                                                 Academic Analytics
@@ -260,7 +262,7 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
             {/* Main Content */}
             <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'md:ml-[240px]' : ''} min-w-0`}>
                 {/* Topbar */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-[60] px-4 md:px-6 flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -403,7 +405,7 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                <main className={`flex-1 overflow-y-auto ${['Principal', 'Student'].includes(role || '') ? '' : 'p-4 md:p-8'}`}>
                     {children}
                 </main>
             </div>

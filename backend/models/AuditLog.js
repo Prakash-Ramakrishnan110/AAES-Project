@@ -18,8 +18,7 @@ const auditLogSchema = new mongoose.Schema({
     },
     targetModel: {
         type: String,
-        enum: ['User', 'Subject', 'MentorshipQuery', 'MentorStudentMap', 'CCM',
-            'InternalPattern', 'InternalMark', 'Escalation', 'StudentRisk']
+        description: 'The mongoose model of the target document'
     },
     department: { type: String },
     previousValue: { type: mongoose.Schema.Types.Mixed },

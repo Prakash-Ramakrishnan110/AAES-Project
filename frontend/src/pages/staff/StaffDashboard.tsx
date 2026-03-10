@@ -20,7 +20,7 @@ const StaffDashboard = () => {
     const { token, user } = useContext(AuthContext)!;
     const navigate = useNavigate();
 
-    const [stats, setStats] = useState({ subjectCount: 0, assignmentCount: 0, submissionCount: 0, pendingGrading: 0 });
+    const [stats, setStats] = useState({ subjectCount: 0, assignmentCount: 0, submissionCount: 0, pendingGrading: 0, pendingReEval: 0 });
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -144,17 +144,24 @@ const StaffDashboard = () => {
                         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.06 }}
                     >
-                        <Link to={kpi.link}>
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
-                                <div className={`p-3 rounded-xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
-                                    <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                        <Link to={kpi.label === 'Pending Review' && (stats as any).pendingReEval > 0 ? '/staff/assignments' : kpi.link}>
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-3 rounded-xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
+                                        <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
+                                        <h3 className="text-2xl font-bold text-gray-900">
+                                            {loading ? <span className="text-gray-300">—</span> : kpi.value}
+                                        </h3>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
-                                    <h3 className="text-2xl font-bold text-gray-900">
-                                        {loading ? <span className="text-gray-300">—</span> : kpi.value}
-                                    </h3>
-                                </div>
+                                {kpi.label === 'Pending Review' && (stats as any).pendingReEval > 0 && (
+                                    <div className="mt-2 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 flex items-center gap-1.5 animate-pulse">
+                                        <Zap className="w-3 h-3" /> Includes {(stats as any).pendingReEval} Re-evaluation requests
+                                    </div>
+                                )}
                             </div>
                         </Link>
                     </motion.div>

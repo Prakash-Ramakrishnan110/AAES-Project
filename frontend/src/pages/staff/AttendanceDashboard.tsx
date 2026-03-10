@@ -206,7 +206,7 @@ const AttendanceDashboard = () => {
                                             {!isStudent && (
                                                 <td className="px-6 py-4 text-right">
                                                     {isHOD ? (
-                                                        <Button size="sm" variant="outline" onClick={() => navigate(`/staff/attendance/${item._id}/summary`)} icon={<BarChart3 className="w-3.5 h-3.5" />}>Summary</Button>
+                                                        <Button size="sm" variant="outline" onClick={() => navigate(`/hod/attendance/${item._id}/summary`)} icon={<BarChart3 className="w-3.5 h-3.5" />}>Summary</Button>
                                                     ) : (
                                                         <div className="flex gap-2 justify-end">
                                                             <Button size="sm" variant="outline" onClick={() => navigate(`/staff/attendance/${item._id}/summary`)}><BarChart3 className="w-3.5 h-3.5" /></Button>

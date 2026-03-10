@@ -70,6 +70,20 @@ const loginUser = async (req, res) => {
             user.lastLogin = Date.now();
             await user.save();
 
+            try {
+                const AuditLog = require('../models/AuditLog');
+                await AuditLog.create({
+                    action: 'LOGIN',
+                    performedBy: user._id,
+                    targetModel: 'User',
+                    targetId: user._id,
+                    department: user.department,
+                    role: user.role,
+                    details: { status: 'SUCCESS' }
+                });
+            } catch (e) { }
+
+
             // Check if this staff member is a class advisor
             let isAdvisor = false;
             let advisorYear = null;
@@ -140,51 +154,77 @@ const getUserProfile = async (req, res) => {
             role: user.role,
             department: user.department,
             fullName: user.fullName,
+            phone: user.phone,
+            bloodGroup: user.bloodGroup,
+            schooling: user.schooling,
+            currentCgpa: user.currentCgpa,
+            historyOfArrears: user.historyOfArrears,
+            preferences: user.preferences,
             isAdvisor,
             advisorYear,
-            advisorDepartment
+            advisorDepartment,
+            batch: user.batch,
+            section: user.section,
+            semester: user.semester,
+            academicYear: user.academicYear
         });
     } else {
         res.status(404).json({ message: 'User not found' });
     }
 };
 
-// @desc    Change password (used for forced change on first login)
+// @desc    Change password
 // @route   POST /api/auth/change-password
-// @access  Private
+// @access  Private (all authenticated users)
 const changePassword = async (req, res) => {
-    const { newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
 
     const user = await User.findById(req.user.id);
 
-    if (user) {
-        user.password = newPassword;
-        user.requiresPasswordChange = false;
-        await user.save();
-
-        res.json({
-            message: 'Password updated successfully',
-            _id: user.id,
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            department: user.department,
-            semester: user.semester,
-            academicYear: user.academicYear,
-            fullName: user.fullName,
-            phone: user.phone,
-            batch: user.batch,
-            section: user.section,
-            bloodGroup: user.bloodGroup,
-            schooling: user.schooling,
-            currentCgpa: user.currentCgpa,
-            historyOfArrears: user.historyOfArrears,
-            requiresPasswordChange: user.requiresPasswordChange,
-            token: generateToken(user._id, user.role, user.department),
-        });
-    } else {
-        res.status(404).json({ message: 'User not found' });
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
     }
+
+    // If this is a forced change (requiresPasswordChange flag), skip current password check
+    // Otherwise verify the current password for voluntary changes by HOD/Staff/Admin/Student
+    if (!user.requiresPasswordChange) {
+        if (!currentPassword) {
+            return res.status(400).json({ message: 'Current password is required' });
+        }
+        const isMatch = await user.matchPassword(currentPassword);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Current password is incorrect' });
+        }
+    }
+
+    user.password = newPassword;
+    user.requiresPasswordChange = false;
+    await user.save();
+
+    res.json({
+        message: 'Password updated successfully',
+        _id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        semester: user.semester,
+        academicYear: user.academicYear,
+        fullName: user.fullName,
+        phone: user.phone,
+        batch: user.batch,
+        section: user.section,
+        bloodGroup: user.bloodGroup,
+        schooling: user.schooling,
+        currentCgpa: user.currentCgpa,
+        historyOfArrears: user.historyOfArrears,
+        requiresPasswordChange: user.requiresPasswordChange,
+        token: generateToken(user._id, user.role, user.department),
+    });
 };
 
 // @desc    Update user preferences/settings
@@ -226,7 +266,21 @@ const updateUserSettings = async (req, res) => {
         if (req.body.historyOfArrears !== undefined) user.historyOfArrears = req.body.historyOfArrears;
 
         await user.save();
-        res.json({ message: 'Settings updated successfully', preferences: user.preferences });
+        res.json({
+            message: 'Settings updated successfully',
+            _id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            department: user.department,
+            fullName: user.fullName,
+            phone: user.phone,
+            bloodGroup: user.bloodGroup,
+            schooling: user.schooling,
+            currentCgpa: user.currentCgpa,
+            historyOfArrears: user.historyOfArrears,
+            preferences: user.preferences
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

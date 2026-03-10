@@ -10,7 +10,9 @@ const {
     getStaffWorkload,
     getAssignmentPerformanceComparison,
     getMentorshipOversight,
-    getCCMOversight
+    getCCMOversight,
+    getFacultyPerformanceMatrix,
+    getAcademicForecast
 } = require('../controllers/analyticsController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -24,5 +26,9 @@ router.get('/hod/mentorship-oversight', protect, authorize('hod'), getMentorship
 router.get('/hod/ccm-oversight', protect, authorize('hod'), getCCMOversight);
 router.get('/staff/performance', protect, authorize('admin', 'hod'), getStaffPerformance);
 router.get('/student/performance', protect, authorize('admin', 'hod'), getStudentPerformance);
+
+// Principal specific analytics
+router.get('/principal/faculty-matrix', protect, authorize('principal', 'admin'), getFacultyPerformanceMatrix);
+router.get('/principal/forecast', protect, authorize('principal', 'admin'), getAcademicForecast);
 
 module.exports = router;

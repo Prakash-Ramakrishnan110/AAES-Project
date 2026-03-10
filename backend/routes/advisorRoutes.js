@@ -11,7 +11,8 @@ const {
     getMyClassStats,
     getAdvisorAcademicInsights,
     getConsolidatedReportData,
-    getStudentTimeline
+    getStudentTimeline,
+    updateStudentRegisterNumber
 } = require('../controllers/advisorController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -29,6 +30,7 @@ router.get('/consolidated-report-data', authorize('admin', 'hod', 'staff'), getC
 router.get('/all-notes', authorize('staff'), getAllClassNotes);
 router.get('/students', authorize('staff'), getAdvisedStudents);
 router.post('/student/:id/notes', authorize('staff'), addMentorshipNote);
+router.put('/student/:id/register-number', authorize('staff'), updateStudentRegisterNumber);
 
 // Shared / Mixed Access Routes
 router.get('/student/:id/notes', authorize('admin', 'hod', 'staff'), getMentorshipNotes);

@@ -97,9 +97,10 @@ exports.getPatternBySubject = async (req, res) => {
         const { subjectId } = req.params;
         const pattern = await InternalPattern.findOne({ subject: subjectId })
             .sort({ createdAt: -1 });
-        if (!pattern) return res.status(404).json({ message: 'No pattern found for this subject.' });
+        if (!pattern) return res.status(404).json({ message: 'No pattern found for this subject' });
         res.json(pattern);
     } catch (error) {
+        console.error('getPatternBySubject error:', error.message);
         res.status(500).json({ message: 'Error fetching pattern', error: error.message });
     }
 };

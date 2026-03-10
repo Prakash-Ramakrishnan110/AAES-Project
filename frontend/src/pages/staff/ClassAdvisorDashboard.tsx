@@ -2,11 +2,13 @@ import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { Users, AlertTriangle, FileText, CheckCircle, TrendingUp, RefreshCw, ChevronRight, BookOpen, Zap, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RISK_THRESHOLD = 50;
 
 const ClassAdvisorDashboard = () => {
+    const navigate = useNavigate();
     const { token, user } = useContext(AuthContext)!;
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -35,7 +37,7 @@ const ClassAdvisorDashboard = () => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const { data } = await axios.get(`${API}/api/mentorship/staff`, config);
             setStaffList(data);
-        } catch (err) { }
+        } catch (err) { console.error('Failed to fetch staff:', err); }
     };
 
     const fetchStats = async () => {
@@ -323,6 +325,12 @@ const ClassAdvisorDashboard = () => {
                         className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition-colors text-sm font-semibold border border-emerald-100"
                     >
                         <FileText className="w-4 h-4" /> Export Risk List (Excel)
+                    </button>
+                    <button
+                        onClick={() => navigate('/staff/advisor/documents')}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors text-sm font-semibold border border-amber-100"
+                    >
+                        <FileText className="w-4 h-4" /> Student Documents
                     </button>
                 </div>
             </motion.div>

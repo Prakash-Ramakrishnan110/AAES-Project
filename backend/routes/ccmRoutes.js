@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getCCMs, createCCM, getCCMById, addActionItem, updateActionItem } = require('../controllers/ccmController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const { upload } = require('../middleware/uploadMiddleware');
 
 router.use(protect);
 

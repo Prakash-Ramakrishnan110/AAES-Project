@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../../context/AuthContext';
-import { Search, Shield, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Search, Shield, ChevronRight, Download, Users } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Student {
     _id: string;
@@ -15,7 +16,7 @@ interface Student {
 }
 
 const AdvisorStudentList = () => {
-    const { token } = useContext(AuthContext)!;
+    const { token, user } = useContext(AuthContext)!;
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +39,34 @@ const AdvisorStudentList = () => {
     useEffect(() => {
         fetchStudents();
     }, [fetchStudents]);
+
+    const handleExportExcel = () => {
+        if (!students.length) return;
+
+        const exportData = students.map(student => ({
+            'Name': student.fullName || student.username,
+            'Register Number': student.registerNumber || student.username.toUpperCase(),
+            'Email': student.email,
+            'Semester': student.semester || 'N/A',
+            'Average Score': student.avgScore !== null ? `${student.avgScore.toFixed(1)}%` : '—'
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Students');
+
+        // Column widths
+        const wscols = [
+            { wch: 25 }, // Name
+            { wch: 20 }, // Reg No
+            { wch: 30 }, // Email
+            { wch: 10 }, // Sem
+            { wch: 15 }  // Score
+        ];
+        ws['!cols'] = wscols;
+
+        XLSX.writeFile(wb, `Student_List_${user?.department || 'Class'}_${new Date().toLocaleDateString()}.xlsx`);
+    };
 
     const filteredStudents = students.filter(s =>
         (s.fullName || s.username).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,6 +91,12 @@ const AdvisorStudentList = () => {
                     <p className="text-gray-500 text-sm">Detailed directory of all students in your assigned class.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleExportExcel}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors shadow-sm"
+                    >
+                        <Download className="w-4 h-4" /> Export Excel
+                    </button>
                     <div className="relative">
                         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
@@ -79,8 +114,8 @@ const AdvisorStudentList = () => {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">Student</th>
-                            <th className="px-6 py-4">Registration No</th>
+                            <th className="px-6 py-4">Student & ID</th>
+                            <th className="px-6 py-4">Email Address</th>
                             <th className="px-6 py-4 text-center">Semester</th>
                             <th className="px-6 py-4 text-center">Avg Score</th>
                             <th className="px-6 py-4 text-right">Actions</th>
@@ -95,13 +130,18 @@ const AdvisorStudentList = () => {
                                             {(student.fullName || student.username).charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-gray-900">{student.fullName || student.username}</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">{student.email}</p>
+                                            <p className="font-semibold text-gray-900 leading-tight">{student.fullName || student.username}</p>
+                                            <button 
+                                                onClick={() => navigate(`/profile/${student._id}`)}
+                                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-all uppercase tracking-wider mt-0.5"
+                                            >
+                                                {student.registerNumber || student.username}
+                                            </button>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 font-mono text-xs text-gray-500">
-                                    {student.registerNumber || student.username.toUpperCase()}
+                                <td className="px-6 py-4">
+                                    <p className="text-xs text-gray-500 max-w-[150px] truncate">{student.email}</p>
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-bold">

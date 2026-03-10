@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-type Status = 'Present' | 'Absent';
+type Status = 'Present' | 'Absent' | 'Leave' | 'OD';
 
 interface StudentRecord {
     studentId: string;
@@ -36,27 +36,29 @@ const AttendanceMarking = () => {
     const config = { headers: { Authorization: `Bearer ${token}` } };
 
     // Load subject info + students
+    const loadSubjectAndStudents = async () => {
+        try {
+            setLoading(true);
+            // Pass date to get recommendedStatus based on approved leaves/ODs
+            const res = await axios.get(`${API}/api/attendance/subject/${subjectId}/students?date=${date}`, config);
+            setSubject(res.data.subject);
+            const studentList = res.data.students.map((s: any) => ({
+                studentId: s._id,
+                name: s.fullName || s.username,
+                registerNumber: s.registerNumber,
+                status: (s.recommendedStatus || 'Present') as Status
+            }));
+            setStudents(studentList);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to load subject data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const loadSubject = async () => {
-            try {
-                // Dedicated endpoint: returns subject + enrolled students for this subject
-                const res = await axios.get(`${API}/api/attendance/subject/${subjectId}/students`, config);
-                setSubject(res.data.subject);
-                const studentList = res.data.students.map((s: any) => ({
-                    studentId: s._id,
-                    name: s.fullName || s.username,
-                    registerNumber: s.registerNumber,
-                    status: 'Present' as Status
-                }));
-                setStudents(studentList);
-            } catch (err: any) {
-                setError(err.response?.data?.message || 'Failed to load subject data');
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (token && subjectId) loadSubject();
-    }, [token, subjectId]);
+        if (token && subjectId) loadSubjectAndStudents();
+    }, [token, subjectId, date]); // Reload when date changes to check for leaves
 
 
 
@@ -83,7 +85,7 @@ const AttendanceMarking = () => {
                     }
                 }
             } catch {
-                // No existing session, keep defaults
+                // No existing session, we already have recommendedStatus from loadSubjectAndStudents
             } finally {
                 setLoadingSession(false);
             }
@@ -93,11 +95,15 @@ const AttendanceMarking = () => {
 
     const toggleStatus = (studentId: string) => {
         if (existingLocked) return;
-        setStudents(prev => prev.map(s =>
-            s.studentId === studentId
-                ? { ...s, status: s.status === 'Present' ? 'Absent' : 'Present' }
-                : s
-        ));
+        setStudents(prev => prev.map(s => {
+            if (s.studentId === studentId) {
+                const cycle: Status[] = ['Present', 'Absent', 'Leave', 'OD'];
+                const currentIndex = cycle.indexOf(s.status);
+                const nextStatus = cycle[(currentIndex + 1) % cycle.length];
+                return { ...s, status: nextStatus };
+            }
+            return s;
+        }));
     };
 
     const markAll = (status: Status) => {
@@ -237,7 +243,10 @@ const AttendanceMarking = () => {
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: idx * 0.02 }}
                                 onClick={() => toggleStatus(student.studentId)}
-                                className={`flex items-center gap-4 px-5 py-3.5 cursor-pointer transition-colors ${existingLocked ? 'cursor-default' : 'hover:bg-gray-50'} ${student.status === 'Present' ? 'bg-green-50/40' : 'bg-red-50/30'}`}
+                                className={`flex items-center gap-4 px-5 py-3.5 cursor-pointer transition-colors ${existingLocked ? 'cursor-default' : 'hover:bg-gray-50'} 
+                                    ${student.status === 'Present' ? 'bg-green-50/40' :
+                                        student.status === 'Absent' ? 'bg-red-50/30' :
+                                            student.status === 'OD' ? 'bg-blue-50/30' : 'bg-amber-50/30'}`}
                             >
                                 <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">
                                     {idx + 1}
@@ -248,13 +257,15 @@ const AttendanceMarking = () => {
                                         <p className="text-xs text-gray-400">{student.registerNumber}</p>
                                     )}
                                 </div>
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold border transition-all ${student.status === 'Present'
-                                    ? 'bg-green-100 text-green-700 border-green-200'
-                                    : 'bg-red-100 text-red-600 border-red-200'
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold border transition-all ${student.status === 'Present' ? 'bg-green-100 text-green-700 border-green-200' :
+                                        student.status === 'Absent' ? 'bg-red-100 text-red-600 border-red-200' :
+                                            student.status === 'OD' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                'bg-amber-100 text-amber-700 border-amber-200'
                                     }`}>
-                                    {student.status === 'Present'
-                                        ? <><CheckCircle className="w-4 h-4" /> Present</>
-                                        : <><XCircle className="w-4 h-4" /> Absent</>
+                                    {student.status === 'Present' ? <><CheckCircle className="w-4 h-4" /> Present</> :
+                                        student.status === 'Absent' ? <><XCircle className="w-4 h-4" /> Absent</> :
+                                            student.status === 'OD' ? <><Clock className="w-4 h-4" /> OD</> :
+                                                <><Clock className="w-4 h-4" /> Leave</>
                                     }
                                 </div>
                             </motion.div>
