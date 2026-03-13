@@ -174,9 +174,11 @@ const updateMyProfile = async (req, res) => {
 
         // Handle profile image upload
         if (req.file) {
-            // multer stores the file in 'uploads/' not 'uploads/profiles/'
-            user.profileImage = `/uploads/${req.file.filename}`;
-        } else if (req.body.profileImage) {
+            const identifier = req.user?.registerNumber || req.user?._id?.toString() || 'anonymous';
+            user.profileImage = `/uploads/${identifier}/${req.file.filename}`;
+            console.log(`[ProfileController] Profile image assigned path: ${user.profileImage}`);
+        }
+ else if (req.body.profileImage) {
             user.profileImage = req.body.profileImage;
         }
 
@@ -222,36 +224,39 @@ const getUserProfile = async (req, res) => {
                     return res.status(403).json({ message: 'Access Denied: Not in your department' });
                 }
             } else if (req.user.role === 'staff') {
-                // Staff can only view student profiles mapped to them
                 if (targetUser.role !== 'student') {
-                    // Quick optimization logic for staff viewing other staff:
-                    // Staff Must NOT: View other staff profiles
                     return res.status(403).json({ message: 'Staff can only view student profiles' });
                 }
 
-                const Subject = require('../models/Subject');
-                const ClassAdvisor = require('../models/ClassAdvisor');
+                // New logic: allow if in same department
+                const staffDept = (req.user.department || '').trim().toLowerCase();
+                const studentDept = (targetUser.department || '').trim().toLowerCase();
 
-                // Check if staff handles any subject for this student's class
-                const assignedSubjects = await Subject.find({ staff: req.user.id });
-                const isSubjectTeacher = assignedSubjects.some(sub =>
-                    sub.department === targetUser.department &&
-                    sub.semester === targetUser.semester &&
-                    sub.academicYear === targetUser.academicYear
-                );
-
-                if (isSubjectTeacher) {
+                if (staffDept && studentDept && staffDept === studentDept) {
                     // Allowed
                 } else {
-                    // Check if staff is the official Class Advisor for this student's year/dept
-                    const advisorRecord = await ClassAdvisor.findOne({
-                        staff: req.user.id,
-                        department: targetUser.department,
-                        academicYear: targetUser.academicYear
-                    });
+                    const Subject = require('../models/Subject');
+                    const ClassAdvisor = require('../models/ClassAdvisor');
 
-                    if (!advisorRecord) {
-                        return res.status(403).json({ message: 'Access Denied: You are not authorized to view this student profile' });
+                    const assignedSubjects = await Subject.find({ staff: req.user.id });
+                    const isSubjectTeacher = assignedSubjects.some(sub =>
+                        sub.department === targetUser.department &&
+                        sub.semester === targetUser.semester &&
+                        sub.academicYear === targetUser.academicYear
+                    );
+                    
+                    if (isSubjectTeacher) {
+                        // Allowed
+                    } else {
+                        const advisorRecord = await ClassAdvisor.findOne({
+                            staff: req.user.id,
+                            department: targetUser.department,
+                            academicYear: targetUser.academicYear
+                        });
+
+                        if (!advisorRecord) {
+                            return res.status(403).json({ message: 'Access Denied: Not authorized' });
+                        }
                     }
                 }
             } else {

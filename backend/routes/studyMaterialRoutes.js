@@ -7,40 +7,11 @@ const pdfParse = require('pdf-parse');
 const Tesseract = require('tesseract.js');
 const StudyMaterial = require('../models/StudyMaterial');
 const Subject = require('../models/Subject');
-const { protect: authMiddleware } = require('../middleware/authMiddleware'); // Verify path
+const { protect, authorize } = require('../middleware/authMiddleware');
+const { createDynamicUpload } = require('../middleware/uploadMiddleware');
 
-// Ensure uploads/study_materials directory exists
-const uploadDir = path.join(__dirname, '../uploads/study_materials');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Multer generic config
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /pdf|doc|docx|jpg|jpeg|png/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb(new Error('Only PDF, DOC, DOCX, JPG, JPEG, and PNG files are allowed!'));
-        }
-    }
-});
+// Use middleware factory for organized storage
+const uploadMiddleware = createDynamicUpload('study_materials');
 
 const axios = require('axios');
 const FormData = require('form-data');
@@ -80,7 +51,7 @@ const extractTextFromFile = async (filePath, mimetype) => {
 // @route   POST /api/study-materials/upload
 // @desc    Upload study material (Staff/HOD/Admin)
 // @access  Private
-router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
+router.post('/upload', protect, uploadMiddleware, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
@@ -110,7 +81,8 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
             ? rawText.substring(0, maxTextLength) + "\n\n[TEXT TRUNCATED DUE TO LENGTH LIMIT]"
             : rawText;
 
-        const fileUrl = `/uploads/study_materials/${req.file.filename}`;
+        const identifier = req.user?.registerNumber || req.user?._id?.toString() || 'anonymous';
+        const fileUrl = `/uploads/${identifier}/study_materials/${req.file.filename}`;
 
         const newMaterial = new StudyMaterial({
             subjectId,
@@ -143,7 +115,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
 // @route   GET /api/study-materials
 // @desc    Get all materials for the logged-in user
 // @access  Private
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', protect, async (req, res) => {
     try {
         let filters = { visible: true };
 
@@ -186,7 +158,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // @route   GET /api/study-materials/subject/:subjectId
 // @desc    Get materials for a specific subject
 // @access  Private (Students + Staff)
-router.get('/subject/:subjectId', authMiddleware, async (req, res) => {
+router.get('/subject/:subjectId', protect, async (req, res) => {
     try {
         const filters = { subjectId: req.params.subjectId };
 
@@ -211,7 +183,7 @@ router.get('/subject/:subjectId', authMiddleware, async (req, res) => {
 // @route   GET /api/study-materials/:id
 // @desc    Get single material with text (for AI Context)
 // @access  Private
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', protect, async (req, res) => {
     try {
         const material = await StudyMaterial.findById(req.params.id)
             .populate('subjectId', 'name code')
@@ -236,7 +208,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 // @route   DELETE /api/study-materials/:id
 // @desc    Delete material (Staff only for their own, or HOD/Admin)
 // @access  Private
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
     try {
         const material = await StudyMaterial.findById(req.params.id);
 

@@ -6,9 +6,9 @@ import {
     Save, Eye, Library, FileEdit, CheckCircle, AlertCircle, X, Download, Settings, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 
 // Builders
@@ -433,7 +433,7 @@ const UnifiedAssignments = () => {
                 const formattedQs = (res.data.questions || []).map((q: any, idx: number) => {
                     const text = typeof q === 'string' ? q : q.question;
                     // Robustly strip prefixes like "1.", "1)", "Q1:", "Question 1:", etc.
-                    const cleanText = text.replace(/^(\d+[\.\)\:]|Q\d+[\.\)\:]|Question\s*\d+[\.\)\:])\s*/i, '').trim();
+                    const cleanText = text.replace(/^(\d+[.:)]|Q\d+[.:)]|Question\s*\d+[.:)])\s*/i, '').trim();
                     return {
                         questionText: cleanText,
                         marks: baseMarks + (idx < remainder ? 1 : 0),
@@ -776,7 +776,8 @@ const UnifiedAssignments = () => {
                                                             <Input type="number" min="1" max="20" value={formData.aiConfig.questionCount} onChange={e => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, questionCount: Number(e.target.value) } })} />
                                                         </div>
                                                         <div className="flex items-end">
-                                                            <Button className="w-full" onClick={handleAIGenerate} isLoading={isLoading} icon={<Bot className="w-4 h-4" />}>
+                                                            <Button className="w-full" onClick={handleAIGenerate} isLoading={isLoading}>
+                                                                <Bot className="w-4 h-4 mr-2" />
                                                                 Generate
                                                             </Button>
                                                         </div>
@@ -856,13 +857,22 @@ const UnifiedAssignments = () => {
                             </div >
 
                             {/* Navigation Buttons */}
-                            < div className="pt-8 flex justify-between border-t border-gray-100 mt-auto" >
-                                <Button variant="outline" onClick={handlePrev} disabled={step === 1} icon={<ChevronLeft className="w-4 h-4" />}>Previous</Button>
+                            <div className="pt-8 flex justify-between border-t border-gray-100 mt-auto" >
+                                <Button variant="outline" onClick={handlePrev} disabled={step === 1}>
+                                    <ChevronLeft className="w-4 h-4 mr-2" />
+                                    Previous
+                                </Button>
                                 {
                                     step < 4 ? (
-                                        <Button onClick={handleNext} disabled={!formData.subjectId && step === 1} icon={<ChevronRight className="w-4 h-4" />}>Next Step</Button>
+                                        <Button onClick={handleNext} disabled={!formData.subjectId && step === 1}>
+                                            Next Step
+                                            <ChevronRight className="w-4 h-4 ml-2" />
+                                        </Button>
                                     ) : (
-                                        <Button onClick={handlePublish} isLoading={isLoading} icon={<Save className="w-4 h-4" />}>Publish Now</Button>
+                                        <Button onClick={handlePublish} isLoading={isLoading}>
+                                            <Save className="w-4 h-4 mr-2" />
+                                            Publish Now
+                                        </Button>
                                     )
                                 }
                             </div >
@@ -931,7 +941,7 @@ const UnifiedAssignments = () => {
                 <div className="space-y-6">
                     <Card
                         title="Re-evaluation Requests"
-                        extra={
+                        action={
                             <button
                                 onClick={fetchReEvaluationRequests}
                                 className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-indigo-600 transition-all"

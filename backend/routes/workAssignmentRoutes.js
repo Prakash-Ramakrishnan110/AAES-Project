@@ -17,11 +17,11 @@ router.route('/')
 router.route('/department')
     .get(authorize('hod', 'admin'), getDepartmentWork);
 
-// --- Staff / Class Advisor Routes ---
+// --- Staff / Student Routes ---
 router.route('/me')
-    .get(authorize('staff'), getMyWork);
+    .get(authorize('staff', 'student'), getMyWork);
 
 router.route('/:id/status')
-    .put(authorize('staff'), updateTaskStatus);
+    .put(authorize('staff', 'student'), updateTaskStatus);
 
 module.exports = router;

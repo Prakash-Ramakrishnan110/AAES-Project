@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Shield, ChevronRight, Download, Users } from 'lucide-react';
+import { Search, Shield, ChevronRight, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface Student {
@@ -12,6 +12,8 @@ interface Student {
     registerNumber?: string;
     email: string;
     semester: number;
+    batch?: string;
+    section?: string;
     avgScore: number | null;
 }
 
@@ -44,9 +46,12 @@ const AdvisorStudentList = () => {
         if (!students.length) return;
 
         const exportData = students.map(student => ({
-            'Name': student.fullName || student.username,
-            'Register Number': student.registerNumber || student.username.toUpperCase(),
-            'Email': student.email,
+            'Full Name': student.fullName || student.username,
+            'Username': student.username,
+            'Register Number': student.registerNumber || '—',
+            'Email Address': student.email,
+            'Batch': student.batch || '—',
+            'Section': student.section || '—',
             'Semester': student.semester || 'N/A',
             'Average Score': student.avgScore !== null ? `${student.avgScore.toFixed(1)}%` : '—'
         }));
@@ -58,8 +63,11 @@ const AdvisorStudentList = () => {
         // Column widths
         const wscols = [
             { wch: 25 }, // Name
+            { wch: 15 }, // Username
             { wch: 20 }, // Reg No
             { wch: 30 }, // Email
+            { wch: 15 }, // Batch
+            { wch: 8 },  // Section
             { wch: 10 }, // Sem
             { wch: 15 }  // Score
         ];
@@ -115,6 +123,7 @@ const AdvisorStudentList = () => {
                     <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider">
                         <tr>
                             <th className="px-6 py-4">Student & ID</th>
+                            <th className="px-6 py-4 text-center">Batch / Sec</th>
                             <th className="px-6 py-4">Email Address</th>
                             <th className="px-6 py-4 text-center">Semester</th>
                             <th className="px-6 py-4 text-center">Avg Score</th>
@@ -126,26 +135,36 @@ const AdvisorStudentList = () => {
                             <tr key={student._id} className="hover:bg-gray-50/50 transition-colors group">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
                                             {(student.fullName || student.username).charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-gray-900 leading-tight">{student.fullName || student.username}</p>
-                                            <button 
-                                                onClick={() => navigate(`/profile/${student._id}`)}
-                                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-all uppercase tracking-wider mt-0.5"
-                                            >
-                                                {student.registerNumber || student.username}
-                                            </button>
+                                            <p className="font-bold text-gray-900 leading-tight">{student.fullName || student.username}</p>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className="text-[10px] font-bold text-gray-400">@{student.username}</span>
+                                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50/50 px-1 rounded border border-indigo-100/50">
+                                                    Reg: {student.registerNumber || 'N/A'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <p className="text-xs text-gray-500 max-w-[150px] truncate">{student.email}</p>
+                                     <div className="flex flex-col items-center gap-1">
+                                        <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                            {student.batch || 'Batch —'}
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">
+                                            Section {student.section || '—'}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <p className="text-xs text-gray-500 max-w-[180px] truncate font-medium">{student.email}</p>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                        SEM {student.semester}
+                                    <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase">
+                                        Sem {student.semester || '—'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-center">
@@ -155,10 +174,13 @@ const AdvisorStudentList = () => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <button
-                                        onClick={() => navigate(`/profile/${student._id}`)}
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                        onClick={() => {
+                                            console.log(`[AdvisorStudentList] Navigating to profile: ${student._id}`);
+                                            navigate(`/profile/${student._id}`);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md"
                                     >
-                                        View Profile <ChevronRight className="w-3 h-3" />
+                                        View Profile <ChevronRight className="w-4 h-4 ml-0.5" />
                                     </button>
                                 </td>
                             </tr>

@@ -8,14 +8,14 @@ const {
     getDepartmentStudents
 } = require('../controllers/profileController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const { upload } = require('../middleware/uploadMiddleware');
+const { profileUpload } = require('../middleware/uploadMiddleware');
 
 router.use(protect); // All routes require login
 
 // Personal Profile
 router.route('/me')
     .get(getMyProfile)
-    .put(upload.single('profileImage'), updateMyProfile);
+    .put(profileUpload, updateMyProfile);
 
 // HOD Directory Routes
 router.get('/dept/staff', authorize('hod', 'admin'), getDepartmentStaff);

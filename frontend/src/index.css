@@ -1,83 +1,176 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme {
-    --font-sans: 'Inter', system-ui, sans-serif;
-    --font-display: 'Inter', system-ui, sans-serif;
+    /* SaaS Dashboard Design System */
+    --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    --font-display: 'Plus Jakarta Sans', sans-serif;
 
-    --color-primary: #2563EB;
-    /* Blue 600 */
-    --color-primary-dark: #1E40AF;
-    /* Blue 800 */
-    --color-secondary: #0D9488;
-    /* Teal 600 */
-    --color-accent: #6366F1;
-    /* Indigo 500 */
+    /* Professional Palette: Strict and Refined */
+    --color-primary: #0f172a; /* Deep Slate */
+    --color-primary-soft: #f1f5f9; /* Slate 50 */
+    --color-primary-foreground: #ffffff;
+    
+    --color-secondary: #475569; /* Muted Slate */
+    
+    --color-background: #f3f4f6; /* SaaS Light Gray Background */
+    --color-foreground: #111827; /* Dark text */
+    
+    --color-card: #ffffff;
+    --color-card-foreground: #111827;
+    
+    --color-popover: #ffffff;
+    --color-popover-foreground: #111827;
+    
+    --color-muted: #f3f4f6;
+    --color-muted-foreground: #6b7280; /* Muted Gray for icons/text */
+    
+    --color-accent: #0f172a;
+    --color-accent-foreground: #ffffff;
+    
+    --color-destructive: #ef4444;
+    --color-destructive-foreground: #ffffff;
+    
+    --color-border: #e5e7eb;
+    --color-input: #ffffff;
+    --color-ring: #3b82f6;
 
-    --color-bg-dark: #0F172A;
-    /* Slate 900 */
-    --color-bg-card: #1E293B;
-    /* Slate 800 */
-    --color-text-light: #F8FAFC;
-    /* Slate 50 */
-    --color-text-dim: #94A3B8;
-    /* Slate 400 */
+    /* Formal Shadows: Crisp and shallow */
+    --shadow-premium: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Flatter shadow */
+    --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    
+    /* Professional Radii: Sharp and clean */
+    --radius-sm: 2px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
+    --radius-2xl: 16px;
 
-    --color-mongodb-navy: #001E2B;
-    --color-mongodb-navy-dark: #00151E;
-    --color-mongodb-spring-green: #00ED64;
-    --color-mongodb-forest-green: #00684A;
-    --color-mongodb-digital-blue: #016BF8;
-    --color-mongodb-slate: #8899A6;
-
-    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.5);
+    /* AI Premium Palette */
+    --color-ai-primary: #8b5cf6;
+    --color-ai-secondary: #c084fc;
+    --color-ai-glow: rgba(139, 92, 246, 0.15);
 }
 
 @layer base {
     body {
         font-family: var(--font-sans);
-        background-color: #F3F4F6;
-        /* Light Grey base for light mode */
-        color: #111827;
-        /* Dark Grey text */
-        @apply antialiased;
+        background-color: var(--color-background);
+        color: var(--color-foreground);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        min-height: 100vh;
+        font-size: 13px;
+        line-height: 1.5;
     }
 
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
+    body::selection {
+        background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+        color: var(--color-accent);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
         font-family: var(--font-display);
+        letter-spacing: -0.025em;
+        font-weight: 600;
+        color: #0f172a; /* Slate 900 */
+    }
+
+    p {
+        margin-bottom: 0.5rem;
+        color: #475569; /* Slate 600 */
+        font-weight: 400;
+        line-height: 1.625;
+    }
+
+    * {
+        border-color: var(--color-border);
     }
 }
 
 @layer components {
-    .glass-panel {
-        @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+    /* SaaS Sidebar Styles */
+    .sidebar-compact {
+        @apply w-[220px] bg-white border-r border-border h-screen fixed left-0 top-0 z-50 transition-all duration-300;
     }
 
-    .glass-panel-dark {
-        @apply bg-slate-900/70 backdrop-blur-lg border border-white/10 shadow-xl text-white;
+    .sidebar-link {
+        @apply flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium
+               transition-colors duration-200 cursor-pointer mb-1 mx-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900;
     }
 
-    .btn-primary {
-        @apply bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-500/30;
+    .sidebar-link-active {
+        @apply bg-slate-100 text-slate-900 !font-semibold border-l-2 border-slate-900 rounded-l-none pl-[10px];
+    }
+
+    /* SaaS Dashboard Components */
+    .dashboard-card {
+        @apply bg-white border border-border rounded-md p-4 shadow-soft transition-shadow;
+    }
+
+    .stat-card-compact {
+        @apply bg-white border border-border rounded-md p-4 shadow-soft transition-shadow h-[110px] flex flex-col justify-center;
+    }
+
+    /* Premium Glassmorphism */
+    .glass-card {
+        @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-premium transition-all duration-300;
+    }
+
+    .glass-header {
+        @apply bg-white/60 backdrop-blur-lg border-b border-white/20 sticky top-0 z-40;
+    }
+
+    /* Interactive Elevations */
+    .premium-lift {
+        @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10;
+    }
+
+    /* AI Gradient Accents */
+    .ai-gradient-text {
+        @apply bg-gradient-to-r from-ai-primary to-ai-secondary bg-clip-text text-transparent font-bold;
+    }
+
+    .ai-gradient-bg {
+        @apply bg-gradient-to-br from-ai-primary to-ai-secondary text-white;
+    }
+
+    .btn-saas {
+        @apply bg-primary text-white px-4 py-2 rounded-md font-medium text-[13px]
+               hover:bg-slate-800 transition-colors shadow-sm flex items-center justify-center gap-2;
+    }
+
+    .input-saas {
+        @apply bg-white border border-slate-200 rounded-md px-3 py-2 text-sm font-normal text-slate-900
+               focus:ring-1 focus:ring-slate-900 focus:border-slate-900 
+               transition-colors outline-none placeholder:text-slate-400;
+    }
+
+    /* Table Styles */
+    .table-compact {
+        @apply w-full text-left text-[13px];
+    }
+    .table-compact th {
+        @apply px-4 py-3 bg-white font-semibold text-slate-700 border-y border-slate-200;
+    }
+    .table-compact td {
+        @apply px-4 py-3 border-b border-slate-100 text-slate-600;
+    }
+    .table-compact tr:hover {
+        @apply bg-slate-50;
     }
 }
 
 @layer utilities {
-    .mongodb-grid {
-        background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
-        background-size: 40px 40px;
+    .bg-institutional {
+        background: #f8fafc; /* Flat Slate 50 instead of radial gradient */
     }
-
-    .mongodb-glow {
-        background: radial-gradient(circle at 50% 50%, rgba(0, 237, 100, 0.1) 0%, transparent 70%);
-    }
-
-    .rounded-3xl-plus {
-        border-radius: 2rem;
+    
+    .text-balance {
+        text-wrap: balance;
     }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import { UserPlus, Clock, CheckCircle, FileText, Calendar, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
@@ -11,7 +11,9 @@ interface WorkAssignment {
     taskId: string;
     title: string;
     description: string;
-    assignedStaffId: { name?: string; fullName?: string; username?: string; _id: string };
+    assigneeType: 'Staff' | 'Student';
+    assignedStaffId?: { name?: string; fullName?: string; username?: string; _id: string };
+    assignedStudentId?: { name?: string; fullName?: string; username?: string; registerNumber?: string; _id: string };
     startDate: string;
     dueDate: string;
     priority: string;
@@ -27,7 +29,11 @@ const HODWorkAssignments = () => {
     // Form state
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [assignedStaffId, setAssignedStaffId] = useState('');
+    const [assignedToId, setAssignedToId] = useState('');
+    const [assigneeType, setAssigneeType] = useState<'Staff' | 'Student'>('Staff');
+    const [academicYear, setAcademicYear] = useState('');
+    const [section, setSection] = useState('');
+    const [studentList, setStudentList] = useState<any[]>([]);
     const [startDate, setStartDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('Medium');
@@ -43,6 +49,12 @@ const HODWorkAssignments = () => {
             fetchStaff();
         }
     }, [token]);
+
+    useEffect(() => {
+        if (token && assigneeType === 'Student' && academicYear && section) {
+            fetchStudents();
+        }
+    }, [token, assigneeType, academicYear, section]);
 
     const fetchTasks = async () => {
         try {
@@ -71,6 +83,19 @@ const HODWorkAssignments = () => {
         }
     };
 
+    const fetchStudents = async () => {
+        try {
+            setAssignedToId('');
+            const dept = user?.department || '';
+            const res = await axios.get(`${API_URL}/users?role=student&department=${encodeURIComponent(dept)}&academicYear=${academicYear}&section=${section}`, {
+                headers: authHeader
+            });
+            if (Array.isArray(res.data)) setStudentList(res.data);
+        } catch (error) {
+            console.error('Error fetching student list:', error);
+        }
+    };
+
     const handleAssignTask = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg('');
@@ -78,26 +103,40 @@ const HODWorkAssignments = () => {
         setIsLoading(true);
 
         try {
-            const res = await axios.post(`${API_URL}/work-assignments`, {
+            const payload: any = {
                 title,
                 description,
-                assignedStaffId,
+                assigneeType,
                 startDate,
                 dueDate,
                 priority
-            }, {
+            };
+
+            if (assigneeType === 'Staff') {
+                payload.assignedToId = assignedToId;
+            } else if (assignedToId === 'ALL_STUDENTS') {
+                payload.isBulk = true;
+                payload.studentIds = studentList.map(s => s._id);
+            } else {
+                payload.assignedToId = assignedToId;
+            }
+
+            const res = await axios.post(`${API_URL}/work-assignments`, payload, {
                 headers: authHeader
             });
 
             if (res.data.success) {
-                setSuccessMsg('Work assigned successfully!');
+                setSuccessMsg(res.data.message || 'Work assigned successfully!');
                 // Reset form
                 setTitle('');
                 setDescription('');
-                setAssignedStaffId('');
+                setAssignedToId('');
                 setStartDate('');
                 setDueDate('');
                 setPriority('Medium');
+                setAssigneeType('Staff');
+                setAcademicYear('');
+                setSection('');
 
                 fetchTasks(); // refresh
                 setTimeout(() => setSuccessMsg(''), 3000);
@@ -131,7 +170,7 @@ const HODWorkAssignments = () => {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Work Assignment</h1>
-                    <p className="text-gray-500 mt-1">Assign responsibilities to staff members and track completion</p>
+                    <p className="text-gray-500 mt-1">Assign responsibilities to staff & students and track completion</p>
                 </div>
             </div>
 
@@ -182,17 +221,101 @@ const HODWorkAssignments = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Assign To <span className="text-red-500">*</span></label>
-                                    <select
-                                        required
-                                        value={assignedStaffId}
-                                        onChange={(e) => setAssignedStaffId(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    >
-                                        <option value="">Select Staff Member...</option>
-                                        {staffList.map(staff => (
-                                            <option key={staff._id} value={staff._id}>{staff.fullName || staff.username}</option>
-                                        ))}
-                                    </select>
+                                    <div className="flex gap-2 mb-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setAssigneeType('Staff'); setAssignedToId(''); }}
+                                            className={`flex-1 py-1.5 text-xs font-semibold rounded-md border ${assigneeType === 'Staff' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                                        >
+                                            Staff
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setAssigneeType('Student'); setAssignedToId(''); }}
+                                            className={`flex-1 py-1.5 text-xs font-semibold rounded-md border ${assigneeType === 'Student' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                                        >
+                                            Student
+                                        </button>
+                                    </div>
+
+                                    {assigneeType === 'Staff' ? (
+                                        <select
+                                            required
+                                            value={assignedToId}
+                                            onChange={(e) => setAssignedToId(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            <option value="">Select Staff Member...</option>
+                                            {staffList.map(staff => (
+                                                <option key={staff._id} value={staff._id}>{staff.fullName || staff.username}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select
+                                                    required
+                                                    value={academicYear}
+                                                    onChange={(e) => setAcademicYear(e.target.value)}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                                >
+                                                    <option value="">Year...</option>
+                                                    <option value="1st Year">1st Year</option>
+                                                    <option value="2nd Year">2nd Year</option>
+                                                    <option value="3rd Year">3rd Year</option>
+                                                    <option value="4th Year">4th Year</option>
+                                                </select>
+                                                <select
+                                                    required
+                                                    value={section}
+                                                    onChange={(e) => setSection(e.target.value)}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                                >
+                                                    <option value="">Sec...</option>
+                                                    {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <select
+                                                required
+                                                disabled={!academicYear || !section}
+                                                value={assignedToId}
+                                                onChange={(e) => setAssignedToId(e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            >
+                                                <option value="">
+                                                    {academicYear && section 
+                                                        ? (studentList.length > 0 ? 'Select Recipient...' : 'No students found for this section') 
+                                                        : 'Select Year & Sec first'}
+                                                </option>
+                                                {studentList.length > 0 && (
+                                                    <option value="ALL_STUDENTS" className="font-bold text-indigo-600">
+                                                        Assign to ALL Students in Section {section} ({studentList.length})
+                                                    </option>
+                                                )}
+                                                {studentList.map(student => (
+                                                    <option key={student._id} value={student._id}>
+                                                        {student.fullName || student.username} ({student.registerNumber || 'No Reg'})
+                                                    </option>
+                                                ))}
+                                            </select>
+
+                                            {studentList.length > 0 && (
+                                                <div className="mt-2 bg-indigo-50/50 rounded-md p-3 border border-indigo-100">
+                                                    <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-2 flex justify-between">
+                                                        <span>Section {section} Students ({studentList.length})</span>
+                                                    </div>
+                                                    <div className="max-h-[100px] overflow-y-auto pr-1 space-y-1">
+                                                        {studentList.map(s => (
+                                                            <div key={s._id} className="text-[11px] text-indigo-900 bg-white px-2 py-1 rounded border border-indigo-100 flex justify-between">
+                                                                <span className="truncate">{s.fullName || s.username}</span>
+                                                                <span className="text-indigo-400 font-mono text-[9px]">{s.registerNumber || '---'}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -287,7 +410,15 @@ const HODWorkAssignments = () => {
                                                         <div className="text-gray-500 text-xs mt-1 line-clamp-2 md:max-w-xs">{task.description}</div>
                                                     </td>
                                                     <td className="px-5 py-4 align-top">
-                                                        <div className="font-medium text-gray-800">{task.assignedStaffId?.fullName || task.assignedStaffId?.username || 'Unknown Staff'}</div>
+                                                        <div className="font-medium text-gray-800">
+                                                            {task.assigneeType === 'Student' 
+                                                                ? (task.assignedStudentId?.fullName || task.assignedStudentId?.username || 'Unknown Student')
+                                                                : (task.assignedStaffId?.fullName || task.assignedStaffId?.username || 'Unknown Staff')
+                                                            }
+                                                        </div>
+                                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mt-0.5">
+                                                            {task.assigneeType || 'Staff'} Member
+                                                        </div>
                                                     </td>
                                                     <td className="px-5 py-4 align-top">
                                                         <div className="flex flex-col gap-1 text-xs">

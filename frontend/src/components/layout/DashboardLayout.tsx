@@ -1,15 +1,21 @@
 
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, cloneElement } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import {
     Menu, Bell, Search, LogOut, ChevronDown,
-    User, Settings
+    User, Settings, X, LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export interface HeaderOptions {
+    title: string;
+    subtitle?: React.ReactNode;
+    actions?: React.ReactNode;
+}
 
 interface SidebarItemProps {
     icon: React.ReactNode;
@@ -27,27 +33,25 @@ const SidebarItem = ({ icon, label, to, active, items }: SidebarItemProps) => {
 
     const content = (
         <motion.div
-            whileHover={{ x: 5 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => hasItems && setIsOpen(!isOpen)}
-            className={`flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer text-sm ${active || isChildActive
-                ? 'bg-blue-600/10 text-blue-600 font-medium'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+            className={`sidebar-link transition-all ${active || isChildActive
+                ? 'sidebar-link-active'
+                : ''
                 }`}
         >
-            <div className="flex items-center space-x-3">
-                <div className={`${active || isChildActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} `}>
-                    {icon}
-                </div>
-                <span>{label}</span>
+            <div className={`flex items-center space-x-3 ${active || isChildActive ? 'text-primary' : 'text-gray-500'}`}>
+                {cloneElement(icon as any, { size: 18, strokeWidth: active || isChildActive ? 2.5 : 2 })}
+                <span className="tracking-tight">{label}</span>
             </div>
             {hasItems && (
-                <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
             )}
         </motion.div>
     );
 
     return (
-        <div className="space-y-1">
+        <div className="relative">
             {hasItems ? content : <Link to={to}>{content}</Link>}
 
             <AnimatePresence>
@@ -56,11 +60,13 @@ const SidebarItem = ({ icon, label, to, active, items }: SidebarItemProps) => {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden pl-11 space-y-1"
+                        className="overflow-hidden pl-10 space-y-0.5 mt-0.5"
                     >
                         {items.map((item, idx) => (
                             <Link key={idx} to={item.to}>
-                                <div className={`py-2 px-4 rounded-lg text-sm transition-all ${location.pathname === item.to ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}>
+                                <div className={`py-1.5 px-3 rounded-md text-[12px] font-medium transition-colors ${location.pathname === item.to 
+                                    ? 'text-primary bg-blue-50' 
+                                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
                                     {item.label}
                                 </div>
                             </Link>
@@ -76,9 +82,12 @@ interface DashboardLayoutProps {
     children: React.ReactNode;
     menuItems: SidebarItemProps[];
     role: string;
+    headerTitle?: string;
+    headerSubtitle?: React.ReactNode;
+    headerActions?: React.ReactNode;
 }
 
-const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) => {
+const DashboardLayout = ({ children, menuItems, role, headerTitle, headerSubtitle, headerActions }: DashboardLayoutProps) => {
     const { logout, user } = useContext(AuthContext)!;
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -92,6 +101,7 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
     const fetchNotifications = async () => {
         try {
             const token = localStorage.getItem('token');
+            if (!token) return;
             const res = await axios.get(`${API_URL}/notifications`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -137,71 +147,65 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
     // Auto-close sidebar on mobile route change
     useEffect(() => {
         const handleResize = () => {
-            if (window.innerWidth < 768) {
+            if (window.innerWidth < 1200) {
                 setIsSidebarOpen(false);
             } else {
                 setIsSidebarOpen(true);
             }
         };
 
-        // Initial check
         handleResize();
-
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     return (
-        <div className="h-screen bg-gray-50 flex font-sans overflow-hidden">
-            {/* Desktop Sidebar */}
+        <div className="h-screen bg-gray-50 flex overflow-hidden">
+            {/* SaaS Sidebar */}
             <motion.aside
                 initial={false}
                 animate={{
-                    width: isSidebarOpen ? 240 : 0,
-                    opacity: isSidebarOpen ? 1 : 0
+                    width: isSidebarOpen ? 220 : 0,
+                    x: isSidebarOpen ? 0 : -220
                 }}
-                className="bg-white border-r border-gray-200 fixed h-full z-30 hidden md:block overflow-hidden"
+                className={`sidebar-compact border-r border-gray-200 ${!isSidebarOpen ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
             >
-                <div className="p-4 flex items-center space-x-3 border-b border-gray-100 h-16">
-                    <div className="flex items-center space-x-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-                        <div className="flex flex-col">
-                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">
-                                AAES
-                            </span>
-                            <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
-                                Academic Analytics
-                            </span>
+                <div className="flex flex-col h-full bg-white">
+                    <div className="p-6 flex items-center h-[60px] border-b border-gray-100">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                                <LayoutDashboard className="text-white w-4 h-4" />
+                            </div>
+                            <h1 className="text-lg font-semibold tracking-tight text-slate-900">AAES</h1>
                         </div>
                     </div>
-                </div>
 
-                <nav className="p-4 space-y-1 overflow-y-auto" style={{ height: 'calc(100vh - 180px)' }}>
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                        Menu
+                    <div className="flex-1 overflow-y-auto px-2 py-4 custom-scrollbar">
+                        <nav className="space-y-0.5">
+                            {menuItems.map((item, index) => (
+                                <SidebarItem
+                                    key={index}
+                                    {...item}
+                                    active={location.pathname === item.to}
+                                />
+                            ))}
+                        </nav>
                     </div>
-                    {menuItems.map((item, index) => (
-                        <SidebarItem
-                            key={index}
-                            {...item}
-                            active={location.pathname === item.to}
-                        />
-                    ))}
-                </nav>
 
-                <div className="absolute bottom-0 w-full p-4 border-t border-gray-100 bg-white">
-                    <button
-                        onClick={logout}
-                        className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        <span className="font-medium">Sign Out</span>
-                    </button>
+                    <div className="p-4 border-t border-gray-100">
+                        <button
+                            onClick={logout}
+                            className="flex items-center justify-center space-x-2 px-4 py-2 w-full rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors font-semibold text-[13px]"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
+                        </button>
+                    </div>
                 </div>
             </motion.aside>
 
-            {/* Mobile Sidebar Overlay & Drawer - Wrapped in md:hidden to prevent Desktop interference */}
-            <div className="md:hidden">
+            {/* Mobile Sidebar Overlay & Drawer */}
+            <div className="xl:hidden">
                 <AnimatePresence>
                     {isSidebarOpen && (
                         <>
@@ -210,32 +214,27 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setIsSidebarOpen(false)}
-                                className="fixed inset-0 bg-black/50 z-40"
+                                className="fixed inset-0 bg-[#0B1437]/40 backdrop-blur-sm z-40"
                             />
                             <motion.aside
-                                initial={{ x: -240 }}
+                                initial={{ x: -300 }}
                                 animate={{ x: 0 }}
-                                exit={{ x: -240 }}
+                                exit={{ x: -300 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                className="fixed inset-y-0 left-0 w-[240px] bg-white z-50 border-r border-gray-200 overflow-y-auto"
+                                className="fixed inset-y-0 left-0 w-[290px] bg-white z-50 overflow-y-auto shadow-premium"
                             >
-                                <div className="p-4 flex items-center justify-between border-b border-gray-100 h-16">
-                                    <div className="flex items-center space-x-2">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-                                        <div className="flex flex-col">
-                                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">
-                                                AAES
-                                            </span>
-                                            <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none mt-1">
-                                                Academic Analytics
-                                            </span>
+                                <div className="p-8 flex items-center justify-between h-24 border-b border-[#F4F7FE]">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-premium">
+                                             <LayoutDashboard className="text-white w-6 h-6" />
                                         </div>
+                                        <span className="text-2xl font-bold text-slate-900 uppercase">AAES</span>
                                     </div>
-                                    <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                                        <LogOut className="w-5 h-5 rotate-180" />
+                                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[#F4F7FE] rounded-xl transition-colors">
+                                        <X className="w-5 h-5 text-[#A3AED0]" />
                                     </button>
                                 </div>
-                                <nav className="p-4 space-y-1">
+                                <nav className="p-6 space-y-2">
                                     {menuItems.map((item, index) => (
                                         <SidebarItem
                                             key={index}
@@ -244,13 +243,13 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                                         />
                                     ))}
                                 </nav>
-                                <div className="p-4 border-t border-gray-100">
+                                <div className="p-8 mt-auto">
                                     <button
                                         onClick={logout}
-                                        className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+                                        className="flex items-center justify-center space-x-3 px-6 py-4 w-full rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all font-semibold text-sm"
                                     >
-                                        <LogOut className="w-5 h-5" />
-                                        <span className="font-medium">Sign Out</span>
+                                        <LogOut className="w-4 h-4" />
+                                        <span>Sign Out</span>
                                     </button>
                                 </div>
                             </motion.aside>
@@ -259,81 +258,103 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                 </AnimatePresence>
             </div>
 
-            {/* Main Content */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'md:ml-[240px]' : ''} min-w-0`}>
-                {/* Topbar */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-[60] px-4 md:px-6 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+            {/* Main Content Area */}
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'xl:ml-[220px]' : ''} min-w-0 h-screen overflow-hidden`}>
+                <header className="h-[60px] bg-white border-b border-gray-200 sticky top-0 z-40 px-6 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                            className="hidden xl:flex p-2 rounded-md hover:bg-gray-100 text-gray-500 transition-all"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
-                        <div className="hidden md:flex items-center space-x-2 text-gray-400 bg-gray-100 px-4 py-2 rounded-xl w-64 md:w-96">
-                            <Search className="w-4 h-4" />
+ 
+                        <div className="flex flex-col min-w-0">
+                            <h1 className="text-[16px] font-semibold text-slate-900 truncate leading-tight">
+                                {headerTitle || 'AAES Institutional Portal'}
+                            </h1>
+                            {headerSubtitle && (
+                                <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider truncate">
+                                    {headerSubtitle}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+ 
+                    <div className="flex items-center gap-3">
+                        {headerActions && (
+                            <div className="hidden md:flex items-center border-r border-gray-100 pr-3 mr-1">
+                                {headerActions}
+                            </div>
+                        )}
+ 
+                        <div className="hidden md:flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-md w-64 transition-all focus-within:ring-1 focus-within:ring-slate-900 focus-within:border-slate-900 group">
+                            <Search className="w-3.5 h-3.5 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search..."
-                                className="bg-transparent border-none focus:outline-none w-full text-sm text-gray-700 placeholder-gray-400"
+                                className="bg-transparent border-none focus:outline-none w-full text-[13px] font-medium text-slate-900 placeholder:text-slate-400"
                             />
                         </div>
-                    </div>
+ 
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="xl:hidden p-2 rounded-md hover:bg-gray-100 text-gray-500 transition-all"
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
 
-                    <div className="flex items-center space-x-4">
                         <div className="relative">
                             <button
                                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                                className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative"
+                                className="p-3.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all relative"
                             >
                                 <Bell className="w-5 h-5" />
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">
-                                        {unreadCount > 9 ? '9+' : unreadCount}
-                                    </span>
+                                    <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
                                 )}
                             </button>
-
+ 
                             <AnimatePresence>
                                 {isNotificationsOpen && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 10 }}
-                                        className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 overflow-hidden"
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        className="absolute right-0 mt-6 w-96 bg-white rounded-lg shadow-lg border border-slate-100 p-0 z-50 overflow-hidden"
                                     >
-                                        <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                            <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                                        <div className="px-8 py-6 border-b border-[#F4F7FE] flex justify-between items-center bg-institutional/30">
+                                            <p className="text-[16px] font-semibold text-slate-900">Notifications</p>
                                             {unreadCount > 0 && (
                                                 <button
                                                     onClick={markAllAsRead}
-                                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                                    className="text-[12px] font-medium text-primary hover:underline"
                                                 >
-                                                    Mark all as read
+                                                    Mark all read
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="max-h-[400px] overflow-y-auto">
+                                        <div className="max-h-[350px] overflow-y-auto scrollbar-thin">
                                             {notifications.length === 0 ? (
-                                                <div className="px-4 py-8 text-center">
-                                                    <p className="text-sm text-gray-500">No notifications yet</p>
+                                                <div className="px-6 py-12 text-center text-[#A3AED0]">
+                                                    <p className="text-[14px] font-bold">All caught up!</p>
                                                 </div>
                                             ) : (
                                                 notifications.map((n) => (
                                                     <div
                                                         key={n._id}
                                                         onClick={() => markAsRead(n._id)}
-                                                        className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                                                        className={`px-6 py-4 hover:bg-[#F4F7FE] cursor-pointer transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
                                                     >
                                                         <div className="flex justify-between items-start mb-1">
-                                                            <p className={`text-sm ${!n.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                                            <p className={`text-[13px] leading-tight ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                                                                 {n.title}
                                                             </p>
-                                                            {!n.read && <div className="w-2 h-2 bg-indigo-600 rounded-full mt-1"></div>}
+                                                            {!n.read && <div className="w-2 h-2 bg-primary rounded-full mt-1"></div>}
                                                         </div>
-                                                        <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
-                                                        <p className="text-[10px] text-gray-400 mt-1">
-                                                            {new Date(n.createdAt).toLocaleString()}
+                                                        <p className="text-[12px] text-[#707EAE] line-clamp-2">{n.message}</p>
+                                                        <p className="text-[11px] font-medium text-slate-400 mt-2 uppercase">
+                                                            {new Date(n.createdAt).toLocaleTimeString()}
                                                         </p>
                                                     </div>
                                                 ))
@@ -344,56 +365,40 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                             </AnimatePresence>
                         </div>
 
-                        <div className="relative">
+                        <div className="relative flex items-center gap-3 pl-4 border-l border-gray-100">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-[13px] font-semibold text-slate-900 leading-none">{user?.fullName || user?.username}</p>
+                                <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mt-1">{role}</p>
+                            </div>
                             <button
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                className="flex items-center space-x-3 p-1.5 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
+                                className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-[12px] shadow-sm hover:ring-4 hover:ring-blue-100 transition-all"
                             >
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-medium text-sm">
-                                    {user?.username?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                                <div className="hidden md:block text-left">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium text-gray-700 leading-none">{user?.fullName || user?.username}</p>
-                                        {(user?.academicYear || user?.semester) && (
-                                            <span className="px-1.5 py-0.5 bg-gray-100 text-[9px] font-bold text-gray-500 rounded uppercase tracking-wider">
-                                                {user.academicYear && `${user.academicYear}`} {user.semester && `· S${user.semester}`}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {user?.role === 'staff' && user?.isAdvisor ? (
-                                        <p className="text-xs text-indigo-600 mt-0.5 font-medium">
-                                            Staff · Class Advisor – {user.advisorYear}
-                                        </p>
-                                    ) : (
-                                        <p className="text-xs text-gray-500 mt-0.5 capitalize">{role}</p>
-                                    )}
-                                </div>
-                                <ChevronDown className="w-4 h-4 text-gray-400" />
+                                {user?.username?.charAt(0).toUpperCase() || 'U'}
                             </button>
-
-                            {/* Dropdown */}
+ 
                             <AnimatePresence>
                                 {isProfileOpen && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 10 }}
-                                        className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50"
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-soft border border-slate-200 p-1 z-50"
                                     >
-                                        <div className="px-4 py-2 border-b border-gray-100">
-                                            <p className="text-sm font-medium text-gray-900">My Account</p>
+                                        <div className="px-4 py-2 border-b border-gray-100 mb-1 sm:hidden">
+                                            <p className="text-[13px] font-semibold text-slate-900">{user?.fullName || user?.username}</p>
+                                            <p className="text-[10px] font-medium text-gray-500 uppercase mt-0.5">{role}</p>
                                         </div>
-                                        <Link to="/profile" className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                            <User className="w-4 h-4" /> Profile
+                                        <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+                                            <User className="w-4 h-4 text-gray-400" /> My Profile
                                         </Link>
-                                        <Link to="/settings" className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                            <Settings className="w-4 h-4" /> Settings
+                                        <Link to="/settings" className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+                                            <Settings className="w-4 h-4 text-gray-400" /> Account Settings
                                         </Link>
-                                        <div className="border-t border-gray-100 my-1"></div>
+                                        <div className="h-px bg-gray-100 my-1 mx-1"></div>
                                         <button
                                             onClick={logout}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                         >
                                             <LogOut className="w-4 h-4" /> Sign Out
                                         </button>
@@ -404,9 +409,11 @@ const DashboardLayout = ({ children, menuItems, role }: DashboardLayoutProps) =>
                     </div>
                 </header>
 
-                {/* Page Content */}
-                <main className={`flex-1 overflow-y-auto ${['Principal', 'Student'].includes(role || '') ? '' : 'p-4 md:p-8'}`}>
-                    {children}
+                {/* SaaS Content Area */}
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar bg-gray-50">
+                    <div className="max-w-[1600px] mx-auto space-y-6">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

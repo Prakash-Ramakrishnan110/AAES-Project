@@ -137,41 +137,41 @@ const AdminSettings = () => {
             )}
 
             <div>
-                <h1 className="text-2xl font-bold font-display text-gray-900 flex items-center gap-3">
-                    <Settings className="w-7 h-7 text-indigo-600" />
+                <h1 className="text-2xl font-bold font-display text-slate-900 flex items-center gap-3">
+                    <Settings className="w-7 h-7 text-slate-900" />
                     System Settings
                 </h1>
-                <p className="text-gray-500 mt-1">Manage global platform configurations and data ops.</p>
+                <p className="text-slate-500 mt-1">Manage global platform configurations and data ops.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {/* Academic Configuration */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Server className="w-5 h-5 text-indigo-500" />
+                <div className="bg-white rounded-md shadow-sm border border-slate-200 p-6">
+                    <h2 className="text-lg font-bold text-slate-900 mb-5 flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <Server className="w-5 h-5 text-slate-700" />
                         Global Configurations
                     </h2>
 
-                    <form onSubmit={handleSaveSettings} className="space-y-4">
+                    <form onSubmit={handleSaveSettings} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Active Academic Year</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">Active Academic Year</label>
                             <input
                                 type="text"
                                 value={academicYear}
                                 onChange={(e) => setAcademicYear(e.target.value)}
                                 placeholder="e.g. 2024-2025"
                                 required
-                                className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5"
+                                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 block px-3 py-2.5 transition-colors"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Semester</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">Current Semester</label>
                             <select
                                 value={semester}
                                 onChange={(e) => setSemester(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5"
+                                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 block px-3 py-2.5 transition-colors"
                             >
                                 <option value="Odd">Odd Semester</option>
                                 <option value="Even">Even Semester</option>
@@ -179,23 +179,23 @@ const AdminSettings = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">AI Engine Endpoint</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">AI Engine Endpoint</label>
                             <input
                                 type="url"
                                 value={aiUrl}
                                 onChange={(e) => setAiUrl(e.target.value)}
                                 placeholder="http://localhost:8000"
                                 required
-                                className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5"
+                                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 block px-3 py-2.5 transition-colors"
                             />
-                            <p className="text-xs text-gray-500 mt-1">URL of the Python Ollama OCR/Grading microservice.</p>
+                            <p className="text-xs text-slate-500 mt-1.5 ml-0.5">URL of the Python Ollama OCR/Grading microservice.</p>
                         </div>
 
                         <div className="pt-2">
                             <button
                                 type="submit"
                                 disabled={saving}
-                                className="flex justify-center items-center gap-2 w-full bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition font-medium disabled:opacity-70"
+                                className="flex justify-center items-center gap-2 w-full bg-slate-900 text-white rounded-md px-4 py-2.5 hover:bg-slate-800 transition-colors font-medium text-sm shadow-sm disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
                             >
                                 {saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save Configurations</>}
                             </button>
@@ -204,34 +204,34 @@ const AdminSettings = () => {
                 </div>
 
                 {/* Database Operations */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Database className="w-5 h-5 text-indigo-500" />
+                <div className="bg-white rounded-md shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <Database className="w-5 h-5 text-slate-700" />
                         Data Operations
                     </h2>
-                    <p className="text-sm text-gray-600 mb-6">
+                    <p className="text-sm text-slate-600 mb-6">
                         Backup your complete MongoDB system state to a secure JSON file, or restore the platform entirely from an existing backup snapshot.
                     </p>
 
                     <div className="space-y-4 mt-auto">
-                        <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/50">
-                            <h3 className="font-semibold text-blue-900 text-sm mb-1">Database Backup</h3>
-                            <p className="text-xs text-blue-700 mb-3">Download a complete snapshot of all collections.</p>
+                        <div className="p-5 rounded-md border border-sky-200 bg-sky-50">
+                            <h3 className="font-bold text-sky-900 text-sm mb-1">Database Backup</h3>
+                            <p className="text-xs text-sky-800 mb-4">Download a complete snapshot of all collections.</p>
                             <button
                                 onClick={handleBackup}
                                 disabled={backupLoading}
-                                className="flex justify-center items-center gap-2 w-full bg-white border border-blue-200 text-blue-700 rounded-lg px-4 py-2 hover:bg-blue-50 transition font-medium text-sm disabled:opacity-70"
+                                className="flex justify-center items-center gap-2 w-full bg-white border border-sky-300 text-sky-800 rounded-md px-4 py-2.5 hover:bg-sky-100 transition-colors font-semibold text-sm shadow-sm disabled:opacity-70"
                             >
-                                {backupLoading ? 'Building Backup...' : <><Download className="w-4 h-4" /> Export Full Backup (.json)</>}
+                                {backupLoading ? 'Building Backup...' : <><Download className="w-4 h-4" /> Export Backup (.json)</>}
                             </button>
                         </div>
 
-                        <div className="p-4 rounded-xl border border-red-200 bg-red-50/50">
-                            <h3 className="font-semibold text-red-900 text-sm mb-1 flex justify-between items-center">
+                        <div className="p-5 rounded-md border border-red-200 bg-red-50">
+                            <h3 className="font-bold text-red-900 text-sm mb-1 flex justify-between items-center">
                                 Database Restore
-                                <AlertTriangle className="w-4 h-4 text-red-500" />
+                                <AlertTriangle className="w-4 h-4 text-red-600" />
                             </h3>
-                            <p className="text-xs text-red-700 mb-3">Target backup file will permanently overwrite current data.</p>
+                            <p className="text-xs text-red-800 mb-4">Target backup file will permanently overwrite current data.</p>
 
                             <input
                                 type="file"
@@ -244,7 +244,7 @@ const AdminSettings = () => {
                             <button
                                 onClick={handleRestoreClick}
                                 disabled={restoreLoading}
-                                className="flex justify-center items-center gap-2 w-full bg-red-600 text-white rounded-lg px-4 py-2 hover:bg-red-700 transition font-medium text-sm disabled:opacity-70"
+                                className="flex justify-center items-center gap-2 w-full bg-red-600 text-white rounded-md px-4 py-2.5 hover:bg-red-700 transition-colors font-semibold text-sm shadow-sm disabled:opacity-70"
                             >
                                 {restoreLoading ? 'Restoring Systems...' : <><Upload className="w-4 h-4" /> Upload Restore Image</>}
                             </button>

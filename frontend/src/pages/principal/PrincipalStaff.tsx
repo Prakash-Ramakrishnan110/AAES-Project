@@ -198,7 +198,7 @@ const PrincipalStaff = () => {
                                             onClick={() => fetchPerformance({ ...hod, role: 'hod' })}
                                             className="w-full mt-5 py-3 border border-slate-200 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all flex items-center justify-center gap-2"
                                         >
-                                            View Matrix <ChevronRight className="w-3 h-3" />
+                                            View Details <ChevronRight className="w-3 h-3" />
                                         </button>
                                     </div>
                                 ))}
@@ -292,7 +292,7 @@ const PrincipalStaff = () => {
                                 {loadingStats ? (
                                     <div className="py-12 text-center space-y-4">
                                         <div className="w-8 h-8 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin mx-auto" />
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Aggregating Matrix...</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Staff Data...</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-10">

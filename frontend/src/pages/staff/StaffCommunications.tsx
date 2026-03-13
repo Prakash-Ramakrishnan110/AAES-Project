@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
-import { Bell, CheckCircle, Info, AlertTriangle, Megaphone, Send, X, Users, UserPlus } from 'lucide-react';
+import { Bell, CheckCircle, Info, AlertTriangle, Megaphone, Send, X, Users } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 

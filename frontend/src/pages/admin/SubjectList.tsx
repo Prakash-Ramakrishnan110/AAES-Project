@@ -141,12 +141,12 @@ const SubjectList = () => {
                     transition={{ delay: 0.1 }}
                     className="xl:col-span-1"
                 >
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 sticky top-6">
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
-                            <h2 className="text-white text-xl font-bold flex items-center gap-2">
-                                <Plus size={24} /> Add New Subject
+                    <div className="bg-white rounded-md shadow-sm overflow-hidden border border-slate-200 sticky top-6">
+                        <div className="bg-slate-900 border-b border-slate-800 p-6">
+                            <h2 className="text-white text-lg font-semibold flex items-center gap-2">
+                                <Plus size={20} /> Add New Subject
                             </h2>
-                            <p className="text-indigo-100 text-sm mt-1">Create a new course entry</p>
+                            <p className="text-slate-400 text-sm mt-1">Create a new course entry</p>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleAddSubject} className="space-y-4">
@@ -165,7 +165,7 @@ const SubjectList = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
                                         <div className="relative">
@@ -231,7 +231,7 @@ const SubjectList = () => {
 
                                 <button
                                     type="submit"
-                                    className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 hover:shadow-xl transform active:scale-95 duration-200"
+                                    className="w-full bg-slate-900 text-white py-2.5 rounded-md font-medium hover:bg-slate-800 transition-colors shadow-sm mt-2"
                                 >
                                     Add Subject
                                 </button>
@@ -247,15 +247,15 @@ const SubjectList = () => {
                     transition={{ delay: 0.2 }}
                     className="xl:col-span-2"
                 >
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="font-bold text-gray-800 text-lg">Subject Directory</h3>
+                    <div className="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center bg-slate-50 gap-4">
+                            <h3 className="font-semibold text-slate-800 text-[15px]">Subject Directory</h3>
                             <div className="relative">
                                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
                                 <input
                                     type="text"
                                     placeholder="Search subjects..."
-                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm w-64"
+                                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-md focus:ring-1 focus:ring-slate-900 focus:border-slate-900 text-sm w-full sm:w-64 bg-white"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -289,7 +289,7 @@ const SubjectList = () => {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: index * 0.05 + 0.3 }}
-                                                className="hover:bg-indigo-50 transition-colors duration-150"
+                                                className="hover:bg-slate-50 transition-colors duration-150 border-b border-slate-100 last:border-0"
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center">

@@ -1,16 +1,45 @@
-import { useEffect, useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useContext, cloneElement } from 'react';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { type HeaderOptions } from '../../components/layout/DashboardLayout';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
+
 import {
     BookOpen, FileText, CheckSquare, Clock, ClipboardList,
-    BarChart2, Zap, ArrowRight, Users, TrendingUp, Star, CalendarDays, Download, HeartHandshake
+    BarChart2, Zap, ArrowRight, Users, TrendingUp, Star, 
+    Calendar, Download, HeartHandshake,
+    Target, LayoutDashboard
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import SectionCard from '../../components/ui/SectionCard';
+import Skeleton from '../../components/ui/Skeleton';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+        y: 0,
+        opacity: 1,
+        transition: {
+            type: 'spring',
+            stiffness: 260,
+            damping: 20
+        }
+    }
+} as const;
 
 interface Subject {
     _id: string; name: string; code: string; semester: string; academicYear?: string; department?: string;
@@ -19,6 +48,7 @@ interface Subject {
 const StaffDashboard = () => {
     const { token, user } = useContext(AuthContext)!;
     const navigate = useNavigate();
+    const { setHeaderOptions } = useOutletContext<{ setHeaderOptions: (opts: HeaderOptions) => void }>();
 
     const [stats, setStats] = useState({ subjectCount: 0, assignmentCount: 0, submissionCount: 0, pendingGrading: 0, pendingReEval: 0 });
     const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -26,6 +56,7 @@ const StaffDashboard = () => {
 
     useEffect(() => {
         const fetch = async () => {
+            setLoading(true);
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const staffId = (user as any)?._id || user?.id;
@@ -96,241 +127,252 @@ const StaffDashboard = () => {
         }
     };
 
-    const kpis = [
-        { label: 'My Subjects', value: stats.subjectCount, icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50', link: '/staff/my-subjects' },
-        { label: 'Assignments', value: stats.assignmentCount, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', link: '/staff/assignments' },
-        { label: 'Submissions', value: stats.submissionCount, icon: CheckSquare, color: 'text-green-600', bg: 'bg-green-50', link: '/staff/evaluation' },
-        { label: 'Pending Review', value: stats.pendingGrading, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', link: '/staff/evaluation' },
-    ];
+    useEffect(() => {
+        if (!loading) {
+            setHeaderOptions({
+                title: 'Institutional Academic Dashboard',
+                subtitle: (
+                    <span>Welcome back, <span className="text-slate-900 font-bold">{(user as any)?.fullName || user?.username}</span> &bull; Faculty Portal</span>
+                ),
+                actions: (
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={exportToPDF}
+                            className="bg-white border border-slate-200 px-4 py-2 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                        >
+                            <Download className="w-3.5 h-3.5 text-primary" />
+                            Academic Report
+                        </button>
+                        <button 
+                            onClick={() => navigate('/staff/evaluation')}
+                            className="bg-primary text-white px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm"
+                        >
+                            <Target className="w-3.5 h-3.5" />
+                            Grading Hub
+                        </button>
+                    </div>
+                )
+            });
+        }
+    }, [loading, user, setHeaderOptions, navigate]);
 
     const quickActions = [
-        { icon: ClipboardList, label: 'Mark Attendance', desc: 'Go to My Subjects → Mark Attendance', color: 'from-indigo-500 to-indigo-600', link: '/staff/my-subjects' },
-        { icon: FileText, label: 'Assignments', desc: 'Manage tests, quizzes & AI tasks', color: 'from-blue-500 to-blue-600', link: '/staff/assignments' },
-        { icon: BarChart2, label: 'Evaluate', desc: `${stats.pendingGrading} submissions pending`, color: 'from-green-500 to-green-600', link: '/staff/evaluation' },
-        { icon: HeartHandshake, label: 'Mentor Hub', desc: 'Mentees, risk levels & interactions', color: 'from-teal-500 to-teal-600', link: '/staff/mentorship-governance' },
+        { icon: ClipboardList, label: 'Attendance', desc: 'Log daily student presence', color: 'from-[#624BFF] to-[#4318FF]', link: '/staff/my-subjects' },
+        { icon: Users, label: 'Students', desc: 'Manage learner directories', color: 'from-[#1B2559] to-[#0B1437]', link: '/staff/students' },
+        { icon: LayoutDashboard, label: 'Modules', desc: 'Sync tests & AI workloads', color: 'from-[#05CD99] to-[#04b084]', link: '/staff/assignments' },
+        { icon: Target, label: 'Evaluate', desc: `${stats.pendingGrading} nodes pending`, color: 'from-[#FFB547] to-[#e6a33f]', link: '/staff/evaluation' },
+        { icon: HeartHandshake, label: 'Mentoring', desc: 'Sync cohort health logs', color: 'from-[#4318FF] to-[#1B2559]', link: '/staff/mentorship-governance' },
     ];
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                        AAES &ndash; Staff Dashboard
-                    </h1>
-                    <p className="text-gray-600 text-lg font-medium mt-1">
-                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {(user as any)?.fullName || user?.username} 👋
-                    </p>
-                    <p className="text-gray-500 text-sm mt-0.5">Here's your teaching overview for today</p>
-                </div>
-                <div className="flex gap-3">
-                    <button onClick={exportToPDF}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-colors shadow-sm"
-                    >
-                        <Download className="w-4 h-4" /> Export Report
-                    </button>
-                    <Link to="/staff/assignments"
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-                    >
-                        <FileText className="w-4 h-4" /> Assignments
-                    </Link>
-                </div>
-            </div>
-
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {kpis.map((kpi, i) => (
-                    <motion.div key={kpi.label}
-                        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.06 }}
-                    >
-                        <Link to={kpi.label === 'Pending Review' && (stats as any).pendingReEval > 0 ? '/staff/assignments' : kpi.link}>
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-3 rounded-xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
-                                        <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
-                                        <h3 className="text-2xl font-bold text-gray-900">
-                                            {loading ? <span className="text-gray-300">—</span> : kpi.value}
-                                        </h3>
-                                    </div>
-                                </div>
-                                {kpi.label === 'Pending Review' && (stats as any).pendingReEval > 0 && (
-                                    <div className="mt-2 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 flex items-center gap-1.5 animate-pulse">
-                                        <Zap className="w-3 h-3" /> Includes {(stats as any).pendingReEval} Re-evaluation requests
-                                    </div>
-                                )}
-                            </div>
-                        </Link>
-                    </motion.div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* My Subjects Overview */}
-                <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <BookOpen className="w-4 h-4 text-gray-400" />
-                            <h2 className="font-semibold text-gray-800 text-sm">My Subjects</h2>
-                        </div>
-                        <Link to="/staff/my-subjects" className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1">
-                            View All <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
+        <div className="space-y-6 pb-12">
+            {loading ? (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[...Array(4)].map((_, i) => (
+                            <Skeleton key={i} height={110} className="w-full rounded-2xl" />
+                        ))}
                     </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="lg:col-span-2">
+                            <Skeleton height={350} className="w-full rounded-3xl" />
+                        </div>
+                        <div className="space-y-4">
+                            <Skeleton height={200} className="w-full rounded-3xl" />
+                            <Skeleton height={134} className="w-full rounded-3xl" />
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* Administrative KPIs */}
+                    <motion.div 
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                    >
+                        <StatCard label="Assigned Modules" value={stats.subjectCount} icon={<BookOpen />} color="blue" link="/staff/my-subjects" />
+                        <StatCard label="Submissions" value={stats.assignmentCount} icon={<FileText />} color="indigo" link="/staff/assignments" />
+                        <StatCard 
+                            label="Pending Eval" 
+                            value={stats.pendingGrading} 
+                            icon={<Clock />} 
+                            color="amber" 
+                            link="/staff/evaluation"
+                            alert={(stats as any).pendingReEval > 0 ? `${(stats as any).pendingReEval} Re-eval` : null}
+                        />
+                        <StatCard label="Impact" value={`${gradeRate}%`} icon={<TrendingUp />} color="green" link="/staff/evaluation" />
+                    </motion.div>
 
-                    {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                        </div>
-                    ) : subjects.length === 0 ? (
-                        <div className="py-12 text-center text-gray-400 text-sm">
-                            No subjects assigned yet.
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-gray-50">
-                            {subjects.slice(0, 5).map((subject, i) => (
-                                <motion.div key={subject._id}
-                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Course Stream */}
+                        <motion.div variants={itemVariants} initial="hidden" animate="visible" className="lg:col-span-2">
+                            <SectionCard 
+                                title="Active Courses" 
+                                subtitle="Live academic inventory"
+                                icon={<BookOpen />}
+                                actions={<Link to="/staff/my-subjects" className="text-[10px] font-bold text-blue-600 uppercase tracking-wider hover:underline">View All</Link>}
+                            >
+                                <div className="space-y-2 pt-2">
+                                    {subjects.length === 0 ? (
+                                        <div className="py-10 text-center text-gray-400 text-xs font-bold uppercase">No courses mapped</div>
+                                    ) : (
+                                        subjects.slice(0, 5).map((subject) => (
+                                            <div key={subject._id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                                        <LayoutDashboard size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[14px] font-bold text-slate-900 leading-tight">{subject.name}</p>
+                                                        <p className="text-[11px] font-medium text-slate-500 mt-0.5">Semester {subject.semester} • {subject.code}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => navigate(`/staff/attendance/${subject._id}`)} className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] font-bold uppercase tracking-tight text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">Attendance</button>
+                                                    <button onClick={() => navigate(`/staff/attendance/${subject._id}/summary`)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"><BarChart2 size={16} /></button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </SectionCard>
+                        </motion.div>
+
+                        <div className="space-y-4">
+                            <motion.div variants={itemVariants} initial="hidden" animate="visible">
+                                <SectionCard title="Grading Status" subtitle="Sync completion" icon={<CheckSquare />}>
+                                    <div className="flex flex-col items-center pt-2">
+                                        <div className="relative w-28 h-28 mb-4">
+                                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                                <circle cx="18" cy="18" r="16" fill="none" stroke="#F1F5F9" strokeWidth="3" />
+                                                <circle cx="18" cy="18" r="16" fill="none"
+                                                    stroke={gradeRate >= 80 ? '#10b981' : gradeRate >= 50 ? '#f59e0b' : '#3b82f6'}
+                                                    strokeWidth="3"
+                                                    strokeDasharray={`${gradeRate} ${100 - gradeRate}`}
+                                                    strokeLinecap="round"
+                                                    className="transition-all duration-1000"
+                                                />
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <span className="text-2xl font-bold text-slate-900 leading-none">{gradeRate}%</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full grid grid-cols-2 gap-2 pt-4 border-t border-slate-100">
+                                            <div className="text-center">
+                                                <p className="text-lg font-bold text-slate-900">{stats.submissionCount - stats.pendingGrading}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Graded</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-lg font-bold text-amber-600">{stats.pendingGrading}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Pending</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => navigate('/staff/evaluation')} className="mt-5 w-full bg-slate-900 text-white rounded-xl py-2.5 text-[11px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all">
+                                            Open Hub
+                                        </button>
+                                    </div>
+                                </SectionCard>
+                            </motion.div>
+
+                            {(user as any)?.isAdvisor && (
+                                <motion.div 
+                                    variants={itemVariants} initial="hidden" animate="visible"
+                                    className="bg-slate-900 rounded-3xl p-6 text-white hover:bg-slate-800 transition-all cursor-pointer shadow-xl relative overflow-hidden group"
+                                    onClick={() => navigate('/staff/advisor-dashboard')}
                                 >
-                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                        {subject.code?.substring(0, 2).toUpperCase() || 'SU'}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500" />
+                                    <div className="w-10 h-10 bg-blue-500/20 text-blue-400 rounded-xl flex items-center justify-center mb-4 border border-blue-500/20">
+                                        <Star size={20} />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-gray-800 truncate">{subject.name}</p>
-                                        <p className="text-xs text-gray-400">{subject.code} · Sem {subject.semester} · {subject.academicYear}</p>
-                                    </div>
-                                    <div className="flex gap-2 flex-shrink-0">
-                                        <button onClick={() => navigate(`/staff/attendance/${subject._id}`)}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 transition-colors"
-                                        >
-                                            <ClipboardList className="w-3 h-3" /> Attend
-                                        </button>
-                                        <button onClick={() => navigate(`/staff/attendance/${subject._id}/summary`)}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg border border-gray-200 transition-colors"
-                                        >
-                                            <BarChart2 className="w-3 h-3" /> Summary
-                                        </button>
+                                    <h4 className="text-[15px] font-bold mb-1">Advisor Portal</h4>
+                                    <p className="text-[11px] text-slate-400 font-medium mb-4 leading-relaxed">Authorized cohort oversight & academic governance.</p>
+                                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-blue-400">
+                                        Launch Hub <ArrowRight size={14} />
                                     </div>
                                 </motion.div>
-                            ))}
+                            )}
                         </div>
-                    )}
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-4">
-                    {/* Grading Progress */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <TrendingUp className="w-4 h-4 text-gray-400" />
-                            <h2 className="font-semibold text-gray-800 text-sm">Grading Progress</h2>
-                        </div>
-                        <div className="relative flex items-center justify-center mb-3">
-                            <svg className="w-28 h-28 -rotate-90" viewBox="0 0 36 36">
-                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F3F4F6" strokeWidth="3.5" />
-                                <circle cx="18" cy="18" r="15.9" fill="none"
-                                    stroke={gradeRate >= 80 ? '#10B981' : gradeRate >= 50 ? '#F59E0B' : '#6366F1'}
-                                    strokeWidth="3.5"
-                                    strokeDasharray={`${gradeRate} ${100 - gradeRate}`}
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                            <div className="absolute text-center">
-                                <p className="text-2xl font-bold text-gray-900">{gradeRate}%</p>
-                                <p className="text-xs text-gray-400">Graded</p>
-                            </div>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500">
-                            <div className="text-center">
-                                <p className="font-bold text-gray-800">{stats.submissionCount - stats.pendingGrading}</p>
-                                <p>Graded</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="font-bold text-amber-600">{stats.pendingGrading}</p>
-                                <p>Pending</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="font-bold text-gray-800">{stats.submissionCount}</p>
-                                <p>Total</p>
-                            </div>
-                        </div>
-                        <Link to="/staff/evaluation"
-                            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors"
-                        >
-                            <CheckSquare className="w-3.5 h-3.5" /> Go to Evaluation
-                        </Link>
                     </div>
 
-                    {/* Advisor Badge (if advisor) */}
-                    {(user as any)?.isAdvisor && (
-                        <Link to="/staff/advisor-dashboard"
-                            className="block bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 p-4 hover:shadow-md transition-all"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-purple-100 rounded-xl">
-                                    <Star className="w-4 h-4 text-purple-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-purple-800">Class Advisor</p>
-                                    <p className="text-xs text-purple-500">View your class overview →</p>
-                                </div>
-                            </div>
-                        </Link>
-                    )}
-                </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4" /> Quick Actions
-                </h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {quickActions.map((action, i) => (
-                        <motion.div key={action.label}
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 + i * 0.06 }}
-                        >
-                            <Link to={action.link}>
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer">
-                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                                        <action.icon className="w-5 h-5 text-white" />
+                    <motion.div variants={itemVariants} initial="hidden" animate="visible">
+                        <SectionCard title="Instructional Tools" subtitle="Authorized administrative nodes" icon={<Zap />}>
+                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
+                                {quickActions.map((action) => (
+                                    <div 
+                                        key={action.label}
+                                        className="group p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all cursor-pointer hover:shadow-md"
+                                        onClick={() => navigate(action.link)}
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center mb-4 group-hover:text-blue-600 transition-all shadow-sm group-hover:shadow-blue-100">
+                                            <action.icon className="w-6 h-6" />
+                                        </div>
+                                        <h4 className="text-[14px] font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{action.label}</h4>
+                                        <p className="text-[10px] font-medium text-slate-500 leading-snug">{action.desc}</p>
                                     </div>
-                                    <p className="text-sm font-bold text-gray-800">{action.label}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">{action.desc}</p>
-                                </div>
-                            </Link>
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
+                                ))}
+                            </div>
+                        </SectionCard>
+                    </motion.div>
 
-            {/* Today Info */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-white/20 rounded-xl">
-                        <CalendarDays className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <p className="text-white font-bold">
-                            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </p>
-                        <p className="text-indigo-200 text-sm">
-                            {subjects.length} subject{subjects.length !== 1 ? 's' : ''} assigned · {stats.pendingGrading} pending review
-                        </p>
-                    </div>
-                </div>
-                <Link to="/staff/my-subjects"
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-700 text-sm font-bold rounded-xl hover:bg-indigo-50 transition-colors whitespace-nowrap"
-                >
-                    <Users className="w-4 h-4" /> My Subjects
-                </Link>
-            </div>
+                    <motion.div variants={itemVariants} initial="hidden" animate="visible" className="bg-white border border-slate-100 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">
+                                <Calendar className="w-6 h-6 text-slate-400" />
+                            </div>
+                            <div>
+                                <p className="text-slate-900 text-xl font-bold tracking-tight">
+                                    {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                </p>
+                                <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest opacity-80 mt-0.5">
+                                    Academic Session Active &bull; Institutional Faculty Portal
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-6 w-full md:w-auto">
+                            <div className="hidden sm:block text-right">
+                                <p className="text-2xl font-bold text-slate-900 leading-none">{stats.pendingGrading}</p>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Pending Evaluations</p>
+                            </div>
+                            <button onClick={() => navigate('/staff/my-subjects')} className="flex-1 md:flex-none bg-slate-900 text-white px-8 py-3 rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all">
+                                Sync Workspace
+                            </button>
+                        </div>
+                    </motion.div>
+                </>
+            )}
         </div>
+    );
+};
+
+const StatCard = ({ label, value, icon, color, link, alert }: any) => {
+    const navigate = useNavigate();
+    const colorClasses = {
+        blue: 'text-blue-600 bg-blue-50',
+        indigo: 'text-indigo-600 bg-indigo-50',
+        amber: 'text-amber-600 bg-amber-50',
+        green: 'text-green-600 bg-green-50'
+    };
+ 
+    return (
+        <motion.div 
+            variants={itemVariants}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            onClick={() => link && navigate(link)}
+            className="glass-card premium-lift flex items-center gap-4 px-6 cursor-pointer h-[115px]"
+        >
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${colorClasses[color as keyof typeof colorClasses] || colorClasses.blue}`}>
+                {cloneElement(icon as any, { size: 20, strokeWidth: 2.5 })}
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tight truncate">{label}</p>
+                <div className="flex flex-col mt-1">
+                    <h3 className="text-2xl font-bold text-slate-900 leading-none">{value}</h3>
+                    {alert && <p className="text-[9px] font-black text-red-600 mt-1 uppercase truncate tracking-wider">{alert}</p>}
+                </div>
+            </div>
+        </motion.div>
     );
 };
 

@@ -1,9 +1,9 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { Mail, Phone, Building, Calendar, Edit2, Save, Camera, ArrowLeft } from 'lucide-react';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import { Mail, Phone, Building, Calendar, Edit2, Save, Camera, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { useParams, useNavigate } from 'react-router-dom';
 import StudentProfile from './StudentProfile';
 import StaffProfile from './StaffProfile';
@@ -48,7 +48,9 @@ const Profile = () => {
                 ? `${API}/api/profile/user/${id}`
                 : `${API}/api/profile/me`;
 
+            console.log(`[Profile] Fetching from: ${endpoint}`);
             const { data } = await axios.get(endpoint, config);
+            console.log(`[Profile] Success: Found user ${data.username}`);
             setProfile(data);
             setFormData({
                 fullName: data.fullName || '',
@@ -56,10 +58,22 @@ const Profile = () => {
             });
             setImagePreview(null);
             setProfileImageFile(null);
-        } catch (error) {
-            console.error("Error fetching profile", error);
+        } catch (error: any) {
+            console.error("[Profile] Error fetching profile:", error.response?.status, error.message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const getDashboardPath = () => {
+        if (!authUser) return '/';
+        switch (authUser.role) {
+            case 'admin': return '/admin/dashboard';
+            case 'hod': return '/hod/dashboard';
+            case 'staff': return '/staff/dashboard';
+            case 'student': return '/student/dashboard';
+            case 'principal': return '/principal/dashboard';
+            default: return '/';
         }
     };
 
@@ -111,33 +125,53 @@ const Profile = () => {
         }
     };
 
-    if (isLoading) return <div className="p-8 text-center text-gray-500">Loading profile...</div>;
-    if (!profile) return <div className="p-8 text-center text-red-500">Profile not found.</div>;
+    if (isLoading) return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
+            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
+
+    if (!profile) return (
+        <div className="p-12 text-center bg-gray-50 min-h-screen flex flex-col items-center justify-center">
+            <div className="p-4 bg-red-50 rounded-full mb-4">
+                <ArrowLeft className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
+            <p className="text-gray-500 mb-8">The user profile you're looking for doesn't exist or you don't have permission to view it.</p>
+            <Button onClick={() => navigate(getDashboardPath())}>
+                Return to Dashboard
+            </Button>
+        </div>
+    );
 
     const isOwnProfile = !id || id === authUser?.id;
 
-    // determine dashboard path based on role
-    const getDashboardPath = () => {
-        if (!authUser) return '/';
-        switch (authUser.role) {
-            case 'admin': return '/admin/dashboard';
-            case 'hod': return '/hod/dashboard';
-            case 'staff': return '/staff/dashboard';
-            case 'student': return '/student/dashboard';
-            case 'principal': return '/principal/dashboard';
-            default: return '/';
-        }
-    };
-
     return (
-        <div className="max-w-5xl mx-auto space-y-6 relative">
+        <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6 relative min-h-screen">
+            <div className="flex justify-between items-center mb-8">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="group flex items-center gap-2 px-4 py-2 hover:bg-white rounded-xl text-gray-600 hover:text-indigo-600 transition-all duration-200 shadow-sm border border-gray-100 hover:border-indigo-100"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="font-semibold text-sm">Back</span>
+                </button>
+                
+                <button
+                    onClick={() => navigate(getDashboardPath())}
+                    className="group flex items-center gap-2 px-4 py-2 bg-white rounded-xl text-gray-600 hover:text-indigo-600 transition-all duration-200 shadow-sm border border-gray-100 hover:border-indigo-100"
+                >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span className="font-semibold text-sm">Dashboard</span>
+                </button>
+            </div>
             {/* Custom Toast Notification */}
             {toastMessage && (
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg font-medium border text-sm flex items-center gap-2
+                    className={`fixed top-6 right-6 z-[100] px-6 py-3 rounded-xl shadow-lg font-medium border text-sm flex items-center gap-2
                         ${toastMessage.type === 'success'
                             ? 'bg-green-50 border-green-200 text-green-800'
                             : 'bg-red-50 border-red-200 text-red-800'}`}
@@ -237,7 +271,8 @@ const Profile = () => {
                                     </div>
                                 </div>
                                 {isOwnProfile && !isEditing && (
-                                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} icon={<Edit2 className="w-4 h-4" />}>
+                                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                        <Edit2 className="w-4 h-4 mr-2" />
                                         Edit Profile
                                     </Button>
                                 )}
@@ -273,7 +308,10 @@ const Profile = () => {
                             </div>
                             <div className="md:col-span-2 flex justify-end gap-3 mt-2">
                                 <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-                                <Button type="submit" icon={<Save className="w-4 h-4" />}>Save Changes</Button>
+                                <Button type="submit">
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Save Changes
+                                </Button>
                             </div>
                         </form>
                     ) : (

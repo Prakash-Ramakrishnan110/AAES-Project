@@ -1,8 +1,18 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import { LayoutDashboard, Building, Users, Upload, Bell } from 'lucide-react';
 
+export interface HeaderOptions {
+    title: string;
+    subtitle?: React.ReactNode;
+    actions?: React.ReactNode;
+}
+
 const AdminLayout = () => {
+    const [headerOptions, setHeaderOptions] = useState<HeaderOptions>({
+        title: '',
+    });
     const menuItems = [
         { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", to: "/admin/dashboard" },
         { icon: <Bell className="w-5 h-5" />, label: "Communications", to: "/admin/communications" },
@@ -39,8 +49,14 @@ const AdminLayout = () => {
     ];
 
     return (
-        <DashboardLayout menuItems={menuItems} role="Administrator">
-            <Outlet />
+        <DashboardLayout 
+            menuItems={menuItems} 
+            role="Administrator"
+            headerTitle={headerOptions.title}
+            headerSubtitle={headerOptions.subtitle}
+            headerActions={headerOptions.actions}
+        >
+            <Outlet context={{ setHeaderOptions }} />
         </DashboardLayout>
     );
 };

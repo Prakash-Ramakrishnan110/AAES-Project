@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const User = require('./models/User');
-const ClassAdvisor = require('./models/ClassAdvisor');
-const Subject = require('./models/Subject');
+const User = require('../models/User');
+const ClassAdvisor = require('../models/ClassAdvisor');
+const Subject = require('../models/Subject');
 
 const seedTestData = async () => {
     try {
@@ -15,7 +15,7 @@ const seedTestData = async () => {
         }
 
         // 1. Create Class Advisor Entry
-        await ClassAdvisor.deleteMany({ staff: staff._id });
+        await ClassAdvisor.deleteMany({ department: 'CSE', academicYear: '3rd Year' });
         await ClassAdvisor.create({
             staff: staff._id,
             department: 'CSE',

@@ -2,8 +2,8 @@ import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import {
-    Search, Plus, Send, RefreshCw, AlertCircle, AlertTriangle,
-    CheckCircle, MessageSquare, Megaphone, Trash2,
+    Search, Plus, Send, AlertTriangle, Megaphone,
+    CheckCircle,
     Info, ChevronRight,
     ArrowRight, Shield, X, Zap
 } from 'lucide-react';
@@ -251,7 +251,7 @@ const PrincipalCommunications = () => {
                         >
                             <div className="px-10 py-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Broadcast Protocol</h3>
+                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Broadcast Message</h3>
                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">Official Circular Entry 2026</p>
                                 </div>
                                 <button onClick={() => setShowCompose(false)} className="p-3 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors">

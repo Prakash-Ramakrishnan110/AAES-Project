@@ -45,8 +45,8 @@ start "AAES-Backend" cmd /k "cd /d "%~dp0backend" && node server.js"
 echo         Started in new window
 timeout /t 3 /nobreak >nul
 
-:: ─── 5. React Frontend (Port 3050) ───────────────────────────────────────────
-echo  [5/5]  React Frontend (port 3050)...
+:: ─── 5. React Frontend (Port 3051) ───────────────────────────────────────────
+echo  [5/5]  React Frontend (port 3051)...
 start "AAES-Frontend" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 echo         Started in new window
 timeout /t 2 /nobreak >nul
@@ -57,16 +57,16 @@ echo  =====================================================
 echo   All 5 services launched! Opening browser...
 echo  =====================================================
 echo.
-echo   Frontend  :  http://localhost:3050
+echo   Frontend  :  http://localhost:3051
 echo   Backend   :  http://localhost:5000
 echo   Python AI :  http://localhost:8000
 echo.
 echo  Wait ~10 seconds for all services to initialize,
-echo  then open:  http://localhost:3050
+echo  then open:  http://localhost:3051
 echo.
 
 timeout /t 10 /nobreak >nul
-start "" "http://localhost:3050"
+start "" "http://localhost:3051"
 start "" "http://localhost:5000"
 
 echo.

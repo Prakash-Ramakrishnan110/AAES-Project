@@ -5,24 +5,41 @@ const {
     uploadDocument,
     getMyDocuments,
     getDepartmentDocuments,
-    verifyDocument
+    verifyDocument,
+    deleteDocument,
+    downloadAllDocuments,
+    bulkDownloadDocuments
 } = require('../controllers/documentController');
 
 const { documentUpload } = require('../middleware/uploadMiddleware');
 
+router.use((req, res, next) => {
+    console.log(`[DocumentRouter] ${req.method} ${req.url}`);
+    next();
+});
+
 router.use(protect);
 
-// --- Student Routes ---
-router.route('/me')
-    .post(authorize('student'), documentUpload.single('file'), uploadDocument)
-    .get(authorize('student'), getMyDocuments);
-
 // --- HOD / Staff Routes ---
+router.get('/test-ping', (req, res) => res.json({ message: 'Document router is alive' }));
+
+router.route('/download-all/:studentId')
+    .get(authorize('hod', 'admin', 'staff'), downloadAllDocuments);
+
+router.route('/bulk-download')
+    .post(authorize('hod', 'admin', 'staff'), bulkDownloadDocuments);
+
 router.route('/department')
     .get(authorize('hod', 'admin', 'staff'), getDepartmentDocuments);
 
-router.route('/:id/verify')
-    .put(authorize('hod', 'admin'), verifyDocument);
+// --- Student Routes ---
+router.route('/me')
+    .post(authorize('student'), documentUpload, uploadDocument)
+    .get(authorize('student'), getMyDocuments);
+
+router.route('/:id')
+    .put(authorize('hod', 'admin'), verifyDocument)
+    .delete(authorize('hod', 'admin', 'staff'), deleteDocument);
 
 router.get('/inspect-env', (req, res) => {
     res.json({

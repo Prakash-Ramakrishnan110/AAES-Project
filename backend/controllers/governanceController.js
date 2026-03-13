@@ -176,7 +176,8 @@ exports.getAdvisorDashboard = async (req, res) => {
             department: advisorRecord.department,
             academicYear: advisorRecord.academicYear,
             isActive: true
-        }).populate('mentor', 'fullName username');
+        }).populate('mentor', 'fullName username')
+          .select('fullName username email registerNumber batch section mentor');
 
         let totalStudents = students.length;
         let totalAttendancePercentage = 0;
@@ -211,10 +212,14 @@ exports.getAdvisorDashboard = async (req, res) => {
             // Escalation Status
             const escalation = await Escalation.findOne({ student: student._id, status: { $ne: 'Closed' } });
 
-            studentData.push({
+        studentData.push({
                 studentId: student._id,
                 name: student.fullName || student.username,
+                username: student.username,
+                email: student.email,
                 registerNumber: student.registerNumber,
+                batch: student.batch,
+                section: student.section,
                 mentorName,
                 ...riskData,
                 escalationStatus: escalation ? escalation.status : 'None'

@@ -4,7 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import {
     Calendar, CheckCircle2, Clock, XCircle,
-    Search, AlertCircle, Building, Filter,
+    AlertCircle, Building,
     ArrowRight, Activity, Target
 } from 'lucide-react';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -14,8 +14,6 @@ const PrincipalLeaves = () => {
     const [leaves, setLeaves] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('All');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -36,22 +34,13 @@ const PrincipalLeaves = () => {
         fetchData();
     }, [token]);
 
-    const filteredLeaves = leaves.filter(l => {
-        const matchesSearch =
-            (l.studentId?.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (l.studentId?.registerNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (l.department || '').toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesStatus = filterStatus === 'All' || l.status === filterStatus;
-
-        return matchesSearch && matchesStatus;
-    });
+    const filteredLeaves = leaves;
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-screen bg-slate-50">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest">Compiling Attendance Sovereignty...</p>
+                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest">Loading Attendance Data...</p>
             </div>
         </div>
     );
@@ -65,42 +54,7 @@ const PrincipalLeaves = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 font-sans selection:bg-indigo-100">
-            {/* Unified Top Header Context */}
-            <header className="bg-white border-b border-slate-200 px-8 py-6 shadow-sm sticky top-0 z-40 w-full">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 uppercase first-letter:uppercase">
-                    <div>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3 lowercase first-letter:uppercase">
-                            <Clock className="w-5 h-5 text-indigo-600" /> Institutional Leaves
-                        </h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Administrative Personnel Oversight</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search student registry..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/5 rounded-xl text-xs font-bold transition-all w-full md:w-[280px] outline-none"
-                            />
-                        </div>
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="pl-9 pr-8 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none appearance-none cursor-pointer"
-                            >
-                                <option value="All">All Status</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </header>
+
 
             <main className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-10">
                 {/* Stats Row */}
@@ -130,9 +84,9 @@ const PrincipalLeaves = () => {
                     <div className="lg:col-span-2 space-y-6">
                         <div className="flex items-center justify-between px-2">
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <Activity className="w-4 h-4 text-indigo-500" /> Recent Global Notifications
+                                <Activity className="w-4 h-4 text-indigo-500" /> Recent Leave Requests
                             </h3>
-                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest">{filteredLeaves.length} Active Handles</span>
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest">{filteredLeaves.length} Total Requests</span>
                         </div>
 
                         <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
@@ -140,10 +94,10 @@ const PrincipalLeaves = () => {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                            <th className="px-8 py-5">Academic Reference</th>
-                                            <th className="px-8 py-5">Institutional Unit</th>
-                                            <th className="px-8 py-5 text-center">Temporal Span</th>
-                                            <th className="px-8 py-5 text-right">Protocol Status</th>
+                                            <th className="px-8 py-5 text-left">Student Reference</th>
+                                            <th className="px-8 py-5">Department</th>
+                                            <th className="px-8 py-5 text-center">Duration</th>
+                                            <th className="px-8 py-5 text-right">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 whitespace-nowrap">
@@ -151,7 +105,7 @@ const PrincipalLeaves = () => {
                                             <tr>
                                                 <td colSpan={4} className="px-8 py-20 text-center">
                                                     <Calendar className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                                                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No active leave telemetry matching filters</p>
+                                                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No leave applications found</p>
                                                 </td>
                                             </tr>
                                         ) : (
@@ -202,7 +156,7 @@ const PrincipalLeaves = () => {
                         <section className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
                             <div className="relative z-10">
                                 <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-8 text-indigo-400 flex items-center gap-2">
-                                    <Target className="w-4 h-4" /> Global Load Analysis
+                                    <Target className="w-4 h-4" /> Departmental Load Analysis
                                 </h3>
                                 <div className="space-y-6">
                                     {stats?.byDepartment?.map((dept: any, i: number) => (
@@ -230,10 +184,10 @@ const PrincipalLeaves = () => {
                                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                                     <AlertCircle className="w-5 h-5" />
                                 </div>
-                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Institutional Sovereignty</h4>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Management Notice</h4>
                             </div>
                             <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                                "Macro-level leave intelligence is synchronized for board-level oversight. Local operational approvals remain delegated to departmental heads unless escalated via Governance Risk Protocol."
+                                "High-level attendance data is synchronized for institutional oversight. Operational approvals are managed by department heads unless further review is required."
                             </p>
                             <button className="w-full py-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all">
                                 Request Full Audit Export

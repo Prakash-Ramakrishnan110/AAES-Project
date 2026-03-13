@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { BookOpen, Users, Clock, Search, Filter, ClipboardList, BarChart2, Calculator } from 'lucide-react';
 
-import Card from '../../components/ui/Card';
+import { Card } from '../../components/ui/Card';
 import { useNavigate } from 'react-router-dom';
 
 // Types

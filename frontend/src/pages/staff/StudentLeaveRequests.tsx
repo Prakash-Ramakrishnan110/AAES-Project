@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import { CheckCircle, Clock, XCircle, FileText, Download } from 'lucide-react';
 import axios from 'axios';
 
@@ -70,27 +70,20 @@ const StudentLeaveRequests = () => {
     const filteredRequests = requests.filter(r => r.status === filter || filter === 'All');
 
     return (
-        <div className="p-6 max-w-6xl mx-auto space-y-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Student Leave Requests</h1>
-                    <p className="text-gray-500 mt-1">Review and approve applications from your advisees</p>
-                </div>
-
-                <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-                    {['Pending', 'Approved', 'Rejected', 'All'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setFilter(status)}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === status
-                                ? 'bg-indigo-600 text-white shadow'
-                                : 'text-gray-600 hover:bg-gray-50'
-                                }`}
-                        >
-                            {status}
-                        </button>
-                    ))}
-                </div>
+        <div className="max-w-7xl mx-auto p-6 md:p-8">
+            <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1 mb-6 w-fit ml-auto">
+                {['Pending', 'Approved', 'Rejected', 'All'].map(status => (
+                    <button
+                        key={status}
+                        onClick={() => setFilter(status)}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === status
+                            ? 'bg-indigo-600 text-white shadow'
+                            : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        {status}
+                    </button>
+                ))}
             </div>
 
             <Card

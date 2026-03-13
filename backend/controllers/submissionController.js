@@ -60,8 +60,10 @@ const submitAssignment = async (req, res) => {
         // Define fileUrl if a file is uploaded
         let fileUrl = '';
         if (req.file) {
-            // Normalize path to use forward slashes for URLs
-            fileUrl = '/' + req.file.path.replace(/\\/g, '/');
+            const identifier = req.user?.registerNumber || req.user?._id?.toString() || 'anonymous';
+            // Use consistent folder-based path
+            fileUrl = `/uploads/${identifier}/assignments/${req.file.filename}`;
+            console.log(`[SubmissionController] Assignment assigned path: ${fileUrl}`);
         }
 
         // --- Generalized Auto-Grading (Python, C, Java) ---

@@ -227,8 +227,8 @@ exports.getStaffActivityLogs = async (req, res) => {
         }
 
         const logs = await ClassActivityLog.find(query)
-            .populate('subjectId', 'name code')
-            .populate('staffId', 'fullName')
+            .populate('subjectId', 'name code department')
+            .populate('staffId', 'fullName department')
             .sort({ date: -1, period: -1 })
             .limit(100);
 

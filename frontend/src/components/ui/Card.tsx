@@ -18,14 +18,14 @@ const Card = ({ children, className = '', hover = false, title, subtitle, action
     return (
         <motion.div
             onClick={onClick}
-            whileHover={hover ? { y: -5, transition: { duration: 0.2 } } : {}}
-            className={`${!hasBg ? 'bg-white' : ''} rounded-2xl shadow-sm border border-gray-100 overflow-hidden ${hover ? 'hover:shadow-xl hover:shadow-blue-500/5 transition-shadow duration-300' : ''} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+            whileHover={hover ? {} : {}}
+            className={`${!hasBg ? 'bg-white' : ''} rounded-md shadow-sm border border-slate-200 overflow-hidden ${hover ? 'hover:border-slate-300 transition-colors duration-200' : ''} ${onClick ? 'cursor-pointer' : ''} ${className}`}
         >
             {(title || action) && (
-                <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center">
+                <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
                     <div>
-                        {title && <h3 className="text-lg font-semibold text-gray-800">{title}</h3>}
-                        {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+                        {title && <h3 className="text-[15px] font-semibold text-slate-800">{title}</h3>}
+                        {subtitle && <p className="text-[13px] text-slate-500 mt-0.5">{subtitle}</p>}
                     </div>
                     {action && <div>{action}</div>}
                 </div>
@@ -37,4 +37,4 @@ const Card = ({ children, className = '', hover = false, title, subtitle, action
     );
 };
 
-export default Card;
+export { Card };

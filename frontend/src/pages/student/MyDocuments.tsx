@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import { AuthContext } from '../../context/AuthContext';
 import { 
     Upload, FileText, FileBadge, 
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api';
 
 const MyDocuments = () => {
     const { user } = useContext(AuthContext)!;
@@ -107,8 +107,8 @@ const MyDocuments = () => {
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Student Digital Vault</h1>
-                    <p className="text-gray-500 mt-1">Upload and manage your official certificates and fee receipts</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Student Digital Vault</h1>
+                    <p className="text-slate-500 mt-1 text-sm font-medium">Upload and manage your official certificates and fee receipts</p>
                 </div>
             </div>
 
@@ -117,8 +117,8 @@ const MyDocuments = () => {
                 <div className="lg:col-span-1 border-gray-200">
                     <Card
                         title="Upload New Document"
-                        action={<Upload className="w-5 h-5 text-indigo-600" />}
-                        className="shadow-md border-t-4 border-t-indigo-600 p-0"
+                        action={<Upload className="w-5 h-5 text-slate-600" />}
+                        className="shadow-sm border border-slate-200 p-0"
                     >
                         <div className="pt-2 px-6 pb-6 mt-4">
                             {successMsg && <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md border border-green-200 text-sm">{successMsg}</div>}
@@ -126,19 +126,19 @@ const MyDocuments = () => {
 
                             <form onSubmit={handleUploadDocument} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2 text-[11px] uppercase tracking-wider">Document Category</label>
-                                    <div className="flex p-0.5 bg-gray-100 rounded-lg">
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Document Category</label>
+                                    <div className="flex p-0.5 bg-slate-100 rounded-md">
                                         <button
                                             type="button"
                                             onClick={() => { setCategory('Personal'); setDocumentType('Aadhaar Card'); }}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${category === 'Personal' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${category === 'Personal' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             <User className="w-3.5 h-3.5 inline-block mr-1.5" /> Personal
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => { setCategory('Financial'); setDocumentType('Tuition Fee Receipt'); }}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${category === 'Financial' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${category === 'Financial' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             <Receipt className="w-3.5 h-3.5 inline-block mr-1.5" /> Financial
                                         </button>
@@ -146,10 +146,10 @@ const MyDocuments = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Document Type *</label>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Document Type *</label>
                                     <select
                                         required value={documentType} onChange={(e) => setDocumentType(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 text-sm font-medium transition-colors"
                                     >
                                         {category === 'Personal' ? (
                                             <>
@@ -178,31 +178,31 @@ const MyDocuments = () => {
 
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Semester</label>
                                         <select value={semester} onChange={(e) => setSemester(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 text-sm font-medium transition-colors">
                                             {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Sem {s}</option>)}
                                         </select>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">File Upload (PDF/Image) *</label>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">File Upload (PDF/Image) *</label>
                                     <input
                                         id="file-upload"
                                         type="file" required
                                         onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-blue-50/50 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 text-sm bg-slate-50 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer transition-colors"
                                         accept=".pdf,.jpg,.jpeg,.png"
                                     />
-                                    <div className="mt-2 p-2 bg-indigo-50 rounded-lg flex items-center justify-between border border-indigo-100">
-                                        <span className="text-[10px] font-bold text-indigo-600 uppercase">Academic Year</span>
-                                        <span className="text-[10px] font-black text-slate-700">{user?.academicYear || '2023-2024'}</span>
+                                    <div className="mt-2 p-2 bg-slate-50 rounded-md flex items-center justify-between border border-slate-200">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Academic Year</span>
+                                        <span className="text-[10px] font-bold text-slate-900">{user?.academicYear || '2023-2024'}</span>
                                     </div>
                                 </div>
 
                                 <button type="submit" disabled={isLoading}
-                                    className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                                    className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-md transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
                                     <Upload className="w-4 h-4" /> {isLoading ? 'Securely Uploading...' : 'Upload & Verify'}
                                 </button>
                             </form>
@@ -214,55 +214,55 @@ const MyDocuments = () => {
                 <div className="lg:col-span-2">
                     <Card
                         title="My Uploaded Documents"
-                        action={<FileBadge className="w-5 h-5 text-gray-600" />}
-                        className="shadow-md h-full p-0"
+                        action={<FileBadge className="w-5 h-5 text-slate-600" />}
+                        className="shadow-sm border border-slate-200 h-full p-0"
                     >
-                        <div className="pt-2 max-h-[1000px] overflow-y-auto bg-gray-50/30">
+                        <div className="pt-2 max-h-[1000px] overflow-y-auto bg-slate-50/30">
                             {documents.length === 0 ? (
-                                <div className="p-16 text-center text-gray-500">
-                                    <Shield className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                                    <p className="text-lg font-medium text-gray-700 mb-1">Vault is Empty</p>
-                                    <p>You haven't uploaded any administrative documents yet.</p>
+                                <div className="p-16 text-center text-slate-500">
+                                    <Shield className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+                                    <p className="text-lg font-bold text-slate-700 mb-1">Vault is Empty</p>
+                                    <p className="font-medium">You haven't uploaded any administrative documents yet.</p>
                                 </div>
                             ) : (
                                 <div className="p-4 space-y-10">
                                     {/* Personal Vault Section */}
                                     <div>
                                         <div className="flex items-center gap-2 mb-4 px-2">
-                                            <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <div className="p-1.5 bg-slate-100 text-slate-600 rounded-md border border-slate-200">
                                                 <User className="w-4 h-4" />
                                             </div>
-                                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Personal Digital Vault</h3>
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Personal Digital Vault</h3>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {documents.filter(d => !d.category || d.category === 'Personal').map(doc => (
-                                                <div key={doc._id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                                                <div key={doc._id} className="bg-white rounded-md border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                                                     <div className="flex justify-between items-start mb-3">
-                                                        <div className={`p-2 rounded-md bg-indigo-50 text-indigo-600`}>
+                                                        <div className={`p-2 rounded-md bg-slate-50 text-slate-600 border border-slate-200`}>
                                                             {getCategoryIcon(doc.category, doc.documentType)}
                                                         </div>
                                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border tracking-wider ${getStatusStyle(doc.status)}`}>
                                                             {doc.status}
                                                         </span>
                                                     </div>
-                                                    <h3 className="font-bold text-gray-900 text-sm mb-1">{doc.documentType}</h3>
-                                                    <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium mb-3">
+                                                    <h3 className="font-bold text-slate-900 text-sm mb-1">{doc.documentType}</h3>
+                                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium mb-3">
                                                         <span>{doc.academicYear}</span>
                                                     </div>
                                                     {doc.rejectionReason && (
-                                                        <div className="mb-3 text-[10px] text-red-700 bg-red-50 border border-red-100 p-2 rounded">
+                                                        <div className="mb-3 text-[10px] text-red-700 bg-red-50 border border-red-200 p-2 rounded-md">
                                                             <span className="font-bold">Admin:</span> {doc.rejectionReason}
                                                         </div>
                                                     )}
-                                                    <div className="mt-4 flex gap-2 w-full pt-3 border-t border-gray-100">
-                                                        <a href={`${API_URL.replace('/api', '')}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="flex-1 bg-gray-50 hover:bg-indigo-50 text-indigo-700 border border-indigo-200 py-1.5 rounded text-[10px] font-bold text-center transition-colors uppercase tracking-wider">
+                                                    <div className="mt-4 flex gap-2 w-full pt-3 border-t border-slate-100">
+                                                        <a href={`${API_URL.replace('/api', '')}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 py-1.5 rounded-md text-[10px] font-bold text-center transition-colors uppercase tracking-wider">
                                                             Review File
                                                         </a>
                                                     </div>
                                                 </div>
                                             ))}
                                             {documents.filter(d => !d.category || d.category === 'Personal').length === 0 && (
-                                                <p className="text-xs text-gray-400 italic px-2">No personal documents found.</p>
+                                                <p className="text-xs text-slate-400 font-medium px-2">No personal documents found.</p>
                                             )}
                                         </div>
                                     </div>
@@ -270,14 +270,14 @@ const MyDocuments = () => {
                                     {/* Financial Records Section */}
                                     <div>
                                         <div className="flex items-center gap-2 mb-4 px-2">
-                                            <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                                            <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-200">
                                                 <Receipt className="w-4 h-4" />
                                             </div>
-                                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Financial Records & Fee Receipts</h3>
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Financial Records & Fee Receipts</h3>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {documents.filter(d => d.category === 'Financial').map(doc => (
-                                                <div key={doc._id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group border-l-4 border-l-emerald-500">
+                                                <div key={doc._id} className="bg-white rounded-md border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group border-l-4 border-l-emerald-500">
                                                     <div className="flex justify-between items-start mb-3">
                                                         <div className={`p-2 rounded-md bg-emerald-50 text-emerald-600`}>
                                                             <CreditCard className="w-5 h-5" />
@@ -286,19 +286,19 @@ const MyDocuments = () => {
                                                             {doc.status}
                                                         </span>
                                                     </div>
-                                                    <h3 className="font-bold text-gray-900 text-sm mb-1">{doc.documentType}</h3>
-                                                    <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium mb-3">
+                                                    <h3 className="font-bold text-slate-900 text-sm mb-1">{doc.documentType}</h3>
+                                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium mb-3">
                                                         <span>Sem {doc.semester}</span> • <span>{doc.academicYear}</span>
                                                     </div>
-                                                    <div className="mt-4 flex gap-2 w-full pt-3 border-t border-gray-100">
-                                                        <a href={`${API_URL.replace('/api', '')}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="flex-1 bg-gray-50 hover:bg-emerald-50 text-emerald-700 border border-emerald-200 py-1.5 rounded text-[10px] font-bold text-center transition-colors uppercase tracking-wider">
+                                                    <div className="mt-4 flex gap-2 w-full pt-3 border-t border-slate-100">
+                                                        <a href={`${API_URL.replace('/api', '')}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="flex-1 bg-slate-50 hover:bg-emerald-50 text-emerald-700 border border-emerald-200 py-1.5 rounded-md text-[10px] font-bold text-center transition-colors uppercase tracking-wider">
                                                             Print Receipt
                                                         </a>
                                                     </div>
                                                 </div>
                                             ))}
                                             {documents.filter(d => d.category === 'Financial').length === 0 && (
-                                                <p className="text-xs text-gray-400 italic px-2">No financial records found.</p>
+                                                <p className="text-xs text-slate-400 font-medium px-2">No financial records found.</p>
                                             )}
                                         </div>
                                     </div>

@@ -3,6 +3,8 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock, MessageSquare, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface TimelineEvent {
     type: 'submission' | 'mentorship' | 'attendance';
     date: string;
@@ -30,7 +32,7 @@ const StudentTimeline: React.FC<StudentTimelineProps> = ({ studentId, token }) =
         const fetchTimeline = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data } = await axios.get(`http://localhost:5000/api/advisor/student/${studentId}/timeline`, config);
+                const { data } = await axios.get(`${API}/api/advisor/student/${studentId}/timeline`, config);
                 setEvents(data);
             } catch (err) {
                 console.error("Failed to fetch timeline", err);

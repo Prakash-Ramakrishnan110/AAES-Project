@@ -1,11 +1,14 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
-import { LayoutDashboard, Users, BookOpen, Settings, Bell, CheckSquare, HeartHandshake, FileText } from 'lucide-react';
+import DashboardLayout, { type HeaderOptions } from './DashboardLayout';
+import { LayoutDashboard, Users, BookOpen, Settings, Bell, CheckSquare, HeartHandshake } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 
 const StaffLayout = () => {
     const { user } = useContext(AuthContext)!;
+    const [headerOptions, setHeaderOptions] = useState<HeaderOptions>({
+        title: '',
+    });
     const isAdvisor = user?.isAdvisor === true;
 
     interface MenuItem {
@@ -27,17 +30,14 @@ const StaffLayout = () => {
             label: "My Assigned Work",
             to: "/staff/my-work"
         },
-        {
-            icon: <FileText className="w-5 h-5" />,
-            label: "Class Activity Log",
-            to: "/staff/activity-log"
-        },
+
         {
             icon: <BookOpen className="w-5 h-5" />,
             label: "Teaching",
             to: "/staff/my-subjects",
             items: [
                 { label: "My Subjects", to: "/staff/my-subjects" },
+                { label: "Student Directory", to: "/staff/students" },
                 { label: "My Timetable", to: "/staff/timetable" },
                 { label: "Assignments", to: "/staff/assignments" },
                 { label: "Evaluation Hub", to: "/staff/evaluation" },
@@ -63,6 +63,7 @@ const StaffLayout = () => {
             to: "/staff/class-governance",
             items: [
                 { label: "My Students", to: "/staff/advisor/students" },
+                { label: "Mark Class Attendance", to: "/staff/advisor-marking" },
                 { label: "Governance Hub", to: "/staff/class-governance" },
                 { label: "Master Timetable", to: "/staff/department-timetable" },
                 { label: "Attendance Alerts", to: "/staff/attendance-alerts" },
@@ -78,8 +79,14 @@ const StaffLayout = () => {
     menuItems.push({ icon: <Settings className="w-5 h-5" />, label: "Settings", to: "/settings" });
 
     return (
-        <DashboardLayout menuItems={menuItems} role="Faculty">
-            <Outlet />
+        <DashboardLayout 
+            menuItems={menuItems} 
+            role="Faculty"
+            headerTitle={headerOptions.title}
+            headerSubtitle={headerOptions.subtitle}
+            headerActions={headerOptions.actions}
+        >
+            <Outlet context={{ setHeaderOptions }} />
         </DashboardLayout>
     );
 };

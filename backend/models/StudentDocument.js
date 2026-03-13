@@ -33,7 +33,7 @@ const studentDocumentSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['Pending', 'Verified', 'Rejected'],
-        default: 'Pending'
+        default: 'Verified'
     },
     verifiedBy: {
         type: mongoose.Schema.Types.ObjectId,

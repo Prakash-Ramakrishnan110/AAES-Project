@@ -7,7 +7,7 @@ interface User {
     username: string;
     fullName?: string;
     email: string;
-    role: 'admin' | 'hod' | 'staff' | 'student' | 'principal';
+    role: 'admin' | 'hod' | 'staff' | 'student' | 'principal' | 'lab-assistant';
     department?: string;
     semester?: string;
     academicYear?: string;

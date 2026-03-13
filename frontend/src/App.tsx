@@ -27,7 +27,6 @@ import InternalMarksEntry from './pages/staff/InternalMarksEntry';
 import MySubjects from './pages/staff/MySubjects';
 import StaffTimetable from './pages/staff/StaffTimetable';
 import MyAssignedWork from './pages/staff/MyAssignedWork';
-import ClassActivityLog from './pages/staff/ClassActivityLog';
 import StudentLeaveRequests from './pages/staff/StudentLeaveRequests';
 import StaffDepartmentTimetable from './pages/staff/StaffDepartmentTimetable';
 import StudyResources from './pages/staff/StudyResources';
@@ -39,6 +38,7 @@ import AttendanceMarking from './pages/staff/AttendanceMarking';
 import SubjectAttendanceSummary from './pages/staff/SubjectAttendanceSummary';
 import AdvisorStudentList from './pages/staff/advisor/AdvisorStudentList';
 import AdvisorAttendance from './pages/staff/advisor/AdvisorAttendance';
+import AdvisorAttendanceMarking from './pages/staff/advisor/AdvisorAttendanceMarking';
 import AdvisorPerformance from './pages/staff/advisor/AdvisorPerformance';
 import AdvisorNotes from './pages/staff/advisor/AdvisorNotes';
 import AdvisorReports from './pages/staff/advisor/AdvisorReports';
@@ -49,6 +49,7 @@ import ClassGovernance from './pages/staff/ClassGovernance';
 import AttendanceAlerts from './pages/staff/AttendanceAlerts';
 import MentorAssignment from './pages/staff/MentorAssignment';
 import StaffCommunications from './pages/staff/StaffCommunications';
+import StaffStudentList from './pages/staff/StaffStudentList';
 
 // StaffCommunications is role-agnostic (fetches current user's notifications)
 const CommunicationsPage = StaffCommunications;
@@ -62,6 +63,7 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import StudentDocumentViewer from './pages/student/StudentDocumentViewer';
 import StudentOnboarding from './pages/student/StudentOnboarding';
 import StudentStudyResources from './pages/student/StudentStudyResources';
+import StudentAssignedWork from './pages/student/StudentAssignedWork';
 import HODLayout from './components/layout/HODLayout';
 import HODDashboard from './pages/hod/HODDashboard';
 import InternalPatternManager from './pages/hod/InternalPatternManager';
@@ -93,6 +95,10 @@ const PrincipalSettings = lazy(() => import('./pages/principal/PrincipalSettings
 const PrincipalLeaves = lazy(() => import('./pages/principal/PrincipalLeaves'));
 const PrincipalCommunications = lazy(() => import('./pages/principal/PrincipalCommunications'));
 const PrincipalActivityLog = lazy(() => import('./pages/principal/PrincipalActivityLog'));
+
+import LabAssistantLayout from './components/layout/LabAssistantLayout';
+import LabAssistantDashboard from './pages/labassistant/LabAssistantDashboard';
+import MorningAttendanceSummaryPage from './pages/labassistant/MorningAttendanceSummaryPage';
 
 function App() {
   return (
@@ -145,7 +151,6 @@ function App() {
                   <Route path="directory" element={<HODDirectory />} />
                   <Route path="class-advisors" element={<HODClassAdvisors />} />
                   <Route path="my-work" element={<MyAssignedWork />} />
-                  <Route path="activity-log" element={<ClassActivityLog />} />
                   <Route path="consolidated-reports" element={<HODConsolidatedReports />} />
                   <Route path="work-assignments" element={<HODWorkAssignments />} />
                   <Route path="timetables" element={<DepartmentTimetable />} />
@@ -161,6 +166,7 @@ function App() {
                 <Route path="/staff" element={<StaffLayout />}>
                   <Route path="dashboard" element={<StaffDashboard />} />
                   <Route path="communications" element={<StaffCommunications />} />
+                  <Route path="students" element={<StaffStudentList />} />
                   <Route path="my-subjects" element={<MySubjects />} />
                   <Route path="timetable" element={<StaffTimetable />} />
                   <Route path="department-timetable" element={<StaffDepartmentTimetable />} />
@@ -176,7 +182,8 @@ function App() {
                   <Route path="mentor-assignment" element={<MentorAssignment />} />
                   <Route path="my-work" element={<MyAssignedWork />} />
                   <Route path="advisor-dashboard" element={<ClassAdvisorDashboard />} />
-                  <Route path="activity-log" element={<ClassActivityLog />} />
+                  <Route path="advisor-dashboard" element={<ClassAdvisorDashboard />} />
+                   <Route path="advisor-marking" element={<AdvisorAttendanceMarking />} />
                   <Route path="advisor/students" element={<AdvisorStudentList />} />
                   <Route path="advisor/attendance" element={<AdvisorAttendance />} />
                   <Route path="advisor/performance" element={<AdvisorPerformance />} />
@@ -201,6 +208,7 @@ function App() {
                   <Route path="attendance" element={<AttendanceDashboard />} />
                   <Route path="marks" element={<StudentMarksView />} />
                   <Route path="internal-marks" element={<StudentInternalMarks />} />
+                  <Route path="my-work" element={<StudentAssignedWork />} />
                   <Route path="leaves" element={<MyLeaveApplications />} />
                   <Route path="documents" element={<MyDocuments />} />
                 </Route>
@@ -215,11 +223,21 @@ function App() {
                   <Route path="departments" element={<PrincipalInfrastructure />} />
                   <Route path="risk" element={<PrincipalRisk />} />
                   <Route path="analytics" element={<PrincipalAnalytics />} />
+                  <Route path="attendance" element={<AttendanceDashboard />} />
                   <Route path="staff" element={<PrincipalStaff />} />
                   <Route path="audit" element={<PrincipalAuditLogs />} />
                   <Route path="leaves" element={<PrincipalLeaves />} />
                   <Route path="activity-log" element={<PrincipalActivityLog />} />
                   <Route path="settings" element={<PrincipalSettings />} />
+                </Route>
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={['lab-assistant']} />}>
+                <Route path="/labassistant" element={<LabAssistantLayout />}>
+                  <Route path="dashboard" element={<LabAssistantDashboard />} />
+                  <Route path="morning-attendance" element={<MorningAttendanceSummaryPage />} />
+                  <Route path="maintenance" element={<div>Maintenance Module (Coming Soon)</div>} />
+                  <Route path="equipment" element={<div>Equipment Inventory (Coming Soon)</div>} />
                 </Route>
               </Route>
 

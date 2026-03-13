@@ -208,27 +208,42 @@ const getHODStats = async (req, res) => {
             ? submissions.reduce((acc, curr) => acc + curr.marks, 0) / submissions.length
             : 0;
 
-        // 4. Average Attendance
+        // 4. Average Attendance (Including Morning Roll Call)
         const Attendance = require('../models/Attendance');
+        
+        // Subject Attendance
         const deptSubjects = await Subject.find({ department: hodDepartment });
         const subIds = deptSubjects.map(s => s._id);
-        const attendanceDocs = await Attendance.find({ subject: { $in: subIds } });
+        const subjectAttendanceDocs = await Attendance.find({ subject: { $in: subIds }, isMorning: false });
 
         let totalRecords = 0;
         let presentCount = 0;
-        attendanceDocs.forEach(doc => {
+        
+        subjectAttendanceDocs.forEach(doc => {
             doc.records.forEach(r => {
                 totalRecords++;
                 if (r.status === 'Present') presentCount++;
             });
         });
+
+        // Morning Attendance
+        const morningAttendanceDocs = await Attendance.find({ 
+            department: hodDepartment, 
+            isMorning: true 
+        }).sort({ date: -1 });
+
+        morningAttendanceDocs.forEach(doc => {
+            doc.records.forEach(r => {
+                totalRecords++;
+                if (r.status === 'Present') presentCount++;
+            });
+        });
+
         const deptAvgAttendance = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
 
         // 5. Risk Count
         const StudentRisk = require('../models/StudentRisk');
         const riskCount = await StudentRisk.countDocuments({
-            // Assuming StudentRisk might have dept or we link via User
-            // Since User has dept, we can find users in dept first
             student: { $in: studentIds },
             riskLevel: 'Red'
         });
@@ -238,7 +253,14 @@ const getHODStats = async (req, res) => {
             studentCount,
             avgMarks: Math.round(avgMarks * 10) / 10,
             avgAttendance: Math.round(deptAvgAttendance * 10) / 10,
-            riskCount
+            riskCount,
+            recentMorningSessions: morningAttendanceDocs.slice(0, 5).map(s => ({
+                _id: s._id,
+                date: s.date,
+                academicYear: s.academicYear,
+                total: s.records.length,
+                present: s.records.filter(r => r.status === 'Present').length
+            }))
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

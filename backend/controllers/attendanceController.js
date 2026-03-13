@@ -26,54 +26,81 @@ const verifyStaffSubject = async (subjectId, staffId) => {
 // @access  Private/Staff
 const markAttendance = async (req, res) => {
     try {
-        const { subjectId, date, period, records } = req.body;
-        // records = [{ studentId, status }]
+        const { subjectId, date, period, records, department, academicYear } = req.body;
+        const isMorning = period === 0;
 
-        const check = await verifyStaffSubject(subjectId, req.user.id);
-        if (check.error) return res.status(check.code).json({ message: check.error });
+        let query = { date: new Date(date), period };
+        query.date.setHours(0, 0, 0, 0);
 
-        const subject = check.subject;
-        const sessionDate = new Date(date);
-        sessionDate.setHours(0, 0, 0, 0);
+        if (isMorning) {
+            // Verify Class Advisor authority
+            const advisor = await ClassAdvisor.findOne({ 
+                staff: req.user.id, 
+                department, 
+                academicYear 
+            });
+            if (!advisor) {
+                return res.status(403).json({ message: 'Access Denied: Only the Class Advisor can mark Morning Attendance.' });
+            }
+            query.department = department;
+            query.academicYear = academicYear;
+            query.isMorning = true;
+        } else {
+            // Regular subject-wise attendance
+            const check = await verifyStaffSubject(subjectId, req.user.id);
+            if (check.error) return res.status(check.code).json({ message: check.error });
+            query.subject = subjectId;
+            query.isMorning = false;
+        }
 
         // Check for existing session
-        let attendance = await Attendance.findOne({ subject: subjectId, date: sessionDate, period });
+        let attendance = await Attendance.findOne(query);
 
         if (attendance) {
             if (isLocked(attendance)) {
                 return res.status(403).json({ message: 'Attendance is locked after 24 hours and cannot be edited.' });
             }
             // Update existing
-            attendance.records = records.map(r => ({ student: r.studentId, status: r.status }));
+            attendance.records = records.map(r => ({ 
+                student: r.studentId, 
+                status: r.status,
+                reason: r.reason || ''
+            }));
             attendance.markedBy = req.user.id;
             await attendance.save();
 
-            // Trigger Risk Recalculation for all students in this session
-            records.forEach(r => {
-                recalculateRiskForStudent(r.studentId);
-            });
+            // Trigger Risk Recalculation
+            records.forEach(r => recalculateRiskForStudent(r.studentId));
 
             return res.json({ message: 'Attendance updated', attendance });
-
         }
 
         // Create new attendance session
-        attendance = await Attendance.create({
-            subject: subjectId,
-            date: sessionDate,
-            period,
+        const attendanceData = {
+            date: query.date,
+            period: query.period,
+            isMorning: !!isMorning,
             markedBy: req.user.id,
-            records: records.map(r => ({ student: r.studentId, status: r.status }))
-        });
+            records: records.map(r => ({ 
+                student: r.studentId, 
+                status: r.status,
+                reason: r.reason || ''
+            }))
+        };
 
-        // Trigger Risk Recalculation for all students in this session
-        records.forEach(r => {
-            recalculateRiskForStudent(r.studentId);
-        });
+        if (isMorning) {
+            attendanceData.department = department;
+            attendanceData.academicYear = academicYear;
+        } else {
+            attendanceData.subject = subjectId;
+        }
+
+        attendance = await Attendance.create(attendanceData);
+
+        // Trigger Risk Recalculation
+        records.forEach(r => recalculateRiskForStudent(r.studentId));
 
         res.status(201).json({ message: 'Attendance saved', attendance });
-
-
     } catch (error) {
         if (error.code === 11000) {
             return res.status(400).json({ message: 'Attendance already exists for this period. Try editing instead.' });
@@ -309,19 +336,21 @@ const getHODView = async (req, res) => {
     try {
         const { year } = req.query;
         const query = { department: req.user.department };
-        if (year) query.academicYear = year;
+        if (year && year !== '') query.academicYear = year;
 
+        // Fetch subjects for faculty-wise performance
         const subjects = await Subject.find(query).populate('staff', 'username fullName');
 
         const subjectStats = await Promise.all(subjects.map(async (subject) => {
-            const sessions = await Attendance.find({ subject: subject._id });
+            const sessions = await Attendance.find({ subject: subject._id, isMorning: false });
             const totalClasses = sessions.length;
 
             const students = await User.find({
                 role: 'student',
                 department: subject.department,
                 semester: subject.semester,
-                academicYear: subject.academicYear
+                academicYear: subject.academicYear,
+                isActive: true
             }).select('_id');
 
             let totalPresent = 0;
@@ -350,6 +379,19 @@ const getHODView = async (req, res) => {
             };
         }));
 
+        // Fetch Morning Attendance (Overall)
+        const morningQuery = { department: req.user.department, isMorning: true };
+        if (year && year !== '') morningQuery.academicYear = year;
+        const morningSessions = await Attendance.find(morningQuery).sort({ date: -1 }).limit(10);
+        
+        let morningTotalRecords = 0;
+        let morningTotalPresent = 0;
+        morningSessions.forEach(s => {
+            morningTotalRecords += s.records.length;
+            morningTotalPresent += s.records.filter(r => r.status === 'Present').length;
+        });
+        const morningAvg = morningTotalRecords > 0 ? Math.round((morningTotalPresent / morningTotalRecords) * 100) : null;
+
         // Staff performance comparison
         const staffMap = {};
         subjectStats.forEach(s => {
@@ -372,7 +414,81 @@ const getHODView = async (req, res) => {
             subjects: data.subjects
         }));
 
-        res.json({ subjects: subjectStats, staffStats, department: req.user.department });
+        const responseData = { 
+            subjects: subjectStats, 
+            staffStats, 
+            department: req.user.department,
+            morningAvg,
+            recentMorningSessions: morningSessions.map(s => ({
+                _id: s._id,
+                date: s.date,
+                academicYear: s.academicYear,
+                total: s.records.length,
+                present: s.records.filter(r => r.status === 'Present').length
+            })),
+            debugInfo: {
+                query: morningQuery,
+                sessionsFound: morningSessions.length,
+                user: { id: req.user.id, role: req.user.role, dept: req.user.department },
+                serverTimestamp: new Date().toISOString()
+            }
+        };
+        res.json(responseData);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get institutional attendance summary for Principal
+// @route   GET /api/attendance/principal
+// @access  Private/Principal
+const getPrincipalAttendanceView = async (req, res) => {
+    try {
+        const departments = await User.distinct('department');
+        
+        const deptStats = await Promise.all(departments.map(async (dept) => {
+            // Priority: Morning Attendance (Period 0)
+            const morningAttendances = await Attendance.find({ department: dept, isMorning: true }).sort({ date: -1 });
+            
+            let totalStudentsAcrossAll = 0;
+            let totalPresentAcrossAll = 0;
+            
+            if (morningAttendances.length > 0) {
+                morningAttendances.forEach(att => {
+                    totalStudentsAcrossAll += att.records.length;
+                    totalPresentAcrossAll += att.records.filter(r => r.status === 'Present').length;
+                });
+            } else {
+                // Fallback to subjects if no morning attendance exists
+                const subjects = await Subject.find({ department: dept });
+                const subjectIds = subjects.map(s => s._id);
+                const attendances = await Attendance.find({ subject: { $in: subjectIds }, isMorning: false });
+                attendances.forEach(att => {
+                    totalStudentsAcrossAll += att.records.length;
+                    totalPresentAcrossAll += att.records.filter(r => r.status === 'Present').length;
+                });
+            }
+            
+            const avgAttendance = totalStudentsAcrossAll > 0 
+                ? Math.round((totalPresentAcrossAll / totalStudentsAcrossAll) * 100) 
+                : 0;
+                
+            return {
+                department: dept,
+                avgAttendance,
+                morningSessions: morningAttendances.length,
+                recordedByMorning: morningAttendances.length > 0,
+                recentMorningSessions: morningAttendances.slice(0, 10).map(s => ({
+                    _id: s._id,
+                    date: s.date,
+                    academicYear: s.academicYear,
+                    total: s.records.length,
+                    present: s.records.filter(r => r.status === 'Present').length
+                }))
+            };
+        }));
+
+        res.json(deptStats);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -631,6 +747,64 @@ const getAttendanceHeatmap = async (req, res) => {
     }
 };
 
+// @desc    Get students for a Class Advisor's class
+// @route   GET /api/attendance/advisor-students
+// @access  Private/Staff (Advisor only)
+const getAdvisorStudents = async (req, res) => {
+    try {
+        const advisor = await ClassAdvisor.findOne({ staff: req.user.id });
+        if (!advisor) return res.status(403).json({ message: 'Access Denied: Not a Class Advisor' });
+
+        const students = await User.find({
+            role: 'student',
+            department: advisor.department,
+            academicYear: advisor.academicYear,
+            isActive: true
+        }).select('username fullName registerNumber email profileImage');
+
+        res.json({
+            department: advisor.department,
+            academicYear: advisor.academicYear,
+            students
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get detailed roll call for a morning session
+// @route   GET /api/attendance/morning/details?sessionId=
+// @access  Private/Staff (Advisor/HOD) / Principal
+const getMorningAttendanceDetails = async (req, res) => {
+    try {
+        const { sessionId } = req.query;
+        if (!sessionId) return res.status(400).json({ message: 'sessionId is required' });
+
+        const attendance = await Attendance.findById(sessionId)
+            .populate('records.student', 'username fullName registerNumber profileImage');
+        
+        if (!attendance) return res.status(404).json({ message: 'Attendance record not found' });
+        if (!attendance.isMorning) return res.status(400).json({ message: 'Requested ID is not a morning session' });
+
+        // Access control
+        if (req.user.role === 'staff') {
+            const advisor = await ClassAdvisor.findOne({ staff: req.user.id });
+            if (!advisor || advisor.department !== attendance.department || advisor.academicYear !== attendance.academicYear) {
+                return res.status(403).json({ message: 'Access Denied' });
+            }
+        } else if (req.user.role === 'hod') {
+            if (attendance.department !== req.user.department) {
+                return res.status(403).json({ message: 'Access Denied' });
+            }
+        }
+        // Principal has campus-wide access
+
+        res.json(attendance);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     markAttendance,
     getSessionAttendance,
@@ -640,5 +814,8 @@ module.exports = {
     getStudentsForSubject,
     getMyAttendance,
     getAttendanceAlerts,
-    getAttendanceHeatmap
+    getAttendanceHeatmap,
+    getAdvisorStudents,
+    getPrincipalAttendanceView,
+    getMorningAttendanceDetails
 };

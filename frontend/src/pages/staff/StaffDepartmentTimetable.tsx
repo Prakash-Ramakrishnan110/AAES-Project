@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import { Clock, AlertCircle, ShieldAlert } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';

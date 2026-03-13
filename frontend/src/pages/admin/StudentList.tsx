@@ -279,12 +279,12 @@ const StudentList = () => {
                     transition={{ delay: 0.1 }}
                     className="xl:col-span-1"
                 >
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 sticky top-6">
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
-                            <h2 className="text-white text-xl font-bold flex items-center gap-2">
-                                <Plus size={24} /> Add New Student
+                    <div className="bg-white rounded-md shadow-sm overflow-hidden border border-slate-200 sticky top-6">
+                        <div className="bg-slate-900 border-b border-slate-800 p-6">
+                            <h2 className="text-white text-lg font-semibold flex items-center gap-2">
+                                <Plus size={20} /> Add New Student
                             </h2>
-                            <p className="text-blue-100 text-sm mt-1">Enroll a new student</p>
+                            <p className="text-slate-400 text-sm mt-1">Enroll a new student</p>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleAddStudent} className="space-y-4">
@@ -317,7 +317,7 @@ const StudentList = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
                                         <div className="relative">
@@ -386,7 +386,7 @@ const StudentList = () => {
 
                                 <button
                                     type="submit"
-                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 hover:shadow-xl transform active:scale-95 duration-200"
+                                    className="w-full bg-slate-900 text-white py-2.5 rounded-md font-medium hover:bg-slate-800 transition-colors shadow-sm mt-2"
                                 >
                                     Enroll Student
                                 </button>
@@ -403,15 +403,15 @@ const StudentList = () => {
                     transition={{ delay: 0.2 }}
                     className="xl:col-span-2"
                 >
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="font-bold text-gray-800 text-lg">Student Directory</h3>
+                    <div className="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center bg-slate-50 gap-4">
+                            <h3 className="font-semibold text-slate-800 text-[15px]">Student Directory</h3>
                             <div className="relative">
                                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
                                 <input
                                     type="text"
                                     placeholder="Search students..."
-                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm w-64"
+                                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-md focus:ring-1 focus:ring-slate-900 focus:border-slate-900 text-sm w-full sm:w-64 bg-white"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -461,7 +461,7 @@ const StudentList = () => {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: index * 0.05 + 0.3 }}
-                                                className={`transition-colors duration-150 cursor-pointer ${s.isActive ? 'hover:bg-blue-50' : 'bg-red-50 hover:bg-red-100'}`}
+                                                className={`transition-colors duration-150 cursor-pointer border-b border-slate-100 last:border-0 ${s.isActive ? 'hover:bg-slate-50' : 'bg-red-50 hover:bg-red-100'}`}
                                                 onClick={() => navigate(`/profile/${s._id}`)}
                                             >
                                                 <td className="px-6 py-4 whitespace-nowrap" onClick={e => e.stopPropagation()}>

@@ -57,7 +57,7 @@ const PrincipalInfrastructure = () => {
                         <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3 lowercase first-letter:uppercase">
                             <ShieldCheck className="w-5 h-5 text-indigo-600" /> Infrastructure Optimization
                         </h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Asset Health & Governance Matrix</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Asset Health & Status Overview</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative group">

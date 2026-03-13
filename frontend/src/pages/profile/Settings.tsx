@@ -8,8 +8,8 @@ import {
     Check, AlertCircle,
     ArrowLeft, Award, Briefcase, GraduationCap, Building2
 } from 'lucide-react';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';

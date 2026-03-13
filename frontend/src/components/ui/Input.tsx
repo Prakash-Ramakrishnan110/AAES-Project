@@ -11,7 +11,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         return (
             <div className="w-full">
                 {label && (
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1 ml-0.5">
                         {label}
                     </label>
                 )}
@@ -22,13 +22,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
                         </div>
                     )}
                     <input
-                        ref={ref} // For react-hook-form support if needed
+                        ref={ref}
                         className={`
-                            w-full px-4 py-2.5 rounded-xl border bg-gray-50 text-gray-900 placeholder-gray-400
-                            focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
-                            transition-all duration-200
+                            w-full px-3 py-2 rounded-md border bg-white text-slate-900 placeholder-slate-400 text-sm
+                            focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900
+                            transition-colors duration-200 shadow-sm
                             ${icon ? 'pl-10' : ''}
-                            ${error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200'}
+                            ${error ? 'border-red-500 focus:ring-red-500/10' : 'border-slate-300'}
                             ${className}
                         `}
                         {...props}
@@ -44,4 +44,4 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = 'Input';
 
-export default Input;
+export { Input };

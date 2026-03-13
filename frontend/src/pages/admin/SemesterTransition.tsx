@@ -47,15 +47,15 @@ const SemesterTransition = () => {
 
     return (
         <div>
-            <h1 className="text-2xl font-bold mb-6">Semester Transition</h1>
+            <h1 className="text-2xl font-bold mb-6 text-slate-900">Semester Transition</h1>
 
-            <div className="bg-white p-6 rounded shadow max-w-2xl">
-                <h2 className="text-lg font-semibold mb-4">Promote Students to Next Semester</h2>
-                <form onSubmit={handlePromote} className="space-y-4">
+            <div className="bg-white p-6 rounded-md shadow-sm border border-slate-200 max-w-2xl">
+                <h2 className="text-lg font-semibold mb-5 text-slate-800 border-b border-slate-100 pb-2">Promote Students to Next Semester</h2>
+                <form onSubmit={handlePromote} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Department</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">Department</label>
                         <select
-                            className="w-full p-2 border rounded"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors text-sm bg-white"
                             required
                             value={formData.department}
                             onChange={e => setFormData({ ...formData, department: e.target.value })}
@@ -67,11 +67,11 @@ const SemesterTransition = () => {
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Current Semester</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">Current Semester</label>
                             <select
-                                className="w-full p-2 border rounded"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors text-sm bg-white"
                                 required
                                 value={formData.currentSemester}
                                 onChange={e => setFormData({ ...formData, currentSemester: e.target.value })}
@@ -83,9 +83,9 @@ const SemesterTransition = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">New Semester</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">New Semester</label>
                             <select
-                                className="w-full p-2 border rounded"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors text-sm bg-white"
                                 required
                                 value={formData.newSemester}
                                 onChange={e => setFormData({ ...formData, newSemester: e.target.value })}
@@ -98,10 +98,10 @@ const SemesterTransition = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Academic Year (Optional)</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-0.5">Academic Year (Optional)</label>
                         <input
                             type="text"
-                            className="w-full p-2 border rounded"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors text-sm"
                             placeholder="e.g., 2024-2025"
                             value={formData.academicYear}
                             onChange={e => setFormData({ ...formData, academicYear: e.target.value })}
@@ -110,14 +110,14 @@ const SemesterTransition = () => {
 
                     <button
                         type="submit"
-                        className="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition"
+                        className="w-full bg-slate-900 text-white px-4 py-2.5 rounded-md hover:bg-slate-800 transition-colors font-medium text-sm shadow-sm mt-2"
                     >
                         Promote Students
                     </button>
                 </form>
 
                 {result && (
-                    <div className={`mt-4 p-3 rounded ${result.startsWith('✓') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <div className={`mt-5 p-4 rounded-md text-sm font-medium border ${result.startsWith('✓') ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
                         {result}
                     </div>
                 )}

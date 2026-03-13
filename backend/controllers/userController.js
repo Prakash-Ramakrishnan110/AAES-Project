@@ -59,31 +59,47 @@ const getUsers = async (req, res) => {
         }
         if (role) query.role = role;
     }
-    // 3. STAFF - Subject-Based Student Visibility
+    // 3. STAFF - Subject-Based or Department-Level Student Visibility
     else if (req.user.role === 'staff') {
-        // Staff should only query students. If they try to query staff/admin, deny or restrict.
+        // Staff should only query students.
         if (role && role !== 'student') {
             return res.status(403).json({ message: 'Staff can only view student profiles' });
         }
         query.role = 'student';
 
-        // Find all subjects assigned to this staff
-        const Subject = require('../models/Subject');
-        const assignedSubjects = await Subject.find({ staff: req.user.id });
-
-        if (assignedSubjects.length === 0) {
-            // Staff has no subjects, can't see any students
-            return res.json([]);
+        // Feature: Allow Staff to see all students in THEIR department
+        let staffDept = req.user.department ? req.user.department.trim() : null;
+        
+        // Governance: If user profile missing department, try to get from Class Advisor assignment
+        if (!staffDept) {
+            const ClassAdvisor = require('../models/ClassAdvisor');
+            const advisorRec = await ClassAdvisor.findOne({ staff: req.user.id });
+            if (advisorRec) staffDept = advisorRec.department;
         }
 
-        // Build OR conditions for each subject's enrollment criteria (dept + semester + year)
-        const subjectConditions = assignedSubjects.map(sub => ({
-            department: sub.department,
-            semester: sub.semester,
-            academicYear: sub.academicYear
-        }));
+        const requestedDept = department ? department.trim() : null;
 
-        query.$or = subjectConditions;
+        if (staffDept && (requestedDept === staffDept || !requestedDept)) {
+            // Staff is viewing their own department (either explicitly requested or defaulted)
+            query.department = staffDept;
+        } else {
+            // Fallback to Subject-Based Student Visibility (for subjects taught in other depts)
+            const Subject = require('../models/Subject');
+            const assignedSubjects = await Subject.find({ staff: req.user.id });
+
+            if (assignedSubjects.length === 0) {
+                return res.json([]);
+            }
+
+            // Build OR conditions for each subject's enrollment criteria
+            const subjectConditions = assignedSubjects.map(sub => ({
+                department: sub.department,
+                semester: sub.semester,
+                academicYear: sub.academicYear
+            }));
+
+            query.$or = subjectConditions;
+        }
     }
     // 4. STUDENT - Self Profile Isolation (If they ever hit this)
     else if (req.user.role === 'student') {
@@ -482,6 +498,7 @@ const promoteStudents = async (req, res) => {
 // @route   GET /api/users/staff/:id
 // @access  Private/Admin/HOD
 const getStaffProfile = async (req, res) => {
+    console.log('[DEBUG] getStaffProfile hit for ID:', req.params.id);
     try {
         const staff = await User.findById(req.params.id).select('-password');
         if (!staff || staff.role !== 'staff') {
@@ -583,6 +600,72 @@ const getAuditLogs = async (req, res) => {
     }
 };
 
+// @desc    Get all students in staff's department
+// @route   GET /api/users/staff-students
+// @access  Private/Staff
+const getStaffStudents = async (req, res) => {
+    try {
+        console.log('--- DEBUG: getStaffStudents hit ---');
+        console.log('User:', { id: req.user._id, username: req.user.username, role: req.user.role, dept: req.user.department });
+        
+        let department = req.user.department;
+
+        // Fallback to ClassAdvisor assignment if profile missing dept
+        if (!department) {
+            console.log('Dept missing on user, checking ClassAdvisor...');
+            const ClassAdvisor = require('../models/ClassAdvisor');
+            const advisorRec = await ClassAdvisor.findOne({ staff: req.user._id });
+            if (advisorRec) {
+                department = advisorRec.department;
+                console.log('Found advisor dept:', department);
+            }
+        }
+
+        if (!department) {
+            console.log('Dept still missing, checking Subjects...');
+            const Subject = require('../models/Subject');
+            const subjects = await Subject.find({ staff: req.user._id });
+            if (subjects.length > 0) {
+                const depts = [...new Set(subjects.map(s => s.department))];
+                console.log('Found subject depts:', depts);
+                const students = await User.find({ 
+                    role: 'student', 
+                    department: { $in: depts },
+                    isActive: true 
+                }).select('-password').sort({ fullName: 1 });
+                console.log(`Found ${students.length} students via subjects.`);
+                return res.json(students);
+            }
+            console.log('No department or subjects found for staff.');
+            return res.json([]);
+        }
+
+        // Robust matching: trim and use case-insensitive regex
+        const searchDept = department.trim();
+        console.log(`Querying students for role: student, department: /^${searchDept}$/i`);
+
+        const students = await User.find({ 
+            role: 'student', 
+            department: { $regex: new RegExp(`^${searchDept}$`, 'i') },
+            isActive: true 
+        }).select('-password').sort({ fullName: 1 });
+
+        console.log(`Found ${students.length} students matching department "${searchDept}".`);
+        
+        // Final fallback: if still empty, let's try finding ANY students in that dept regardless of role just to see if data exists
+        if (students.length === 0) {
+            const anyInDept = await User.countDocuments({ department: { $regex: new RegExp(`^${searchDept}$`, 'i') } });
+            console.log(`Total records in dept "${searchDept}" (any role): ${anyInDept}`);
+        }
+
+        res.json(students);
+    } catch (error) {
+        console.error('--- DEBUG ERROR in getStaffStudents ---');
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getUsers,
     createUser,
@@ -592,5 +675,6 @@ module.exports = {
     promoteStudents,
     getStaffProfile,
     bulkUpdateStudents,
-    getAuditLogs
+    getAuditLogs,
+    getStaffStudents
 };

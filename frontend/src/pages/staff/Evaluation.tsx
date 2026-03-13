@@ -7,9 +7,9 @@ import {
     Search, BookOpen, GraduationCap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 import { Lock } from 'lucide-react';
@@ -194,7 +194,7 @@ const Evaluation = () => {
                 {view === 'assignments' && (
                     <div className="relative w-full md:w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input placeholder="Search assignments..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                        <Input placeholder="Search assignments..." className="pl-10" value={searchTerm} onChange={(e: any) => setSearchTerm(e.target.value)} />
                     </div>
                 )}
             </div>
@@ -519,7 +519,7 @@ const Evaluation = () => {
 
                                     <div className="space-y-4 pt-4 border-t border-gray-100">
                                         <Input label="Manual Override Score" type="number" value={selectedSubmission.marks}
-                                            onChange={e => setSelectedSubmission({ ...selectedSubmission, marks: Number(e.target.value) })} />
+                                            onChange={(e: any) => setSelectedSubmission({ ...selectedSubmission, marks: Number(e.target.value) })} />
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1.5 ml-1">Feedback to Student</label>
@@ -530,9 +530,10 @@ const Evaluation = () => {
                                             />
                                         </div>
 
-                                        <Button className="w-full shadow-lg shadow-indigo-100" onClick={handleGradeOverride} icon={<Save className="w-4 h-4" />}
+                                        <Button className="w-full shadow-lg shadow-indigo-100" onClick={handleGradeOverride}
                                             disabled={selectedSubmission.marksLocked}
                                         >
+                                            <Save className="w-4 h-4 mr-2" />
                                             Publish Marks
                                         </Button>
 

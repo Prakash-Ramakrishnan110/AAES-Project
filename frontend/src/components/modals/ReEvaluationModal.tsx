@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, Send, X } from 'lucide-react';
-import Button from '../ui/Button';
+import { Button } from '../ui/Button';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -120,8 +120,8 @@ const ReEvaluationModal: React.FC<ReEvaluationModalProps> = ({ isOpen, onClose, 
                                     type="submit"
                                     className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 shadow-lg"
                                     isLoading={loading}
-                                    icon={<Send className="w-4 h-4" />}
                                 >
+                                    <Send className="w-4 h-4 mr-2" />
                                     Submit Request
                                 </Button>
                             </div>

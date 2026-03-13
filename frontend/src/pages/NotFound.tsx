@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import Button from '../components/ui/Button';
+import { Button } from '../components/ui/Button';
 import { Home, AlertCircle } from 'lucide-react';
 
 const NotFound = () => {
@@ -24,7 +24,8 @@ const NotFound = () => {
                 </p>
 
                 <Link to="/">
-                    <Button icon={<Home className="w-4 h-4" />}>
+                    <Button>
+                        <Home className="w-4 h-4 mr-2" />
                         Go Back Home
                     </Button>
                 </Link>

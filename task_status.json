@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "task": "Redesign faculty-related dashboards (HOD, Staff, Class Advisor, Principal) to adopt a high-density, compact SaaS-style UI.",
+    "status": "completed"
+  },
+  {
+    "id": 2,
+    "task": "Implement central HeaderOptions and dynamic header in DashboardLayout.",
+    "status": "completed"
+  },
+  {
+    "id": 3,
+    "task": "Clean up redundant HeaderOptions definitions and unify layout structures.",
+    "status": "completed"
+  },
+  {
+      "id": 4,
+      "task": "Perform visual audit and resolve all remaining lint errors.",
+      "status": "in-progress"
+  }
+]

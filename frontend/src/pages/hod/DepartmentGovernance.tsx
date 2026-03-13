@@ -10,7 +10,7 @@ import {
     CheckCircle,
     UserCircle,
 } from 'lucide-react';
-import Button from '../../components/ui/Button';
+import { Button } from '../../components/ui/Button';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 

@@ -86,22 +86,22 @@ const StudentOnboarding = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+            <div className="w-full max-w-lg bg-white rounded-md shadow-sm overflow-hidden border border-slate-200">
                 <div className="px-8 py-10">
                     <div className="flex justify-center mb-6">
-                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                            <User className="w-8 h-8" />
+                        <div className="w-14 h-14 bg-slate-100 text-slate-600 rounded-md flex items-center justify-center border border-slate-200">
+                            <User className="w-7 h-7" />
                         </div>
                     </div>
 
-                    <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">Complete Your Profile</h1>
-                    <p className="text-center text-gray-500 mb-8 text-sm">
+                    <h1 className="text-xl font-bold text-center text-slate-900 mb-2">Complete Your Profile</h1>
+                    <p className="text-center text-slate-500 mb-8 text-sm font-medium">
                         Welcome {user?.fullName || user?.username}! Please provide a few more details before accessing your dashboard.
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {error && (
-                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm text-center border border-red-100">
+                            <div className="bg-red-50 text-red-600 p-4 rounded-md text-sm text-center border border-red-200 font-medium">
                                 {error}
                             </div>
                         )}
@@ -109,11 +109,11 @@ const StudentOnboarding = () => {
                         {/* Profile Image (Optional) */}
                         <div className="flex flex-col items-center gap-4">
                             <div className="relative group cursor-pointer">
-                                <div className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 group-hover:bg-gray-100 transition-colors">
+                                <div className="w-20 h-20 rounded-md border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden bg-slate-50 group-hover:bg-slate-100 transition-colors">
                                     {previewUrl ? (
                                         <img src={previewUrl.startsWith('data:') || previewUrl.startsWith('blob:') ? previewUrl : `${API}${previewUrl}`} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
-                                        <Camera className="w-8 h-8 text-gray-400" />
+                                        <Camera className="w-7 h-7 text-slate-400" />
                                     )}
                                 </div>
                                 <input
@@ -123,21 +123,21 @@ const StudentOnboarding = () => {
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
                             </div>
-                            <span className="text-xs text-gray-400 font-medium">Profile Picture (Optional)</span>
+                            <span className="text-xs text-slate-400 font-medium">Profile Picture (Optional)</span>
                         </div>
 
                         {/* Phone */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Phone Number</label>
                             <div className="relative group">
-                                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900" />
                                 <input
                                     type="tel"
                                     required
                                     value={phone}
                                     onChange={e => setPhone(e.target.value)}
                                     placeholder="+91 9876543210"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-md py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-medium"
                                 />
                             </div>
                         </div>
@@ -145,41 +145,41 @@ const StudentOnboarding = () => {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Blood Group */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Group</label>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Blood Group</label>
                                 <div className="relative group">
-                                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900" />
                                     <input
                                         type="text"
                                         required
                                         value={bloodGroup}
                                         onChange={e => setBloodGroup(e.target.value)}
                                         placeholder="e.g. O+"
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-md py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* Schooling */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Schooling Details</label>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Schooling Details</label>
                                 <div className="relative group">
-                                    <BookOpen className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900" />
                                     <input
                                         type="text"
                                         required
                                         value={schooling}
                                         onChange={e => setSchooling(e.target.value)}
                                         placeholder="e.g. CBSE / State Board"
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-md py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* CGPA */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Current CGPA</label>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Current CGPA</label>
                                 <div className="relative group">
-                                    <Layers className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                                    <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900" />
                                     <input
                                         type="number"
                                         step="0.01"
@@ -187,23 +187,23 @@ const StudentOnboarding = () => {
                                         value={currentCgpa}
                                         onChange={e => setCurrentCgpa(e.target.value)}
                                         placeholder="e.g. 8.5"
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-md py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* History of Arrears */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">History of Arrears</label>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">History of Arrears</label>
                                 <div className="relative group">
-                                    <BookOpen className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900" />
                                     <input
                                         type="number"
                                         required
                                         value={historyOfArrears}
                                         onChange={e => setHistoryOfArrears(e.target.value)}
                                         placeholder="Total Arrears (0 if none)"
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-md py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-medium"
                                     />
                                 </div>
                             </div>
@@ -212,7 +212,7 @@ const StudentOnboarding = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3.5 mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+                            className="w-full py-3 mt-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-md transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
                         >
                             {loading ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

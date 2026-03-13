@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, AlertTriangle, AlertOctagon, Calendar, User, Search, ChevronRight, MessageSquare, Plus, X } from 'lucide-react';
-import Button from '../../components/ui/Button';
+import { Button } from '../../components/ui/Button';
 
 interface RiskData {
     attendancePercentage: number;

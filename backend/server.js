@@ -52,6 +52,7 @@ const workAssignmentRoutes = require('./routes/workAssignmentRoutes');
 const timetableRoutes = require('./routes/timetableRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const documentRoutes = require('./routes/documentRoutes');
+const morningAttendanceSummaryRoutes = require('./routes/morningAttendanceSummaryRoutes');
 const studyMaterialRoutes = require('./routes/studyMaterialRoutes');
 
 app.use('/api/auth', authRoutes);
@@ -79,6 +80,7 @@ app.use('/api/work-assignments', workAssignmentRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/student-leaves', leaveRoutes);
 app.use('/api/student-documents', documentRoutes);
+app.use('/api/morning-attendance', morningAttendanceSummaryRoutes);
 
 const studyResourceRoutes = require('./routes/studyResources');
 app.use('/api/study-resources', studyResourceRoutes);

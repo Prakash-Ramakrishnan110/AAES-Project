@@ -87,12 +87,12 @@ const BulkUpload = () => {
                 </motion.div>
             )}
 
-            <h1 className="text-2xl font-bold mb-6">Bulk User Upload</h1>
+            <h1 className="text-2xl font-bold mb-6 text-slate-900">Bulk User Upload</h1>
 
             {/* Instructions */}
-            <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
-                <h3 className="font-bold text-blue-900 mb-2">Instructions:</h3>
-                <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-5 mb-6 shadow-sm">
+                <h3 className="font-semibold text-slate-800 mb-2">Instructions:</h3>
+                <ol className="list-decimal list-inside text-sm text-slate-600 space-y-1.5 ml-1">
                     <li>Download the CSV template below</li>
                     <li>Fill in user details (username, email, password, role, department, etc.)</li>
                     <li>Valid roles: admin, hod, staff, student</li>
@@ -100,30 +100,30 @@ const BulkUpload = () => {
                 </ol>
                 <button
                     onClick={downloadTemplate}
-                    className="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+                    className="mt-4 bg-slate-900 text-white px-5 py-2.5 rounded-md hover:bg-slate-800 transition-colors text-sm font-medium shadow-sm"
                 >
                     Download Template
                 </button>
             </div>
 
             {/* Upload Form */}
-            <div className="bg-white rounded shadow p-6 mb-6">
+            <div className="bg-white rounded-md shadow-sm border border-slate-200 p-6 mb-6">
                 <form onSubmit={handleUpload}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 font-medium mb-2">
+                    <div className="mb-5">
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
                             Select CSV File
                         </label>
                         <input
                             type="file"
                             accept=".csv"
                             onChange={handleFileChange}
-                            className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 p-2"
+                            className="block w-full text-sm text-slate-700 border border-slate-300 rounded-md cursor-pointer bg-slate-50 focus:outline-none focus:ring-1 focus:ring-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-l-md file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-all font-medium h-[38px]"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={!file || uploading}
-                        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="bg-slate-900 text-white px-6 py-2.5 rounded-md hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm w-full sm:w-auto"
                     >
                         {uploading ? 'Uploading...' : 'Upload Users'}
                     </button>
@@ -132,16 +132,16 @@ const BulkUpload = () => {
 
             {/* Results */}
             {result && (
-                <div className={`rounded shadow p-6 ${result.error ? 'bg-red-50' : 'bg-green-50'}`}>
-                    <h3 className="font-bold text-lg mb-4">
+                <div className={`rounded-md shadow-sm border p-6 ${result.error ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                    <h3 className="font-bold text-lg mb-4 text-slate-800">
                         {result.error ? 'Upload Failed' : 'Upload Complete'}
                     </h3>
 
                     {result.error ? (
-                        <p className="text-red-700">{result.error}</p>
+                        <p className="text-red-700 text-sm">{result.error}</p>
                     ) : (
                         <>
-                            <div className="mb-4">
+                            <div className="mb-4 text-sm">
                                 <p className="text-green-700">
                                     <strong>Success:</strong> {result.successCount} users created
                                 </p>
@@ -152,12 +152,12 @@ const BulkUpload = () => {
 
                             {result.failed && result.failed.length > 0 && (
                                 <div className="mt-4">
-                                    <h4 className="font-bold mb-2">Failed Entries:</h4>
-                                    <div className="max-h-60 overflow-y-auto">
+                                    <h4 className="font-semibold text-sm text-slate-800 mb-2">Failed Entries:</h4>
+                                    <div className="max-h-60 overflow-y-auto space-y-2">
                                         {result.failed.map((fail: any, idx: number) => (
-                                            <div key={idx} className="bg-white p-2 mb-2 rounded border border-red-200">
-                                                <p className="text-sm"><strong>User:</strong> {fail.user}</p>
-                                                <p className="text-sm text-red-600"><strong>Error:</strong> {fail.error}</p>
+                                            <div key={idx} className="bg-white p-3 rounded-md border border-red-200 shadow-sm text-sm">
+                                                <p><strong className="text-slate-700">User:</strong> {fail.user}</p>
+                                                <p className="text-red-600 mt-1"><strong className="text-slate-700">Error:</strong> {fail.error}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -166,12 +166,12 @@ const BulkUpload = () => {
 
                             {result.errors && result.errors.length > 0 && (
                                 <div className="mt-4">
-                                    <h4 className="font-bold mb-2">Validation Errors:</h4>
-                                    <div className="max-h-60 overflow-y-auto">
+                                    <h4 className="font-semibold text-sm text-slate-800 mb-2">Validation Errors:</h4>
+                                    <div className="max-h-60 overflow-y-auto space-y-2">
                                         {result.errors.map((err: any, idx: number) => (
-                                            <div key={idx} className="bg-white p-2 mb-2 rounded border border-red-200">
-                                                <p className="text-sm"><strong>Line:</strong> {err.line}</p>
-                                                <p className="text-sm text-red-600"><strong>Error:</strong> {err.error}</p>
+                                            <div key={idx} className="bg-white p-3 rounded-md border border-red-200 shadow-sm text-sm">
+                                                <p><strong className="text-slate-700">Line:</strong> {err.line}</p>
+                                                <p className="text-red-600 mt-1"><strong className="text-slate-700">Error:</strong> {err.error}</p>
                                             </div>
                                         ))}
                                     </div>

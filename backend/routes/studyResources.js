@@ -9,29 +9,15 @@ const fs = require('fs');
 const axios = require('axios');
 const FormData = require('form-data');
 
-// Ensure upload directory exists
-const uploadDir = path.join(__dirname, '../uploads/resources');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+const { createDynamicUpload } = require('../middleware/uploadMiddleware');
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, `resource-${Date.now()}${path.extname(file.originalname)}`);
-    }
-});
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB
-});
+// Use middleware factory for organized storage
+const uploadMiddleware = createDynamicUpload('resources');
 
 // @route   POST /api/study-resources
 // @desc    Upload a new study resource
 // @access  Private (Staff only)
-router.post('/', auth, upload.single('file'), async (req, res) => {
+router.post('/', auth, uploadMiddleware, async (req, res) => {
     try {
         if (req.user.role !== 'staff' && req.user.role !== 'admin' && req.user.role !== 'hod') {
             return res.status(403).json({ message: 'Not authorized' });
@@ -43,7 +29,8 @@ router.post('/', auth, upload.single('file'), async (req, res) => {
             return res.status(400).json({ message: 'Please upload a file' });
         }
 
-        const fileUrl = `/uploads/resources/${req.file.filename}`;
+        const identifier = req.user?.registerNumber || req.user?._id?.toString() || 'anonymous';
+        const fileUrl = `/uploads/${identifier}/resources/${req.file.filename}`;
 
         const newResource = new StudyResource({
             subjectId,

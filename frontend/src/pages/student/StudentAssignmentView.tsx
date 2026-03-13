@@ -243,7 +243,7 @@ const StudentAssignmentView = () => {
                 );
             default:
                 return (
-                    <div className="p-6 bg-amber-50 text-amber-800 rounded-2xl border border-amber-200">
+                    <div className="p-6 bg-amber-50 text-amber-800 rounded-md border border-amber-200">
                         <p className="font-bold flex items-center gap-2 mb-1">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -251,7 +251,7 @@ const StudentAssignmentView = () => {
                             Legacy Assignment Details
                         </p>
                         <p className="text-sm">This assignment uses an older format. Please contact your instructor if you cannot complete it.</p>
-                        <div className="mt-4 p-3 bg-white/50 rounded-lg text-xs font-mono">
+                        <div className="mt-4 p-3 bg-white/50 rounded-md text-xs font-mono">
                             Type ID: {type || 'unknown'}
                         </div>
                     </div>
@@ -261,14 +261,14 @@ const StudentAssignmentView = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
         </div>
     );
 
     if (!assignment) return (
-        <div className="max-w-4xl mx-auto mt-12 p-12 bg-white rounded-3xl shadow-xl text-center">
-            <h2 className="text-2xl font-bold text-gray-800">Assignment not found</h2>
-            <button onClick={() => navigate(-1)} className="mt-4 text-indigo-600 font-bold">Go Back</button>
+        <div className="max-w-4xl mx-auto mt-12 p-12 bg-white rounded-md shadow-sm border border-slate-200 text-center">
+            <h2 className="text-xl font-bold text-slate-800">Assignment not found</h2>
+            <button onClick={() => navigate(-1)} className="mt-4 text-slate-600 font-bold hover:text-slate-900">Go Back</button>
         </div>
     );
 
@@ -281,7 +281,7 @@ const StudentAssignmentView = () => {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg font-medium border text-sm flex items-center gap-2
+                        className={`fixed top-6 right-6 z-[100] px-5 py-3 rounded-md shadow-sm font-medium border text-sm flex items-center gap-2
                         ${toastMessage.type === 'success'
                                 ? 'bg-green-50 border-green-200 text-green-800'
                                 : 'bg-red-50 border-red-200 text-red-800'}`}
@@ -290,95 +290,88 @@ const StudentAssignmentView = () => {
                     </motion.div>
                 )}
 
-                {/* Premium Header */}
-                <div className="relative bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mb-8 overflow-hidden">
+                {/* Header */}
+                <div className="relative bg-white rounded-md p-6 shadow-sm border border-slate-200 mb-6 overflow-hidden">
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
-                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-indigo-100">
+                                <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-200">
                                     {assignment.submissionType || assignment.type}
                                 </span>
-                                <span className="text-gray-400 text-xs font-bold">•</span>
-                                <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">{assignment.subject?.name}</span>
+                                <span className="text-slate-300 text-xs">•</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">{assignment.subject?.name}</span>
                             </div>
-                            <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2 tracking-tight">{assignment.title}</h1>
-                            <p className="text-sm text-gray-500 max-w-2xl font-medium leading-relaxed">{assignment.description}</p>
+                            <h1 className="text-xl font-bold text-slate-900 leading-tight mb-1 tracking-tight">{assignment.title}</h1>
+                            <p className="text-sm text-slate-500 max-w-2xl font-medium leading-relaxed">{assignment.description}</p>
                         </div>
 
                         <div className="flex flex-col items-end gap-3">
                             <div className="text-right">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Due Date</p>
-                                <p className="text-sm font-black text-red-500 bg-red-50 px-4 py-2 rounded-xl border border-red-100">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Due Date</p>
+                                <p className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-md border border-red-200">
                                     {new Date(assignment.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                                 </p>
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleDownloadQuestions}
-                                    className="px-4 py-2 bg-white text-indigo-600 rounded-xl border border-indigo-100 hover:bg-indigo-50 transition-colors flex items-center gap-2 group"
+                                    className="px-3 py-2 bg-white text-slate-600 rounded-md border border-slate-200 hover:bg-slate-50 transition-colors flex items-center gap-2 group shadow-sm"
                                 >
-                                    <svg className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
-                                    <span className="text-xs font-bold uppercase tracking-widest">Download Questions</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Download Questions</span>
                                 </button>
-                                <div className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase block leading-none mb-1">Max Marks</span>
-                                    <span className="text-lg font-black text-gray-700 leading-none">{assignment.maxMarks}</span>
+                                <div className="px-3 py-2 bg-slate-50 rounded-md border border-slate-200">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase block leading-none mb-1">Max Marks</span>
+                                    <span className="text-lg font-bold text-slate-900 leading-none">{assignment.maxMarks}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    {/* Decorative background element */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-20 transform translate-x-20 translate-y--20"></div>
                 </div>
 
                 {/* Submission Status for Graded Assignments */}
                 {submission && (
-                    <div className="mb-8 space-y-4">
-                        <div className={`p-6 rounded-3xl border-2 flex items-center justify-between shadow-sm
+                    <div className="mb-6 space-y-4">
+                        <div className={`p-5 rounded-md border flex items-center justify-between shadow-sm
                         ${submission.status === 'graded'
                                 ? 'bg-green-50 border-green-200 text-green-900'
                                 : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
                             <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-2xl ${submission.status === 'graded' ? 'bg-green-100' : 'bg-blue-100'}`}>
+                                <div className={`p-2.5 rounded-md ${submission.status === 'graded' ? 'bg-green-100' : 'bg-blue-100'}`}>
                                     {submission.status === 'graded' ? (
-                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     ) : (
-                                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     )}
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold uppercase tracking-widest opacity-60">Status</p>
-                                    <p className="text-lg font-bold capitalize">{submission.status}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Status</p>
+                                    <p className="text-base font-bold capitalize">{submission.status}</p>
                                 </div>
                             </div>
                             {submission.marks !== undefined && submission.marks !== null && (
                                 <div className="text-right">
-                                    <p className="text-xs font-bold uppercase tracking-widest opacity-60">Score</p>
-                                    <p className="text-xl font-black">{submission.marks} <span className="text-xs opacity-50 font-bold">/ {assignment.maxMarks}</span></p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Score</p>
+                                    <p className="text-lg font-bold">{submission.marks} <span className="text-xs opacity-50 font-medium">/ {assignment.maxMarks}</span></p>
                                 </div>
                             )}
                         </div>
                         {submission.feedback && (
-                            <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                    <svg className="w-24 h-24 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-5 bg-white rounded-md border border-slate-200 shadow-sm relative overflow-hidden">
+                                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Evaluation Feedback
                                 </h3>
-                                <div className="prose prose-sm max-w-none text-gray-600 relative z-10">
-                                    <pre className="font-mono text-sm whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-100">{submission.feedback}</pre>
+                                <div className="prose prose-sm max-w-none text-slate-600">
+                                    <pre className="font-mono text-sm whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-md border border-slate-100">{submission.feedback}</pre>
                                 </div>
                             </div>
                         )}
@@ -387,26 +380,26 @@ const StudentAssignmentView = () => {
 
                 {/* View Switching Logic based on Submission State */}
                 {submission && submission.resubmissionStatus !== 'approved' ? (
-                    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-white rounded-md p-6 shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center">
+                        <div className="w-14 h-14 bg-slate-100 rounded-md flex items-center justify-center mb-4 border border-slate-200">
+                            <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Assignment Submitted</h3>
-                        <p className="text-gray-500 mb-6 max-w-md">You have already submitted this assignment. You cannot make another submission unless your instructor grants permission.</p>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Assignment Submitted</h3>
+                        <p className="text-slate-500 mb-6 max-w-md text-sm font-medium">You have already submitted this assignment. You cannot make another submission unless your instructor grants permission.</p>
 
                         {submission.resubmissionStatus === 'requested' ? (
-                            <div className="px-6 py-4 bg-amber-50 rounded-2xl border border-amber-100 text-amber-800 font-medium flex items-center gap-3">
-                                <svg className="animate-spin w-5 h-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <div className="px-5 py-3 bg-amber-50 rounded-md border border-amber-200 text-amber-800 font-medium flex items-center gap-3 text-sm">
+                                <svg className="animate-spin w-4 h-4 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                                 Your request to resubmit is pending instructor approval.
                             </div>
                         ) : submission.resubmissionStatus === 'rejected' ? (
-                            <div className="px-6 py-4 bg-red-50 rounded-2xl border border-red-100 text-red-800 font-medium flex items-center gap-3">
-                                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="px-5 py-3 bg-red-50 rounded-md border border-red-200 text-red-800 font-medium flex items-center gap-3 text-sm">
+                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 Your request to resubmit was declined.
@@ -414,17 +407,17 @@ const StudentAssignmentView = () => {
                         ) : (
                             showRequestForm ? (
                                 <form onSubmit={handleRequestResubmit} className="w-full max-w-lg mt-4 text-left">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Reason for Resubmission</label>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Reason for Resubmission</label>
                                     <textarea
-                                        className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all min-h-[100px] mb-4"
+                                        className="w-full p-3 border border-slate-300 rounded-md focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-colors min-h-[100px] mb-4 text-sm font-medium"
                                         placeholder="Explain why you need to resubmit..."
                                         value={requestReason}
                                         onChange={(e) => setRequestReason(e.target.value)}
                                         required
                                     />
                                     <div className="flex justify-end gap-3">
-                                        <button type="button" onClick={() => setShowRequestForm(false)} className="px-6 py-2.5 rounded-xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
-                                        <button type="submit" disabled={isRequesting} className="px-6 py-2.5 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                                        <button type="button" onClick={() => setShowRequestForm(false)} className="px-4 py-2 rounded-md font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                                        <button type="submit" disabled={isRequesting} className="px-4 py-2 rounded-md font-bold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-colors disabled:opacity-50">  
                                             {isRequesting ? 'Sending...' : 'Send Request'}
                                         </button>
                                     </div>
@@ -432,7 +425,7 @@ const StudentAssignmentView = () => {
                             ) : (
                                 <button
                                     onClick={() => setShowRequestForm(true)}
-                                    className="px-6 py-3 bg-white border-2 border-indigo-100 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 rounded-xl font-bold transition-all shadow-sm"
+                                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-md font-bold text-sm transition-colors shadow-sm"
                                 >
                                     Request Resubmission
                                 </button>
@@ -443,30 +436,29 @@ const StudentAssignmentView = () => {
                     <form onSubmit={handleSubmit} className="space-y-8">
                         {renderFormatView()}
 
-                        <div className="flex justify-end pt-8">
+                        <div className="flex justify-end pt-6">
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className={`group relative px-12 py-4 rounded-2xl font-black text-lg shadow-xl transition-all flex items-center gap-3 overflow-hidden ${isSubmitting
-                                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-200'
+                                className={`group relative px-8 py-3 rounded-md font-bold text-sm shadow-sm transition-colors flex items-center gap-2 overflow-hidden ${isSubmitting
+                                    ? 'bg-slate-400 text-white cursor-not-allowed shadow-none'
+                                    : 'bg-slate-900 text-white hover:bg-slate-800'
                                     }`}
                             >
                                 {isSubmitting ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span className="relative z-10">Processing...</span>
+                                        <span>Processing...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span className="relative z-10">{submission ? 'Submit Approved Update' : 'Complete Submission'}</span>
-                                        <svg className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span>{submission ? 'Submit Approved Update' : 'Complete Submission'}</span>
+                                        <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                         </svg>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                     </>
                                 )}
                             </button>
@@ -481,24 +473,16 @@ const StudentAssignmentView = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-md"
+                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm"
                     >
                         <div className="relative">
-                            {/* Outer rotating glowing ring */}
                             <motion.div
                                 animate={{ rotate: 360 }}
-                                transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                                className="absolute -inset-4 rounded-full border-[3px] border-t-indigo-500 border-r-transparent border-b-purple-500 border-l-transparent opacity-70"
+                                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                                className="absolute -inset-3 rounded-full border-[3px] border-t-slate-700 border-r-transparent border-b-slate-400 border-l-transparent opacity-70"
                             />
-                            {/* Inner rotating glowing ring (opposite direction) */}
-                            <motion.div
-                                animate={{ rotate: -360 }}
-                                transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
-                                className="absolute -inset-1 rounded-full border-[3px] border-t-purple-400 border-r-transparent border-b-indigo-400 border-l-transparent opacity-50"
-                            />
-                            {/* Center Icon */}
-                            <div className="w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)]">
-                                <svg className="w-8 h-8 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-16 h-16 bg-slate-900 rounded-md flex items-center justify-center shadow-sm">
+                                <svg className="w-7 h-7 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                                 </svg>
                             </div>
@@ -510,12 +494,12 @@ const StudentAssignmentView = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.5 }}
-                            className="mt-10 text-center"
+                            className="mt-8 text-center"
                         >
-                            <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
+                            <h2 className="text-xl font-bold text-slate-900 mb-1">
                                 {loadingText}
                             </h2>
-                            <p className="text-gray-500 font-medium text-sm">Please do not close this window.</p>
+                            <p className="text-slate-500 font-medium text-sm">Please do not close this window.</p>
                         </motion.div>
                     </motion.div>
                 )}

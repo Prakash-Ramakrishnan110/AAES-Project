@@ -4,7 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import {
     Globe, Activity, PieChart, Zap, TrendingUp,
-    Shield, Target, ChevronRight, BarChart3
+    BarChart3
 } from 'lucide-react';
 import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
@@ -47,7 +47,7 @@ const PrincipalAnalytics = () => {
         <div className="flex items-center justify-center min-h-screen bg-slate-50">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest">Synthesizing Global Analytics...</p>
+                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest">Loading Institutional Analytics...</p>
             </div>
         </div>
     );
@@ -79,10 +79,10 @@ const PrincipalAnalytics = () => {
                         <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3 lowercase first-letter:uppercase">
                             <Globe className="w-5 h-5 text-indigo-600" /> Global Insights
                         </h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Institutional Analytics Matrix</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Academic Overview</p>
                     </div>
                     <div className="px-4 py-2 bg-indigo-50/50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border border-indigo-100">
-                        <Activity className="w-3.5 h-3.5" /> Macro-Telemetry Pulse: Active
+                        <Activity className="w-3.5 h-3.5" /> System Status: Active
                     </div>
                 </div>
             </header>
@@ -97,7 +97,7 @@ const PrincipalAnalytics = () => {
                     >
                         <div className="mb-8 flex justify-between items-center">
                             <div>
-                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Departmental Yield Matrix</h3>
+                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Departmental Performance Matrix</h3>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Average student success rates across faculties</p>
                             </div>
                             <BarChart3 className="w-4 h-4 text-slate-300" />
@@ -172,9 +172,9 @@ const PrincipalAnalytics = () => {
                         <div className="bg-indigo-600 p-8 rounded-2xl text-white shadow-lg shadow-indigo-100 relative overflow-hidden group">
                             <div className="relative z-10">
                                 <Zap className="w-5 h-5 mb-4 text-emerald-300" />
-                                <h3 className="text-xl font-bold tracking-tight">Transmission Velocity</h3>
+                                <h3 className="text-xl font-bold tracking-tight">Data Processing Volume</h3>
                                 <p className="text-xs font-medium opacity-80 mt-2 leading-relaxed italic">
-                                    "Institutional infrastructure processes <span className="font-black text-white px-1.5 bg-white/10 rounded">14.2k telemetry points</span> every 24 hours."
+                                    "Institutional processes capture <span className="font-black text-white px-1.5 bg-white/10 rounded">14.2k data points</span> every 24 hours."
                                 </p>
                             </div>
                             <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 group-hover:scale-110 transition-transform" />
@@ -262,11 +262,11 @@ const PrincipalAnalytics = () => {
                         <div className="lg:w-1/3 space-y-6">
                             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
                                 <Zap className="w-3.5 h-3.5" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Predictive Neural Engine v2.1</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Predictive Performance Engine</span>
                             </div>
                             <h2 className="text-4xl font-black tracking-tighter leading-tight">Institutional Performance Forecast</h2>
                             <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                                Macro-level synthesis of {data.summary.totalStudents * 5} telemetry nodes across cross-departmental success vectors.
+                                Data synthesis of {data.summary.totalStudents * 5} records across departmental success metrics.
                             </p>
                         </div>
 

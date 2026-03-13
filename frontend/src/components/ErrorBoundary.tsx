@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import Button from './ui/Button';
+import { Button } from './ui/Button';
 import { RefreshCcw, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -49,10 +49,10 @@ class ErrorBoundary extends Component<Props, State> {
 
                         <Button
                             onClick={() => window.location.reload()}
-                            icon={<RefreshCcw className="w-4 h-4" />}
                             variant="outline"
                             className="w-full"
                         >
+                            <RefreshCcw className="w-4 h-4 mr-2" />
                             Reload Application
                         </Button>
                     </div>

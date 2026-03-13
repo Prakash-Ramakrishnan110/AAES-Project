@@ -1,36 +1,58 @@
-import { useState, useEffect, useContext } from 'react';
+import { useEffect, useState, useContext, cloneElement } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { motion } from 'framer-motion';
-import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+import { 
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar, Cell
 } from 'recharts';
-import {
-    Users, GraduationCap, TrendingUp, AlertTriangle,
-    UserPlus, BookOpen, Activity, Star, Zap, FileText, MessageSquare, Download, Clock
+import { 
+    Users, BookOpen, Clock, 
+    TrendingUp, FileText, 
+    LayoutDashboard, BarChart2, Star, MessageSquare, Download, Target, 
+    AlertTriangle, GraduationCap, UserPlus
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { type HeaderOptions } from '../../components/layout/DashboardLayout';
 import AssignAdvisorModal from './AssignAdvisorModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
+import SectionCard from '../../components/ui/SectionCard';
+import Skeleton from '../../components/ui/Skeleton';
+ 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+        y: 0,
+        opacity: 1,
+        transition: {
+            type: 'spring',
+            stiffness: 260,
+            damping: 20
+        }
+    }
+} as const;
 
 const HODDashboard = () => {
     const { user, token } = useContext(AuthContext)!;
     const navigate = useNavigate();
-
-    const [stats, setStats] = useState<any>({
-        staffCount: 0,
-        studentCount: 0,
-        avgMarks: 0,
-        avgAttendance: 0,
-        riskCount: 0
-    });
+    const { setHeaderOptions } = useOutletContext<{ setHeaderOptions: (opts: HeaderOptions) => void }>();
 
     const [trendData, setTrendData] = useState([]);
     const [subjectData, setSubjectData] = useState([]);
+    const [stats, setStats] = useState<any>(null);
     const [advisors, setAdvisors] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAdvisorModal, setShowAdvisorModal] = useState(false);
@@ -40,15 +62,19 @@ const HODDashboard = () => {
     const [queriesData, setQueriesData] = useState<any[]>([]);
     const [mentorshipOversight, setMentorshipOversight] = useState<any[]>([]);
     const [ccmOversight, setCcmOversight] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'workload' | 'comparison' | 'ccm' | 'mentorship'>('overview');
+    const [morningReports, setMorningReports] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'overview' | 'workload' | 'comparison' | 'ccm' | 'mentorship' | 'morning'>('overview');
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             setLoading(true);
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-
-                const [statsRes, semRes, subjRes, advisorRes, workloadRes, comparisonRes, ccmRes, queriesRes, oversightRes, ccmOversightRes] = await Promise.all([
+                const [
+                    statsRes, semRes, subjRes, advisorRes, 
+                    workloadRes, comparisonRes, ccmRes, queriesRes, 
+                    oversightRes, ccmOversightRes, morningReportsRes
+                ] = await Promise.all([
                     axios.get(`${API}/api/analytics/hod/stats`, config),
                     axios.get(`${API}/api/analytics/semester`, config),
                     axios.get(`${API}/api/analytics/subject`, config),
@@ -58,9 +84,9 @@ const HODDashboard = () => {
                     axios.get(`${API}/api/ccm`, config),
                     axios.get(`${API}/api/mentorship`, config),
                     axios.get(`${API}/api/analytics/hod/mentorship-oversight`, config),
-                    axios.get(`${API}/api/analytics/hod/ccm-oversight`, config)
+                    axios.get(`${API}/api/analytics/hod/ccm-oversight`, config),
+                    axios.get(`${API}/api/morning-attendance/report`, config)
                 ]);
-
                 setStats(statsRes.data);
                 setTrendData(semRes.data);
                 setSubjectData(subjRes.data.map((s: any) => ({ name: s.subject, score: s.avgMarks })));
@@ -71,7 +97,7 @@ const HODDashboard = () => {
                 setQueriesData(queriesRes.data);
                 setMentorshipOversight(oversightRes.data);
                 setCcmOversight(ccmOversightRes.data);
-
+                setMorningReports(morningReportsRes.data);
             } catch (error) {
                 console.error("Failed to fetch HOD stats", error);
             } finally {
@@ -81,359 +107,434 @@ const HODDashboard = () => {
         if (token) fetchDashboardData();
     }, [token]);
 
-    const kpis = [
-        { label: 'Total Faculty', value: stats.staffCount || 0, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', link: '/hod/staff' },
-        { label: 'Total Students', value: stats.studentCount || 0, icon: GraduationCap, color: 'text-blue-600', bg: 'bg-blue-50', link: '/hod/students' },
-        { label: 'Avg Performance', value: `${stats.avgMarks || 0}%`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/hod/analytics' },
-        { label: 'Attendance', value: `${stats.avgAttendance || 0}%`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', link: '/hod/attendance' },
-        { label: 'Critical Cases', value: stats.riskCount || 0, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', link: '/hod/analytics' },
+    useEffect(() => {
+        if (!loading) {
+            setHeaderOptions({
+                title: 'Institutional Academic Administration',
+                subtitle: (
+                    <span className="flex items-center gap-2">
+                        {user?.department} Department &bull; Welcome back, <span className="text-primary">{(user as any)?.fullName || user?.username}</span>
+                    </span>
+                ),
+                actions: (
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={exportToPDF}
+                            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                        >
+                            <Download className="w-4 h-4 text-slate-600" />
+                            Export Report
+                        </button>
+                        <button 
+                            onClick={() => navigate('/hod/analytics')}
+                            className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2 rounded-md text-xs font-semibold transition-colors shadow-sm hover:bg-slate-800"
+                        >
+                            <Target className="w-4 h-4" />
+                            Quality Audit
+                        </button>
+                    </div>
+                )
+            });
+        }
+    }, [loading, user, setHeaderOptions, navigate]);
+
+    const quickActions = [
+        { icon: UserPlus, label: 'Enrollment', desc: 'Secure departmental student node', color: 'from-[#4318FF] to-[#624BFF]', link: '/hod/students' },
+        { icon: Star, label: 'Advisor Sync', desc: 'Manage class responsibilities', color: 'from-[#0B1437] to-[#1B2559]', action: () => setShowAdvisorModal(true) },
+        { icon: BookOpen, label: 'Asset Index', desc: 'Staff and student directory overview', color: 'from-[#05CD99] to-[#04b084]', link: '/hod/directory' },
     ];
 
     const exportToPDF = () => {
         try {
             const doc = new jsPDF();
             const deptName = user?.department || 'Department';
-
             doc.setFontSize(18);
             doc.text(`${deptName} - HOD Dashboard Report`, 14, 20);
-
             doc.setFontSize(12);
             doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 30);
             doc.text(`Generated by: ${(user as any)?.fullName || user?.username || 'HOD'}`, 14, 38);
-
-            // Overview Stats
             autoTable(doc, {
-                startY: 45,
-                head: [['Key Metric', 'Value']],
+                startY: 45, head: [['Key Metric', 'Value']],
                 body: [
-                    ['Total Faculty', stats.staffCount.toString()],
-                    ['Total Students', stats.studentCount.toString()],
-                    ['Average Performance', `${stats.avgMarks}%`],
+                    ['Total Faculty', (stats.staffCount || 0).toString()],
+                    ['Total Students', (stats.studentCount || 0).toString()],
+                    ['Average Performance', `${stats.avgMarks || 0}%`],
                     ['Active Advisors', advisors.length.toString()]
                 ],
-                theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229] }
+                theme: 'grid', headStyles: { fillColor: [79, 70, 229] }
             });
-
-            // Workload summary if available
-            if (workloadData.length > 0) {
-                const workloadBody = workloadData.map((w: any) => [
-                    w.staffName || 'N/A',
-                    (w.subjectCount || 0).toString(),
-                    (w.activeAssignments || 0).toString(),
-                    (w.totalStudentLoad || 0).toString()
-                ]);
-
-                autoTable(doc, {
-                    startY: (doc as any).lastAutoTable.finalY + 15,
-                    head: [['Faculty Name', 'Subjects', 'Active Assignments', 'Student Load']],
-                    body: workloadBody,
-                    theme: 'striped',
-                    headStyles: { fillColor: [79, 70, 229] }
-                });
-            }
-
-            // Subject Comparison
-            if (comparisonData.length > 0) {
-                const comparisonBody = comparisonData.map((c: any) => [
-                    `${c.subjectCode || ''} - ${c.subjectName || ''}`,
-                    `${c.avgMarks || 0}%`,
-                    `${c.submissionRate || 0}%`,
-                    c.avgMarks >= 75 ? 'Excellent' : c.avgMarks >= 50 ? 'Stable' : 'Critical'
-                ]);
-
-                autoTable(doc, {
-                    startY: (doc as any).lastAutoTable.finalY + 15,
-                    head: [['Subject', 'Avg Marks', 'Submission Rate', 'Health']],
-                    body: comparisonBody,
-                    theme: 'striped',
-                    headStyles: { fillColor: [79, 70, 229] }
-                });
-            }
-
             doc.save(`HOD_Report_${deptName.replace(/\s+/g, '_')}.pdf`);
         } catch (error) {
             console.error('Failed to generate PDF:', error);
         }
     };
 
-    const quickActions = [
-        { icon: UserPlus, label: 'Add Student', desc: 'Enroll new students to dept', color: 'from-blue-500 to-blue-600', link: '/hod/students' },
-        { icon: Star, label: 'Assign Advisors', desc: 'Manage class responsibilities', color: 'from-purple-500 to-purple-600', action: () => setShowAdvisorModal(true) },
-        { icon: BookOpen, label: 'Department Directory', desc: 'View all staff and student list', color: 'from-indigo-500 to-indigo-600', link: '/hod/directory' },
-        { icon: Activity, label: 'Class Activity Log', desc: 'Monitor department class logs', color: 'from-teal-500 to-teal-600', link: '/hod/activity-log' },
-    ];
-
     return (
-        <div className="space-y-6 pb-10">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 font-display">
-                        AAES &ndash; HOD Panel
-                    </h1>
-                    <p className="text-gray-500 text-sm mt-0.5">
-                        {user?.department || 'Department'} Department &middot; Welcome back, {(user as any)?.fullName || user?.username}. Here is your overview.
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    <button onClick={exportToPDF}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-                    >
-                        <Download className="w-4 h-4" /> Export PDF
-                    </button>
-                    <button onClick={() => navigate('/hod/staff')}
-                        className="px-4 py-2 border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-                    >
-                        Manage Faculty
-                    </button>
-                    <button onClick={() => navigate('/hod/analytics')}
-                        className="px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
-                    >
-                        Detailed Report
-                    </button>
-                </div>
-            </div>
-
+        <div className="space-y-4">
+ 
             {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <div className="w-10 h-10 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {[...Array(5)].map((_, i) => (
+                            <Skeleton key={i} height={110} className="w-full rounded-2xl" />
+                        ))}
+                    </div>
+                    <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+                        {[...Array(5)].map((_, i) => (
+                            <Skeleton key={i} width={80} height={32} className="rounded-md" />
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <div className="lg:col-span-8">
+                            <Skeleton height={300} className="w-full rounded-3xl" />
+                        </div>
+                        <div className="lg:col-span-4">
+                            <Skeleton height={300} className="w-full rounded-3xl" />
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <>
-                    {/* KPI Grid */}
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                        {kpis.map((kpi, i) => (
-                            <motion.div key={kpi.label}
-                                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                            >
-                                <div onClick={() => navigate(kpi.link)} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group">
-                                    <div className={`p-4 rounded-xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
-                                        <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
-                                        <h3 className="text-2xl font-bold text-gray-900">{kpi.value}</h3>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
+                    {/* SaaS Stat Cards - 5 per row */}
+                    <motion.div 
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"
+                    >
+                        <StatCard 
+                            label="Faculty" 
+                            value={stats.staffCount || 0} 
+                            icon={<Users />}
+                            color="blue"
+                            link="/hod/staff"
+                        />
+                        <StatCard 
+                            label="Students" 
+                            value={stats.studentCount || 0} 
+                            icon={<GraduationCap />}
+                            color="blue"
+                            link="/hod/students"
+                        />
+                        <StatCard 
+                            label="Performance" 
+                            value={`${stats.avgMarks || 0}%`} 
+                            icon={<TrendingUp />}
+                            color="green"
+                            link="/hod/analytics"
+                        />
+                        <StatCard 
+                            label="Attendance" 
+                            value={`${stats.avgAttendance || 0}%`} 
+                            icon={<Clock />}
+                            color="amber"
+                            link="/hod/attendance"
+                        />
+                        <StatCard 
+                            label="At Risk" 
+                            value={stats.riskCount || 0} 
+                            icon={<AlertTriangle />}
+                            color="red"
+                            link="/hod/analytics"
+                        />
+                    </motion.div>
 
-                    {/* Tab Navigation */}
-                    <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-2xl w-fit mb-6">
+                    {/* Compact Navigation Tabs */}
+                    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg w-fit">
                         {[
-                            { id: 'overview', label: 'Overview', icon: TrendingUp },
-                            { id: 'workload', label: 'Staff Workload', icon: Users },
-                            { id: 'comparison', label: 'Subject Comparisons', icon: BookOpen },
-                            { id: 'ccm', label: 'CCM Details', icon: FileText },
-                            { id: 'mentorship', label: 'Mentorship Queries', icon: MessageSquare }
+                            { id: 'overview', label: 'Domain', icon: LayoutDashboard },
+                            { id: 'workload', label: 'Workload', icon: Users },
+                            { id: 'comparison', label: 'Performance', icon: BookOpen },
+                            { id: 'ccm', label: 'CCM Protocol', icon: FileText },
+                            { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
+                            { id: 'morning', label: 'Morning Roll Call', icon: Clock }
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
-                                    ? 'bg-white text-indigo-600 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-[13px] font-medium transition-colors ${activeTab === tab.id
+                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                                    : 'text-slate-500 hover:text-slate-900 hover:bg-white/50 border border-transparent'
                                     }`}
                             >
-                                <tab.icon className="w-4 h-4" />
+                                <tab.icon className="w-3.5 h-3.5" />
                                 {tab.label}
                             </button>
                         ))}
                     </div>
 
                     {activeTab === 'overview' && (
-                        <>
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Area Chart: Performance Trend */}
-                                <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                                        <TrendingUp className="w-4 h-4 text-teal-600" />
-                                        <h2 className="font-semibold text-gray-800">Performance Trend (Semester)</h2>
-                                    </div>
-                                    <div className="p-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                            <div className="lg:col-span-8 space-y-4">
+                                {/* Academic Analytics Block */}
+                                <SectionCard 
+                                    title="Academic Projection" 
+                                    subtitle="Semester aggregate performance"
+                                    icon={<TrendingUp />}
+                                >
+                                    <div className="h-64 w-full mt-2">
                                         {trendData && trendData.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height={320}>
-                                                <LineChart data={trendData}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={trendData}>
+                                                    <defs>
+                                                        <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                                        </linearGradient>
+                                                    </defs>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                                    <XAxis dataKey="semester" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} dy={10} />
-                                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} domain={[0, 100]} />
-                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
-                                                    <Line
+                                                    <XAxis 
+                                                        dataKey="semester" 
+                                                        axisLine={false} 
+                                                        tickLine={false} 
+                                                        tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 500 }} 
+                                                        dy={8} 
+                                                    />
+                                                    <YAxis 
+                                                        axisLine={false} 
+                                                        tickLine={false} 
+                                                        tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 500 }} 
+                                                        domain={[0, 100]} 
+                                                    />
+                                                    <Tooltip 
+                                                        contentStyle={{ 
+                                                            borderRadius: '12px', 
+                                                            border: 'none', 
+                                                            padding: '12px',
+                                                            fontSize: '12px',
+                                                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                                                        }} 
+                                                    />
+                                                    <Area
                                                         type="monotone"
                                                         dataKey="avgMarks"
-                                                        stroke="#0D9488"
-                                                        strokeWidth={4}
-                                                        dot={{ r: 5, fill: '#0D9488', strokeWidth: 3, stroke: '#fff' }}
-                                                        activeDot={{ r: 7 }}
-                                                        name="Avg Marks"
+                                                        stroke="#3b82f6"
+                                                        strokeWidth={3}
+                                                        fillOpacity={1}
+                                                        fill="url(#colorAvg)"
+                                                        dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                                                        activeDot={{ r: 6, strokeWidth: 0 }}
                                                     />
-                                                </LineChart>
+                                                </AreaChart>
                                             </ResponsiveContainer>
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-gray-400 text-sm">No benchmark data yet</div>
+                                            <div className="flex h-full items-center justify-center text-[12px] font-medium text-gray-400 italic">No historical data found</div>
                                         )}
                                     </div>
-                                </div>
-
-                                {/* Bar Chart: Subject Performance */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                                        <BarChart2 className="w-4 h-4 text-indigo-600" />
-                                        <h2 className="font-semibold text-gray-800">Subject Averages</h2>
-                                    </div>
-                                    <div className="p-5">
+                                </SectionCard>
+ 
+                                <SectionCard 
+                                    title="Instructional Grid" 
+                                    subtitle="Performance per subject node"
+                                    icon={<BarChart2 />}
+                                >
+                                    <div className="h-48 w-full mt-2">
                                         {subjectData && subjectData.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height={320}>
-                                                <BarChart data={subjectData} layout="vertical" margin={{ left: 10 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={subjectData} layout="vertical" margin={{ left: 0 }}>
                                                     <XAxis type="number" domain={[0, 100]} hide />
-                                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} width={80} />
-                                                    <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '10px' }} />
-                                                    <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={20} name="Score">
+                                                    <YAxis 
+                                                        dataKey="name" 
+                                                        type="category" 
+                                                        axisLine={false} 
+                                                        tickLine={false} 
+                                                        tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 500 }} 
+                                                        width={64} 
+                                                    />
+                                                    <Bar dataKey="score" radius={[0, 2, 2, 0]} barSize={12}>
                                                         {subjectData.map((entry: any, index: number) => (
-                                                            <Cell key={`cell-${index}`} fill={entry.score < 50 ? '#EF4444' : '#6366F1'} fillOpacity={0.9} />
+                                                            <Cell key={`cell-${index}`} fill={entry.score < 50 ? '#ef4444' : '#312e81'} />
                                                         ))}
                                                     </Bar>
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-gray-400 text-sm">No subject data available</div>
+                                            <div className="flex h-full items-center justify-center text-[12px] font-medium text-gray-400 italic">No course nodes detected</div>
                                         )}
                                     </div>
-                                </div>
+                                </SectionCard>
                             </div>
-
-                            {/* Attention Required & Quick Actions */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                                {/* Alerts Card */}
-                                <div className="bg-white rounded-2xl border border-l-4 border-l-red-500 border-gray-100 shadow-sm p-5">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <AlertTriangle className="w-4 h-4 text-red-600" />
-                                        <h2 className="font-semibold text-gray-800">Attention Required</h2>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {subjectData.filter((s: any) => (s.score > 0 && s.score < 50) || (s.attendanceAvg > 0 && s.attendanceAvg < 75)).length > 0 ? (
-                                            subjectData.filter((s: any) => (s.score > 0 && s.score < 50) || (s.attendanceAvg > 0 && s.attendanceAvg < 75)).slice(0, 3).map((subj: any, i: number) => (
-                                                <div key={i} className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                                                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                                                        <AlertTriangle className="w-4 h-4 text-red-600" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-red-900 text-sm">{subj.name}</h4>
-                                                        <p className="text-red-700 text-xs">
-                                                            {subj.score < 50 ? `Avg Marks: ${subj.score}% — ` : ''}
-                                                            {subj.attendanceAvg < 75 ? `Attendance: ${subj.attendanceAvg}% — ` : ''}
-                                                            Action Required.
-                                                        </p>
+ 
+                            <div className="lg:col-span-4 space-y-4">
+                                {/* Administrative Column */}
+                                <SectionCard 
+                                    title="Alert Stream" 
+                                    subtitle="Critical monitoring"
+                                    icon={<AlertTriangle />}
+                                >
+                                    <div className="space-y-1">
+                                        {subjectData.filter((s: any) => (s.score > 0 && s.score < 50)).length > 0 ? (
+                                            subjectData.filter((s: any) => (s.score > 0 && s.score < 50)).slice(0, 3).map((subj: any, i: number) => (
+                                                <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                                        <div className="min-w-0">
+                                                            <div className="text-[12px] font-bold text-gray-900 truncate">{subj.name}</div>
+                                                            <div className="text-[10px] text-red-500 font-bold uppercase">{subj.score}% - CRITICAL</div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="flex items-center gap-4 p-5 bg-green-50 rounded-2xl border border-green-100 text-green-700">
-                                                <Zap className="w-8 h-8 text-green-500" />
-                                                <div>
-                                                    <p className="font-bold">All Disciplines Healthy</p>
-                                                    <p className="text-sm">No subjects are currently flagging performance or attendance alerts.</p>
-                                                </div>
+                                            <div className="py-4 text-center">
+                                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">All Nodes Nominal</p>
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                </SectionCard>
+ 
 
-                                {/* Visual Quick Actions Grid */}
-                                <div className="space-y-4">
-                                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                                        <Activity className="w-4 h-4" /> Operations
-                                    </h2>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {quickActions.map((action, i) => (
-                                            <motion.div key={action.label}
-                                                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 0.3 + i * 0.05 }}
+                                <SectionCard 
+                                    title="Administrative Log" 
+                                    subtitle="Tactical node management"
+                                    icon={<Target />}
+                                >
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {quickActions.map((action) => (
+                                            <button 
+                                                key={action.label}
+                                                onClick={() => action.action ? action.action() : navigate(action.link || '#')}
+                                                className="flex items-center gap-3 p-3 rounded-md bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all text-left"
                                             >
-                                                <div
-                                                    onClick={() => action.action ? action.action() : navigate(action.link || '#')}
-                                                    className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md hover:-translate-y-1 transition-all group cursor-pointer h-full"
-                                                >
-                                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-100`}>
-                                                        <action.icon className="w-5 h-5 text-white" />
-                                                    </div>
-                                                    <p className="text-sm font-bold text-gray-800">{action.label}</p>
-                                                    <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{action.desc}</p>
+                                                <div className="w-8 h-8 rounded bg-white border border-gray-100 flex items-center justify-center shrink-0">
+                                                    <action.icon className="w-4 h-4 text-gray-400" />
                                                 </div>
-                                            </motion.div>
+                                                <div>
+                                                    <div className="text-[12px] font-bold text-gray-900 leading-tight">{action.label}</div>
+                                                    <div className="text-[10px] text-gray-500 truncate max-w-[120px]">{action.desc}</div>
+                                                </div>
+                                            </button>
                                         ))}
                                     </div>
-                                </div>
+                                </SectionCard>
+
+                                {/* Morning Roll Call Stream */}
+                                <SectionCard 
+                                    title="Recent Morning Roll Call" 
+                                    subtitle="Direct oversight of daily departmental attendance"
+                                    icon={<Clock />}
+                                    actions={
+                                        <button 
+                                            onClick={() => navigate('/hod/attendance')}
+                                            className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline"
+                                        >
+                                            Detailed Tracker
+                                        </button>
+                                    }
+                                >
+                                    <div className="space-y-3 mt-2">
+                                        {stats?.recentMorningSessions?.length > 0 ? (
+                                            stats.recentMorningSessions.map((session: any, i: number) => (
+                                                <div 
+                                                    key={session._id || i} 
+                                                    className="group flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-white hover:shadow-md transition-all cursor-pointer"
+                                                    onClick={() => navigate('/hod/attendance')}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-white border border-slate-100 rounded-lg flex flex-col items-center justify-center">
+                                                            <span className="text-[10px] font-black text-slate-400 leading-none">
+                                                                {new Date(session.date).toLocaleDateString(undefined, { month: 'short' })}
+                                                            </span>
+                                                            <span className="text-[14px] font-black text-slate-900 leading-none mt-0.5">
+                                                                {new Date(session.date).getDate()}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-[12px] font-bold text-slate-900 leading-tight">Morning Roll Call</div>
+                                                            <div className="text-[10px] text-slate-500 font-medium uppercase">{session.academicYear}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-[13px] font-black text-slate-900 tabular-nums">
+                                                            {Math.round((session.present / session.total) * 100)}%
+                                                        </div>
+                                                        <div className="text-[9px] font-bold text-emerald-600 uppercase">Present</div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="py-6 text-center">
+                                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider italic">No morning sessions recorded this week</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </SectionCard>
                             </div>
-                        </>
+                        </div>
                     )}
 
                     {activeTab === 'workload' && (
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            <div className="px-5 py-4 border-b border-gray-100">
-                                <h2 className="font-bold text-gray-900">Faculty Workload Monitoring</h2>
-                            </div>
+                        <SectionCard 
+                            title="Faculty Resource Allocation" 
+                            subtitle="Workload analysis and assignment density"
+                            icon={<Users />}
+                        >
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                <table className="table-compact">
+                                    <thead>
                                         <tr>
-                                            <th className="px-5 py-3">Staff Member</th>
-                                            <th className="px-5 py-3 text-center">Subjects</th>
-                                            <th className="px-5 py-3 text-center">Active Assignments</th>
-                                            <th className="px-5 py-3 text-center">Total Student Load</th>
+                                            <th>Faculty Name</th>
+                                            <th className="text-center">Courses</th>
+                                            <th className="text-center">Live Units</th>
+                                            <th className="text-center">Impact</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {workloadData.map((staff: any, i: number) => (
-                                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-5 py-4 font-semibold text-gray-900">{staff.staffName}</td>
-                                                <td className="px-5 py-4 text-center">{staff.subjectCount}</td>
-                                                <td className="px-5 py-4 text-center">
-                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-bold">
-                                                        {staff.activeAssignments}
+                                    <tbody>
+                                        {workloadData.map((staff: any, idx: number) => (
+                                            <tr key={idx}>
+                                                <td className="font-bold text-gray-900">{staff.staffName}</td>
+                                                <td className="text-center tabular-nums text-gray-500 font-medium">{staff.subjectCount}</td>
+                                                <td className="text-center">
+                                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">
+                                                        {staff.activeAssignments} ACTIVE
                                                     </span>
                                                 </td>
-                                                <td className="px-5 py-4 text-center text-gray-600 font-medium">
-                                                    {staff.totalStudentLoad} students
+                                                <td className="text-center">
+                                                    <div className="text-[13px] font-bold text-gray-900">{staff.totalStudentLoad}</div>
+                                                    <div className="text-[9px] text-gray-400 font-medium uppercase truncate">Reach</div>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        </SectionCard>
                     )}
 
                     {activeTab === 'comparison' && (
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            <div className="px-5 py-4 border-b border-gray-100">
-                                <h2 className="font-bold text-gray-900">Subject Performance Comparison</h2>
-                            </div>
+                        <SectionCard 
+                            title="Curricular Quality Metrics" 
+                            subtitle="Relative performance across disciplines"
+                            icon={<BookOpen />}
+                        >
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                <table className="table-compact">
+                                    <thead>
                                         <tr>
-                                            <th className="px-5 py-3">Subject Name</th>
-                                            <th className="px-5 py-3 text-center">Avg Marks</th>
-                                            <th className="px-5 py-3 text-center">Submission Rate</th>
-                                            <th className="px-5 py-3 text-center">Health Status</th>
+                                            <th>Discipline</th>
+                                            <th className="text-center">Velocity</th>
+                                            <th className="text-center">Sync Rate</th>
+                                            <th className="text-center">Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {comparisonData.map((subject: any, i: number) => (
-                                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-5 py-4 font-semibold text-gray-900">{subject.subjectCode} - {subject.subjectName}</td>
-                                                <td className="px-5 py-4 text-center font-bold text-indigo-600">{subject.avgMarks}%</td>
-                                                <td className="px-5 py-4 text-center font-bold text-teal-600">{subject.attendanceAvg}%</td>
-                                                <td className="px-5 py-4 text-center font-medium">{subject.submissionRate}%</td>
-                                                <td className="px-5 py-4 text-center">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${subject.avgMarks >= 75 && subject.attendanceAvg >= 75 ? 'bg-green-100 text-green-700' : (subject.avgMarks >= 50 && subject.attendanceAvg >= 75) ? 'bg-indigo-100 text-indigo-700' : 'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {subject.avgMarks >= 75 && subject.attendanceAvg >= 75 ? 'Excellent' : (subject.avgMarks >= 50 && subject.attendanceAvg >= 75) ? 'Stable' : 'Critical'}
+                                    <tbody>
+                                        {comparisonData.map((subject: any, idx: number) => (
+                                            <tr key={idx}>
+                                                <td>
+                                                    <div className="font-bold text-gray-900 leading-none">{subject.subjectName}</div>
+                                                    <div className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{subject.subjectCode}</div>
+                                                </td>
+                                                <td className="text-center">
+                                                    <span className="font-bold text-blue-600 text-[14px]">{subject.avgMarks}%</span>
+                                                </td>
+                                                <td className="text-center text-gray-500 font-medium">{subject.attendanceAvg}%</td>
+                                                <td className="text-center">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        subject.avgMarks >= 75 ? 'bg-green-50 text-green-600' : 
+                                                        subject.avgMarks >= 50 ? 'bg-blue-50 text-blue-600' : 
+                                                        'bg-red-50 text-red-600'
+                                                    }`}>
+                                                        {subject.avgMarks >= 75 ? 'OPTIMAL' : subject.avgMarks >= 50 ? 'STABLE' : 'CRITICAL'}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -441,94 +542,98 @@ const HODDashboard = () => {
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        </SectionCard>
                     )}
 
                     {activeTab === 'ccm' && (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             {/* Oversight Stats */}
                             {ccmOversight && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                                        <div className="p-3 bg-indigo-50 rounded-xl"><Users className="w-5 h-5 text-indigo-600" /></div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 font-medium">Total CCMs</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">{ccmOversight.totalCCMs}</h3>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                                        <div className="p-3 bg-blue-50 rounded-xl"><FileText className="w-5 h-5 text-blue-600" /></div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 font-medium">Total Action Items</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">{ccmOversight.totalActionItems}</h3>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4">
-                                        <div className="p-3 bg-red-50 rounded-xl"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 font-medium">Overdue Actions</p>
-                                            <h3 className={`text-2xl font-bold ${ccmOversight.totalOverdue > 0 ? 'text-red-600' : 'text-gray-900'}`}>{ccmOversight.totalOverdue}</h3>
-                                        </div>
-                                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <StatCard 
+                                        label="Institutional CCMs" 
+                                        value={ccmOversight.totalCCMs} 
+                                        icon={<Users className="w-5 h-5" />}
+                                        color="primary"
+                                    />
+                                    <StatCard 
+                                        label="Action Assignments" 
+                                        value={ccmOversight.totalActionItems} 
+                                        icon={<FileText className="w-5 h-5" />}
+                                        color="indigo"
+                                    />
+                                    <StatCard 
+                                        label="Critical Delinquency" 
+                                        value={ccmOversight.totalOverdue} 
+                                        icon={<AlertTriangle className="w-5 h-5" />}
+                                        color="red"
+                                    />
                                 </div>
                             )}
 
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                                    <h2 className="font-bold text-gray-900">Class Committee Meetings (Department Overview)</h2>
+                            <SectionCard 
+                                title="Departmental CCM Registry" 
+                                subtitle="Formal institutional records"
+                                icon={<FileText className="w-5 h-5" />}
+                                actions={
                                     <button
-                                        onClick={() => alert("Semester CCM Summary Export (PDF) Download initiated.")}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-semibold"
+                                        onClick={() => navigate('/hod/ccm-reports')}
+                                        className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all text-[11px] font-black uppercase tracking-widest"
                                     >
-                                        <FileText className="w-3 h-3" /> Export Summary
+                                        <FileText className="w-4 h-4" /> Administrative Audit
                                     </button>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                }
+                            >
+                                <div className="overflow-x-auto -mx-8 -my-8">
+                                    <table className="w-full text-left table-compact border-collapse">
+                                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-semibold tracking-wider border-b border-slate-200">
                                             <tr>
                                                 <th className="px-5 py-3">Date</th>
-                                                <th className="px-5 py-3">Academic Year</th>
-                                                <th className="px-5 py-3">Category</th>
-                                                <th className="px-5 py-3">Advisor</th>
-                                                <th className="px-5 py-3 max-w-xs">Agenda</th>
-                                                <th className="px-5 py-3 text-center">Action Items</th>
+                                                <th className="px-5 py-3">Node Context</th>
+                                                <th className="px-5 py-3">Classification</th>
+                                                <th className="px-5 py-3 text-center">Protocol Integrity</th>
                                                 <th className="px-5 py-3 text-center">Minutes</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50">
+                                        <tbody className="divide-y divide-slate-100">
                                             {ccmData.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={7} className="px-5 py-8 text-center text-gray-500 text-sm">No CCM records found for this department.</td>
+                                                    <td colSpan={7} className="px-8 py-12 text-center text-[14px] font-black text-[#A3AED0]">No departmental CCM records detected.</td>
                                                 </tr>
                                             ) : (
-                                                ccmData.map((ccm: any) => (
-                                                    <tr key={ccm._id} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-5 py-4 font-semibold text-gray-900">{new Date(ccm.meetingDate).toLocaleDateString()}</td>
-                                                        <td className="px-5 py-4 text-gray-600 font-medium">{ccm.academicYear}</td>
-                                                        <td className="px-5 py-4"><span className="text-[10px] uppercase font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded">{ccm.category || 'Academic'}</span></td>
-                                                        <td className="px-5 py-4 font-medium text-indigo-600">{ccm.createdBy?.username || 'Unknown'}</td>
-                                                        <td className="px-5 py-4 text-xs text-gray-600 max-w-xs truncate" title={ccm.agenda}>{ccm.agenda}</td>
-                                                        <td className="px-5 py-4 text-center whitespace-nowrap">
-                                                            <span className="text-xs font-bold text-gray-600">{ccm.actionItems?.length || 0} Total</span>
-                                                            {ccm.actionItems?.filter((a: any) => a.status === 'Pending' || a.status === 'In Progress').length > 0 && (
-                                                                <span className="ml-2 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                                                                    {ccm.actionItems.filter((a: any) => a.status === 'Pending' || a.status === 'In Progress').length} Pending
-                                                                </span>
-                                                            )}
-                                                            {ccm.actionItems?.filter((a: any) => a.status === 'Overdue').length > 0 && (
-                                                                <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                                                                    {ccm.actionItems.filter((a: any) => a.status === 'Overdue').length} Overdue
-                                                                </span>
-                                                            )}
+                                                ccmData.map((ccm: any, idx: number) => (
+                                                    <tr key={ccm._id || idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+                                                        <td className="px-5 py-4 font-semibold text-slate-900">
+                                                            {new Date(ccm.meetingDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-semibold text-slate-900">{ccm.academicYear}</span>
+                                                                <span className="text-xs text-slate-500">@{ccm.createdBy?.username || 'Advisor'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            <span className="text-xs uppercase font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded">
+                                                                {ccm.category || 'Academic'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className="text-sm font-semibold text-slate-900 tabular-nums">{ccm.actionItems?.length || 0} Assets</span>
+                                                                {ccm.actionItems?.filter((a: any) => a.status === 'Overdue').length > 0 && (
+                                                                    <span className="bg-red-50 text-red-700 text-xs font-semibold px-2 py-0.5 rounded border border-red-200">
+                                                                        {ccm.actionItems.filter((a: any) => a.status === 'Overdue').length} Critical
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-5 py-4 text-center">
                                                             {ccm.minutesPDF ? (
-                                                                <a href={`${API}${ccm.minutesPDF}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors">
-                                                                    <FileText className="w-3 h-3" /> View PDF
+                                                                <a href={`${API}${ccm.minutesPDF}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 transition-colors shadow-sm">
+                                                                    <FileText className="w-4 h-4" /> Records
                                                                 </a>
                                                             ) : (
-                                                                <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-3 py-1 rounded-full">Not Uploaded</span>
+                                                                <span className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-100">N/A</span>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -537,94 +642,111 @@ const HODDashboard = () => {
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            </SectionCard>
                         </div>
                     )}
 
                     {activeTab === 'mentorship' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                    <h2 className="font-bold text-gray-900">Mentor Performance Overview</h2>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-indigo-50/50 text-indigo-800 uppercase text-[10px] font-bold">
+                        <div className="space-y-8">
+                            <SectionCard 
+                                title="Academic Advising Oversight" 
+                                subtitle="Mentor network health and query traffic"
+                                icon={<MessageSquare className="w-5 h-5" />}
+                            >
+                                <div className="overflow-x-auto -mx-8 -my-8">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-[#F4F7FE]/50 text-[#A3AED0] uppercase text-[10px] font-black tracking-widest opacity-80 border-b border-[#F4F7FE]">
                                             <tr>
-                                                <th className="px-5 py-3">Mentor</th>
-                                                <th className="px-5 py-3 text-center">Total Mentees</th>
-                                                <th className="px-5 py-3 text-center text-red-600">Critical (Red)</th>
-                                                <th className="px-5 py-3 text-center">Open Queries</th>
-                                                <th className="px-5 py-3 text-center">Avg Response Time</th>
+                                                <th className="px-8 py-5">Academic Mentor</th>
+                                                <th className="px-8 py-5 text-center">Mentee Pool</th>
+                                                <th className="px-8 py-5 text-center">Critical Nodes</th>
+                                                <th className="px-8 py-5 text-center">Active Queries</th>
+                                                <th className="px-8 py-5 text-center">Sync Latency</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50">
+                                        <tbody className="divide-y divide-[#F4F7FE]">
                                             {mentorshipOversight.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={4} className="px-5 py-8 text-center text-gray-500 text-sm">No mentorship data available.</td>
+                                                    <td colSpan={5} className="px-8 py-12 text-center text-[14px] font-black text-[#A3AED0]">No mentorship nodes detected.</td>
                                                 </tr>
                                             ) : (
                                                 mentorshipOversight.map((mentorItem: any, idx: number) => (
-                                                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-5 py-4 font-semibold text-gray-900">{mentorItem.mentorName}</td>
-                                                        <td className="px-5 py-4 text-center font-bold text-gray-700">{mentorItem.totalMentees}</td>
-                                                        <td className="px-5 py-4 text-center font-bold text-red-600">{mentorItem.criticalCases}</td>
-                                                        <td className="px-5 py-4 text-center text-red-600 font-bold">{mentorItem.openQueries}</td>
-                                                        <td className="px-5 py-4 text-center text-gray-500 font-medium">{mentorItem.avgResponseHours > 0 ? `${mentorItem.avgResponseHours} hrs` : 'N/A'}</td>
+                                                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                                        <td className="px-8 py-6">
+                                                            <span className="font-black text-[#1B2559] text-[15px] tracking-tight">{mentorItem.mentorName}</span>
+                                                        </td>
+                                                        <td className="px-8 py-6 text-center font-black text-[#1B2559] tabular-nums">{mentorItem.totalMentees}</td>
+                                                        <td className="px-8 py-6 text-center">
+                                                            <span className={`px-5 py-2 rounded-2xl font-black text-[11px] uppercase tracking-wider shadow-md ${mentorItem.criticalCases > 0 ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
+                                                                {mentorItem.criticalCases} Cases
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-6 text-center font-black text-primary tabular-nums">{mentorItem.openQueries}</td>
+                                                        <td className="px-8 py-6 text-center font-black text-[#A3AED0] tabular-nums tracking-widest opacity-80">
+                                                            {mentorItem.avgResponseHours > 0 ? `${mentorItem.avgResponseHours}h` : '--'}
+                                                        </td>
                                                     </tr>
                                                 ))
                                             )}
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            </SectionCard>
 
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                                    <h2 className="font-bold text-gray-900">Mentorship Queries Oversight</h2>
-                                    <div className="flex gap-4 text-xs font-bold">
-                                        <span className="text-red-600 bg-red-50 px-3 py-1 rounded-full">Open: {queriesData.filter(q => q.status === 'Open').length}</span>
-                                        <span className="text-green-600 bg-green-50 px-3 py-1 rounded-full">Resolved: {queriesData.filter(q => q.status === 'Resolved').length}</span>
+                            <SectionCard 
+                                title="Advising Communication Stream" 
+                                subtitle="Live student-to-mentor communication audit"
+                                icon={<MessageSquare className="w-5 h-5" />}
+                                actions={
+                                    <div className="flex gap-3">
+                                        <div className="bg-rose-50 border border-rose-100 text-rose-600 px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest uppercase flex items-center gap-2 shadow-sm">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                                            {queriesData.filter(q => q.status === 'Open').length} Active
+                                        </div>
+                                        <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest uppercase shadow-sm">
+                                            {queriesData.filter(q => q.status === 'Resolved').length} Resolved
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                }
+                            >
+                                <div className="overflow-x-auto -mx-8 -my-8">
+                                    <table className="w-full text-left table-compact border-collapse">
+                                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-semibold tracking-wider border-b border-slate-200">
                                             <tr>
-                                                <th className="px-5 py-3">Date</th>
-                                                <th className="px-5 py-3">Student</th>
-                                                <th className="px-5 py-3">Assigned Mentor</th>
-                                                <th className="px-5 py-3">Type</th>
-                                                <th className="px-5 py-3 max-w-[200px]">Issue</th>
-                                                <th className="px-5 py-3 max-w-[200px]">Mentor Reply</th>
+                                                <th className="px-5 py-3">Chronology</th>
+                                                <th className="px-5 py-3">Subunit Node</th>
+                                                <th className="px-5 py-3">Mentor Contact</th>
+                                                <th className="px-5 py-3">Issue Type</th>
                                                 <th className="px-5 py-3 text-center">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50">
+                                        <tbody className="divide-y divide-slate-100">
                                             {queriesData.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={6} className="px-5 py-8 text-center text-gray-500 text-sm">No mentorship queries found in this department.</td>
+                                                    <td colSpan={5} className="px-5 py-8 text-center text-sm font-medium text-slate-500">No traffic recorded.</td>
                                                 </tr>
                                             ) : (
-                                                queriesData.map((query: any) => (
-                                                    <tr key={query._id} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-5 py-4 font-semibold text-gray-900">{new Date(query.createdAt).toLocaleDateString()}</td>
-                                                        <td className="px-5 py-4 text-gray-900 font-medium whitespace-nowrap">
-                                                            {query.student?.fullName || query.student?.username || 'Unknown'}
-                                                            <span className="block text-[10px] text-gray-400 font-normal">{query.student?.registerNumber || query.student?.username}</span>
+                                                queriesData.map((query: any, idx: number) => (
+                                                    <tr key={query._id || idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+                                                        <td className="px-5 py-4 font-semibold text-slate-900 tabular-nums">
+                                                            {new Date(query.createdAt).toLocaleDateString()}
                                                         </td>
-                                                        <td className="px-5 py-4 font-medium text-indigo-600">{query.mentor?.username || 'Not Assigned'}</td>
                                                         <td className="px-5 py-4">
-                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 uppercase">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-semibold text-slate-900">{query.student?.fullName || query.student?.username}</span>
+                                                                <span className="text-xs text-slate-500 uppercase">{query.student?.registerNumber || query.student?.username}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4 font-semibold text-slate-700">@{query.mentor?.username || 'System'}</td>
+                                                        <td className="px-5 py-4">
+                                                            <span className="text-xs font-medium px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase">
                                                                 {query.queryType}
                                                             </span>
                                                         </td>
-                                                        <td className="px-5 py-4 text-xs text-gray-600 max-w-[200px] truncate" title={query.message}>{query.message}</td>
-                                                        <td className="px-5 py-4 text-xs text-gray-600 max-w-[200px] truncate" title={query.reply || 'No reply yet'}>
-                                                            {query.reply ? query.reply : <span className="italic text-gray-400">Waiting for reply</span>}
-                                                        </td>
                                                         <td className="px-5 py-4 text-center">
-                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${query.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            <span className={`px-3 py-1 rounded text-xs font-semibold uppercase border ${
+                                                                query.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                                                            }`}>
                                                                 {query.status}
                                                             </span>
                                                         </td>
@@ -634,8 +756,71 @@ const HODDashboard = () => {
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            </SectionCard>
                         </div>
+                    )}
+
+                    {activeTab === 'morning' && (
+                        <SectionCard 
+                            title="Morning Roll Call Report" 
+                            subtitle="Aggregate attendance metrics across department nodes"
+                            icon={<Clock />}
+                        >
+                            <div className="overflow-x-auto -mx-8 -my-8 pt-4">
+                                <table className="w-full text-left table-compact border-collapse">
+                                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-5 py-4">Date</th>
+                                            <th className="px-5 py-4">Class Node</th>
+                                            <th className="px-5 py-4 text-center">Present</th>
+                                            <th className="px-5 py-4 text-center">Absent</th>
+                                            <th className="px-5 py-4 text-center">OD</th>
+                                            <th className="px-5 py-4 text-right">Integrity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {morningReports.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-8 py-16 text-center">
+                                                    <p className="text-[14px] font-black text-slate-300 uppercase tracking-widest italic">No aggregate reports detected in this domain</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            morningReports.map((report: any, idx: number) => (
+                                                <tr key={report._id || idx} className="hover:bg-slate-50 transition-colors group border-b border-slate-100 last:border-0">
+                                                    <td className="px-5 py-5 font-bold text-slate-900">
+                                                        {new Date(report.date).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-5 py-5">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-black text-slate-900 leading-tight">{report.department} {report.year}</span>
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Sec {report.section} &bull; Sem {report.semester}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-5 py-5 text-center font-black text-green-600 tabular-nums">
+                                                        {report.presentCount}
+                                                    </td>
+                                                    <td className="px-5 py-5 text-center font-black text-red-600 tabular-nums">
+                                                        {report.absentCount}
+                                                    </td>
+                                                    <td className="px-5 py-5 text-center font-black text-indigo-600 tabular-nums">
+                                                        {report.odCount}
+                                                    </td>
+                                                    <td className="px-5 py-5 text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[14px] font-black text-slate-900 tabular-nums">
+                                                                {Math.round((report.presentCount / report.totalStudents) * 100)}%
+                                                            </span>
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Efficiency</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </SectionCard>
                     )}
                 </>
             )}
@@ -655,8 +840,36 @@ const HODDashboard = () => {
     );
 };
 
-const BarChart2 = ({ className }: { className?: string }) => (
-    <Activity className={className} />
-);
+const StatCard = ({ label, value, icon, color, link, alert }: any) => {
+    const navigate = useNavigate();
+    const colorClasses = {
+        blue: 'text-blue-600 bg-blue-50',
+        green: 'text-green-600 bg-green-50',
+        amber: 'text-amber-600 bg-amber-50',
+        red: 'text-red-600 bg-red-50'
+    };
+ 
+    return (
+        <motion.div 
+            variants={itemVariants}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            onClick={() => link && navigate(link)}
+            className="glass-card premium-lift flex items-center gap-4 px-5 cursor-pointer h-[110px]"
+        >
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${colorClasses[color as keyof typeof colorClasses] || colorClasses.blue}`}>
+                {cloneElement(icon as any, { size: 18, strokeWidth: 2 })}
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-tight truncate">{label}</p>
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xl font-bold text-gray-900 leading-none mt-0.5">{value}</h3>
+                    {alert && (
+                        <span className="bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">{alert}</span>
+                    )}
+                </div>
+            </div>
+        </motion.div>
+    );
+};
 
 export default HODDashboard;

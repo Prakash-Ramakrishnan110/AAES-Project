@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const User = require('./models/User');
+const User = require('../models/User');
+const ClassAdvisor = require('../models/ClassAdvisor');
+const Subject = require('../models/Subject');
 const bcrypt = require('bcryptjs');
 
 dotenv.config();
@@ -11,9 +13,12 @@ const seedUsers = async () => {
         console.log('MongoDB Connected');
 
         await User.deleteMany();
+        await ClassAdvisor.deleteMany();
+        await Subject.deleteMany();
 
         const salt = await bcrypt.genSalt(10);
         const defaultPasswordHash = await bcrypt.hash('password123', salt);
+        const labPasswordHash = await bcrypt.hash('lab123', salt);
 
         const users = [
             {
@@ -54,6 +59,13 @@ const seedUsers = async () => {
                 password: defaultPasswordHash,
                 role: 'principal',
                 department: 'Administration'
+            },
+            {
+                username: 'Lab Assistant',
+                email: 'lab@aaes.com',
+                password: labPasswordHash,
+                role: 'lab-assistant',
+                department: 'CSE'
             }
         ];
 

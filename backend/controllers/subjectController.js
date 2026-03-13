@@ -39,12 +39,19 @@ const createSubject = async (req, res) => {
 // @access  Private (All Roles)
 const getSubjects = async (req, res) => {
     const { department, semester, academicYear, staffId } = req.query;
-    const query = {};
+    const queryFilters = [];
+    if (semester) queryFilters.push({ semester });
+    if (academicYear) queryFilters.push({ academicYear });
 
-    if (department) query.department = department;
-    if (semester) query.semester = semester;
-    if (academicYear) query.academicYear = academicYear;
-    if (staffId) query.staff = staffId; // Mongoose auto-casts this to an $in query if the schema is [ObjectId]
+    if (department && staffId) {
+        queryFilters.push({ $or: [{ department }, { staff: staffId }] });
+    } else if (department) {
+        queryFilters.push({ department });
+    } else if (staffId) {
+        queryFilters.push({ staff: staffId });
+    }
+
+    const query = queryFilters.length > 0 ? { $and: queryFilters } : {};
 
     console.log("getSubjects Query:", query);
     const subjects = await Subject.find(query).populate('staff', 'username email');

@@ -10,6 +10,10 @@ const attendanceRecordSchema = new mongoose.Schema({
         type: String,
         enum: ['Present', 'Absent', 'Leave', 'OD'],
         required: true
+    },
+    reason: {
+        type: String,
+        default: ''
     }
 }, { _id: false });
 
@@ -17,7 +21,19 @@ const attendanceSchema = new mongoose.Schema({
     subject: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Subject',
-        required: true
+        required: function() { return !this.isMorning; }
+    },
+    department: {
+        type: String,
+        required: function() { return this.isMorning; }
+    },
+    academicYear: {
+        type: String,
+        required: function() { return this.isMorning; }
+    },
+    isMorning: {
+        type: Boolean,
+        default: false
     },
     date: {
         type: Date,
@@ -26,7 +42,7 @@ const attendanceSchema = new mongoose.Schema({
     period: {
         type: Number,
         required: true,
-        min: 1,
+        min: 0,
         max: 8
     },
     markedBy: {
@@ -41,7 +57,16 @@ const attendanceSchema = new mongoose.Schema({
     records: [attendanceRecordSchema]
 }, { timestamps: true });
 
-// Prevent duplicate attendance for same subject/date/period
-attendanceSchema.index({ subject: 1, date: 1, period: 1 }, { unique: true });
+// Prevent duplicate attendance
+// For subjects: subject + date + period
+// For morning: department + academicYear + date + period (period 0)
+attendanceSchema.index({ subject: 1, date: 1, period: 1 }, { 
+    unique: true, 
+    partialFilterExpression: { isMorning: false } 
+});
+attendanceSchema.index({ department: 1, academicYear: 1, date: 1, period: 1 }, { 
+    unique: true, 
+    partialFilterExpression: { isMorning: true } 
+});
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

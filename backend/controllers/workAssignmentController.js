@@ -7,64 +7,106 @@ const Notification = require('../models/Notification');
 // @access  Private/HOD
 exports.assignWork = async (req, res) => {
     try {
-        const { title, description, assignedStaffId, startDate, dueDate, priority } = req.body;
+        const { title, description, assignedToId, assigneeType, startDate, dueDate, priority, isBulk, studentIds } = req.body;
         const department = req.user.department?.toString().trim();
+
         const userId = req.user._id;
-        console.log('[DEBUG] assignWork START', { userId, userDept: department, targetId: assignedStaffId });
+        
+        const type = assigneeType || 'Staff';
 
-        // Verify the assigned staff belongs to the same department
-        const targetStaff = await User.findById(assignedStaffId);
+        // Bulk Student Assignment Logic
+        if (isBulk && type === 'Student' && Array.isArray(studentIds) && studentIds.length > 0) {
+            
+            // Generate base taskId
 
-        if (!targetStaff) {
-            console.log('[DEBUG] assignWork - Target staff NOT FOUND in DB');
-            return res.status(404).json({ success: false, message: 'Staff member not found.' });
-        }
+            const startCount = await WorkAssignment.countDocuments();
+            
+            const assignments = studentIds.map((studentId, index) => ({
+                taskId: `TASK-${String(startCount + index + 1).padStart(4, '0')}`,
+                title,
+                description,
+                department: department,
+                assignedBy: userId,
+                startDate,
+                dueDate,
+                priority,
+                assigneeType: 'Student',
+                assignedStudentId: studentId
+            }));
 
-        const staffDept = targetStaff.department?.toString().trim();
-        const staffRole = targetStaff.role?.toLowerCase();
-        console.log('[DEBUG] assignWork - Target found', { staffName: targetStaff.username, staffDept, staffRole });
+            const createdTasks = await WorkAssignment.insertMany(assignments);
 
-        // Strict validation: must be in same department and have 'staff' role
-        // Added some flexibility for the comparison just in case
-        const deptMatch = String(staffDept).toLowerCase().trim() === String(department).toLowerCase().trim();
-        const roleMatch = staffRole === 'staff';
+            // Notify all students
 
-        if (!deptMatch || !roleMatch) {
-            console.log('[DEBUG] assignWork - VALIDATION FAILED', { staffDept, userDept: department, staffRole, deptMatch, roleMatch });
-            return res.status(403).json({
-                success: false,
-                message: `Cannot assign task: Staff department (${staffDept}) does not match your department (${department}), or the selected user is not a staff member (role: ${targetStaff.role}).`,
-                debug: { staffDept, userDept: department, staffRole }
-            });
-        }
-
-        const task = new WorkAssignment({
-            title,
-            description,
-            department: department,
-            assignedStaffId,
-            assignedBy: userId,
-            startDate,
-            dueDate,
-            priority
-        });
-
-        await task.save();
-
-        // Notify the staff member
-        try {
-            await Notification.create({
-                user: assignedStaffId,
+            const notifications = studentIds.map(studentId => ({
+                user: studentId,
                 title: `New Task Assigned: ${title}`,
                 message: `You have been assigned a new task by the HOD. Due on ${new Date(dueDate).toLocaleDateString()}.`,
                 type: 'Info',
-                link: '/staff/my-work'
+                link: '/student/dashboard'
+            }));
+            await Notification.insertMany(notifications);
+
+            return res.status(201).json({ 
+                success: true, 
+                message: `Successfully assigned task to ${studentIds.length} students.`,
+                data: createdTasks 
+            });
+        }
+
+        // Individual Assignment Logic (Existing)
+
+        const targetUser = await User.findById(assignedToId);
+        if (!targetUser) {
+            return res.status(404).json({ success: false, message: 'Individual Assignee not found.' });
+        }
+
+        const userDept = targetUser.department?.toString().trim();
+        const userRole = targetUser.role?.toLowerCase();
+
+        const deptMatch = String(userDept).toLowerCase().trim() === String(department).toLowerCase().trim();
+        const roleMatch = userRole === type.toLowerCase();
+
+        if (!deptMatch || !roleMatch) {
+            return res.status(403).json({
+                success: false,
+                message: `Cannot assign task: Assignee department (${userDept}) does not match your department (${department}), or the selected user is not a ${type}.`,
+            });
+        }
+
+        const taskData = {
+            title,
+            description,
+            department: department,
+            assignedBy: userId,
+            startDate,
+            dueDate,
+            priority,
+            assigneeType: type
+        };
+
+        if (type === 'Staff') {
+            taskData.assignedStaffId = assignedToId;
+        } else {
+            taskData.assignedStudentId = assignedToId;
+        }
+
+        const task = new WorkAssignment(taskData);
+        await task.save();
+
+        try {
+            await Notification.create({
+                user: assignedToId,
+                title: `New Task Assigned: ${title}`,
+                message: `You have been assigned a new task by the HOD. Due on ${new Date(dueDate).toLocaleDateString()}.`,
+                type: 'Info',
+                link: type === 'Staff' ? '/staff/my-work' : '/student/dashboard'
             });
         } catch (notifErr) {
             console.error('[DEBUG] Notification Error:', notifErr.message);
         }
 
-        res.status(201).json({ success: true, data: task });
+        res.status(201).json({ success: true, message: 'Task assigned successfully.', data: task });
     } catch (error) {
         console.error('[DEBUG] assignWork CATCH ERROR:', error);
         res.status(500).json({ success: false, message: 'Server error assigning work.', error: error.message });
@@ -81,6 +123,7 @@ exports.getDepartmentWork = async (req, res) => {
 
         const tasks = await WorkAssignment.find({ department: new RegExp(`^${dept}$`, 'i') })
             .populate({ path: 'assignedStaffId', select: 'fullName username email', options: { strictPopulate: false } })
+            .populate({ path: 'assignedStudentId', select: 'fullName username email registerNumber', options: { strictPopulate: false } })
             .populate({ path: 'assignedBy', select: 'fullName username', options: { strictPopulate: false } })
             .sort({ dueDate: 1 })
             .lean();
@@ -97,7 +140,12 @@ exports.getDepartmentWork = async (req, res) => {
 // @access  Private/Staff
 exports.getMyWork = async (req, res) => {
     try {
-        const tasks = await WorkAssignment.find({ assignedStaffId: req.user._id })
+        const tasks = await WorkAssignment.find({ 
+            $or: [
+                { assignedStaffId: req.user._id },
+                { assignedStudentId: req.user._id }
+            ]
+        })
             .populate('assignedBy', 'fullName username')
             .sort({ dueDate: 1 });
 
@@ -120,8 +168,11 @@ exports.updateTaskStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Task not found.' });
         }
 
-        // Verify it belongs to the logged in staff
-        if (task.assignedStaffId.toString() !== req.user._id.toString()) {
+        // Verify it belongs to the logged in user (Staff or Student)
+        const isAssignedStaff = task.assignedStaffId && task.assignedStaffId.toString() === req.user._id.toString();
+        const isAssignedStudent = task.assignedStudentId && task.assignedStudentId.toString() === req.user._id.toString();
+
+        if (!isAssignedStaff && !isAssignedStudent) {
             return res.status(403).json({ success: false, message: 'Not authorized to update this task.' });
         }
 

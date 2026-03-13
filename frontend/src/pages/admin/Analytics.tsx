@@ -66,8 +66,8 @@ const Analytics = () => {
                 className="flex justify-between items-center"
             >
                 <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                        {isHOD ? 'Department Analytics' : 'System Analytics Headquarters'}
+                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-slate-900 border-none">
+                        {isHOD ? 'Department Analytics' : 'System Analytics'}
                     </h1>
                     <p className="text-gray-500 mt-1">Real-time academic intelligence and performance metrics.</p>
                 </div>
@@ -86,10 +86,10 @@ const Analytics = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="bg-white/70 backdrop-blur-xl border border-white/40 p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
+                        className="bg-white border border-slate-200 p-6 rounded-md shadow-sm hover:shadow-md transition-all duration-300"
                     >
                         <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
+                            <div className={`p-3 rounded-md ${stat.bg} ${stat.color}`}>
                                 {stat.icon}
                             </div>
                             <div>
@@ -108,11 +108,11 @@ const Analytics = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="bg-white/80 backdrop-blur-xl border border-white/50 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+                    className="bg-white border border-slate-200 p-6 rounded-md shadow-sm"
                 >
                     <div className="mb-6">
-                        <h2 className="text-xl font-bold text-gray-800">{isHOD ? 'Staff Performance Tracking' : 'Department Performance'}</h2>
-                        <p className="text-sm text-gray-500">Average marks across {isHOD ? 'all faculty in your department' : 'all active departments'}</p>
+                        <h2 className="text-[17px] font-bold text-slate-800">{isHOD ? 'Staff Performance Tracking' : 'Department Performance'}</h2>
+                        <p className="text-sm text-slate-500 mt-1">Average marks across {isHOD ? 'all faculty in your department' : 'all active departments'}</p>
                     </div>
                     <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
@@ -141,11 +141,11 @@ const Analytics = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="bg-white/80 backdrop-blur-xl border border-white/50 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+                    className="bg-white border border-slate-200 p-6 rounded-md shadow-sm"
                 >
                     <div className="mb-6">
-                        <h2 className="text-xl font-bold text-gray-800">Semester Trending Analysis</h2>
-                        <p className="text-sm text-gray-500">Performance growth over academic semesters</p>
+                        <h2 className="text-[17px] font-bold text-slate-800">Semester Trending Analysis</h2>
+                        <p className="text-sm text-slate-500 mt-1">Performance growth over academic semesters</p>
                     </div>
                     <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
@@ -173,11 +173,11 @@ const Analytics = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    className="bg-white/80 backdrop-blur-xl border border-white/50 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] lg:col-span-2"
+                    className="bg-white border border-slate-200 p-6 rounded-md shadow-sm lg:col-span-2"
                 >
                     <div className="mb-6">
-                        <h2 className="text-xl font-bold text-gray-800">Subject Submission Distribution</h2>
-                        <p className="text-sm text-gray-500">Volume of evaluated submissions across subjects</p>
+                        <h2 className="text-[17px] font-bold text-slate-800">Subject Submission Distribution</h2>
+                        <p className="text-sm text-slate-500 mt-1">Volume of evaluated submissions across subjects</p>
                     </div>
                     <div className="h-96 flex flex-col lg:flex-row items-center">
                         <ResponsiveContainer width="100%" height="100%">

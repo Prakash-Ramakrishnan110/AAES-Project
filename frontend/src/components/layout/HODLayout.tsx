@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
+import DashboardLayout, { type HeaderOptions } from './DashboardLayout';
 import { LayoutDashboard, Users, BookOpen, Settings, CheckSquare, CalendarDays, FileText, FileBadge, Bell } from 'lucide-react';
 
 const HODLayout = () => {
+    const [headerOptions, setHeaderOptions] = useState<HeaderOptions>({
+        title: '',
+    });
     const menuItems = [
         { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", to: "/hod/dashboard" },
         {
@@ -13,7 +17,7 @@ const HODLayout = () => {
                 { label: "Subject Management", to: "/hod/subjects" },
                 { label: "Attendance Tracker", to: "/hod/attendance" },
                 { label: "Internal Assessments", to: "/hod/internal-marks" },
-                { label: "Class Activity Log", to: "/hod/activity-log" },
+
                 { label: "Governance Hub", to: "/hod/governance" },
             ]
         },
@@ -28,7 +32,7 @@ const HODLayout = () => {
             ]
         },
         {
-            icon: <LayoutDashboard className="w-5 h-5" />,
+            icon: <FileText className="w-5 h-5" />,
             label: "Insights",
             to: "/hod/analytics",
             items: [
@@ -65,8 +69,14 @@ const HODLayout = () => {
     ];
 
     return (
-        <DashboardLayout menuItems={menuItems} role="Head of Department">
-            <Outlet />
+        <DashboardLayout 
+            menuItems={menuItems} 
+            role="Head of Department"
+            headerTitle={headerOptions.title}
+            headerSubtitle={headerOptions.subtitle}
+            headerActions={headerOptions.actions}
+        >
+            <Outlet context={{ setHeaderOptions }} />
         </DashboardLayout>
     );
 };

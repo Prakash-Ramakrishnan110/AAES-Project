@@ -14,18 +14,10 @@ const {
 } = require('../controllers/submissionController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-const multer = require('multer');
-const path = require('path');
+const { createDynamicUpload } = require('../middleware/uploadMiddleware');
 
-// Configure Multer storage
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Ensure this directory exists
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
-});
+// Use middleware factory to ensure req.user is available for folder creation
+const uploadMiddleware = createDynamicUpload('assignments');
 
 // File type whitelist
 const ALLOWED_MIME_TYPES = [
@@ -47,14 +39,10 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-const upload = multer({
-    storage,
-    fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
-});
+const upload = { single: () => uploadMiddleware }; // Mock structure if needed, but easier to just use the function
 
 router.route('/')
-    .post(protect, authorize('student'), upload.single('file'), submitAssignment);
+    .post(protect, authorize('student'), uploadMiddleware, submitAssignment);
 
 router.get('/my', protect, authorize('student'), getMySubmissions);
 

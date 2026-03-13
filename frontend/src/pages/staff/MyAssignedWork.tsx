@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import { CheckCircle, Clock, Calendar, CheckSquare } from 'lucide-react';
 import axios from 'axios';
 

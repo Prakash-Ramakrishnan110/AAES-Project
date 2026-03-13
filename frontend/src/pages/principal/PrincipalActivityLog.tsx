@@ -90,7 +90,7 @@ const PrincipalActivityLog = () => {
                         <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3 lowercase first-letter:uppercase">
                             <Activity className="w-5 h-5 text-indigo-600" /> Activity Log
                         </h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Instructional Telemetry Ledger</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Academic Activity Log</p>
                     </div>
 
                     <div className="flex items-center gap-3">

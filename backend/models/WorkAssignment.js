@@ -19,10 +19,20 @@ const workAssignmentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    assigneeType: {
+        type: String,
+        enum: ['Staff', 'Student'],
+        default: 'Staff'
+    },
     assignedStaffId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: function() { return this.assigneeType === 'Staff'; }
+    },
+    assignedStudentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: function() { return this.assigneeType === 'Student'; }
     },
     assignedBy: {
         type: mongoose.Schema.Types.ObjectId,
