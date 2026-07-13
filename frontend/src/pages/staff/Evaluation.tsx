@@ -387,7 +387,7 @@ const Evaluation = () => {
                                                 )}
 
                                                 <div className="prose prose-sm max-w-none text-gray-700 bg-white p-6 rounded-2xl border border-gray-100 min-h-[150px] whitespace-pre-wrap">
-                                                    {selectedSubmission.answers || (selectedSubmission.fileUrl ? "No typed text provided, see attached document above." : "No text content submitted.")}
+                                                    {selectedSubmission.extractedText || selectedSubmission.answers || (selectedSubmission.fileUrl ? "No typed text provided, see attached document above." : "No text content submitted.")}
                                                 </div>
 
                                                 {selectedSubmission.aiAnalysis?.breakdown && !isEvaluating && (
@@ -507,7 +507,7 @@ const Evaluation = () => {
                                                     className="flex items-baseline justify-center gap-1.5"
                                                 >
                                                     <span className="text-[3.5rem] leading-none font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 drop-shadow-sm">
-                                                        {selectedSubmission.status === 'graded' ? animatedScore : '-'}
+                                                        {selectedSubmission.marks !== undefined ? animatedScore : '-'}
                                                     </span>
                                                     <span className="text-sm font-black text-indigo-300/80 mb-2 tracking-widest uppercase">
                                                         / {selectedAssignment?.maxMarks} pts

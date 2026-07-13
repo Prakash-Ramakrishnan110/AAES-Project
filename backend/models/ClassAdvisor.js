@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const classAdvisorSchema = new mongoose.Schema({
     department: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     academicYear: {
         type: String,
@@ -19,14 +20,12 @@ const classAdvisorSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
     }
+}, {
+    timestamps: true
 });
 
-// Ensure only one advisor per department per year
+// Index for unique department + year combination
 classAdvisorSchema.index({ department: 1, academicYear: 1 }, { unique: true });
 
 module.exports = mongoose.model('ClassAdvisor', classAdvisorSchema);

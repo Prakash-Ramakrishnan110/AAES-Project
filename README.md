@@ -1,149 +1,135 @@
-# AAES - Automated Assignment Evaluation System
+# AAES - Automated Academic Evaluation System
+
+![AAES Banner](banner.png)
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/Prakash-Ramakrishnan110/AAES-Project.git)
 
-> AI-powered automated assignment evaluation system with intelligent grading, role-based dashboards, and comprehensive analytics.
+> An AI-powered, end-to-end automated assignment evaluation system designed for academic environments. Featuring intelligent grading, OCR handwriting recognition, semantic plagiarism checks, role-based dashboards, and comprehensive student performance analytics.
 
-## 🌟 Features
+---
 
-### For Students
-- View assignments based on enrollment (department, semester, year)
-- Submit solutions (theory/programming)
-- Automated grading with instant feedback
-- Performance tracking dashboard
+## 🌟 Key Features
 
-### For Staff
-- Create assignments (theory & Python programming)
-- Manage test cases and model answers
-- View class performance analytics
-- Manual grading capability
+### 🎓 For Students
+- **Coursework View:** View active assignments tailored to enrollment parameters (department, semester, academic year).
+- **Submissions Hub:** Submit text or file attachments (PDFs, Python scripts, images) for evaluation.
+- **Notes AI Assistant:** Dynamic RAG (Retrieval-Augmented Generation) assistant to query uploaded lecture notes and study guides.
+- **Grades & Feedback:** Receive instant grades, detailed logic breakdowns, and personalized conceptual feedback.
 
-### For HODs
-- Department-scoped management
-- View staff, students, and subjects
-- Department performance analytics
-- Real-time statistics
+### 👩‍🏫 For Staff
+- **Assignment Creator:** Set up Python programming tasks (with dynamic unit test checks) or theory questions.
+- **Evaluation Desk:** Access AI-generated grading, verify plagiarism scores, review alternate challenges (identity verification), or overwrite marks manually.
+- **Lecture Notes Portal:** Upload course notes to dynamically train the subject-level Notes AI Assistant.
+- **Class Analytics:** Monitor average marks, grade distributions, and concept gaps within the student cohort.
 
-### For Admins
-- Complete system control
-- User management (CRUD + bulk upload via CSV)
-- Department management
-- Semester transition (batch student promotion)
-- System-wide analytics
+### 🏛️ For HODs & Admins
+- **Department Governance:** Scoped access to departmental staff, students, and subjects.
+- **Bulk Import Engine:** Import student and staff cohorts via CSV files.
+- **System Metrics:** Real-time diagnostics monitoring MongoDB, server memory, CPU load, and AI Engine health.
+- **Transition Control:** Semester-wide student batch promotions.
 
-## 🚀 Tech Stack
+---
 
-**Frontend**: React + TypeScript + Vite + Tailwind CSS  
-**Backend**: Node.js + Express + MongoDB  
-**AI/ML**: Python FastAPI + Tesseract OCR + Ollama (Gemma LLM)  
-**Auth**: JWT-based authentication with role-based access control
+## ⚙️ Architecture & Tech Stack
 
-## 📦 Installation
+The platform is structured as a decoupled 3-tier microservice architecture:
+- **Frontend:** React, TypeScript, Tailwind CSS, Vite, and Lucide React.
+- **Core Backend:** Node.js, Express, MongoDB (Mongoose), JWT, and Multer.
+- **Intelligence Service (AI):** Python, FastAPI, PaddleOCR, EasyOCR, SentenceTransformers (all-MiniLM-L6-v2), and local LLM integrations (Ollama).
+
+```mermaid
+graph TD
+    Client[React Frontend] <-->|JWT / REST API| NodeServer[NodeJS Backend]
+    NodeServer <-->|MongoDB Mongoose| Database[(MongoDB)]
+    NodeServer <-->|REST API| PythonService[FastAPI AI Service]
+    PythonService <-->|Local API| Ollama[Ollama Gemma3/Mistral]
+```
+
+---
+
+## 🚀 Installation & Setup
 
 ### Prerequisites
-- Node.js (v16+)
-- MongoDB
-- Python 3.8+
-- Tesseract OCR (optional, for theory evaluation)
-- Ollama (optional, for AI grading)
+- [Node.js](https://nodejs.org/) (v18+)
+- [MongoDB](https://www.mongodb.com/) (running locally or a connection string)
+- [Python](https://www.python.org/) (3.10+)
+- [Ollama](https://ollama.com/) (with `gemma3:1b` and `mistral:latest` models pulled)
 
-### Backend Setup
+### 1. Database Setup
+Ensure MongoDB is running locally. You can use MongoDB Compass to manage it.
+```bash
+# Verify connection
+mongosh --eval "db.adminCommand('ping')"
+```
+
+### 2. Core Backend Setup
 ```bash
 cd backend
 npm install
-cp .env.example .env  # Configure MongoDB URI and JWT secret
+# Rename .env.example to .env and configure variables
 npm run dev
 ```
 
-### Frontend Setup
+Create a `.env` file in the `backend` directory:
+```env
+MONGODB_URI=mongodb://localhost:27017/aaes
+PORT=5000
+JWT_SECRET=your_secure_secret_key
+PYTHON_SERVICE_URL=http://127.0.0.1:8000
+```
+
+### 3. FastAPI AI Engine Setup
+Ensure you have virtualenv installed, then set up the workspace:
+```bash
+# Inside the root directory
+python -m venv .venv
+.venv\Scripts\activate
+cd ai_service
+pip install -r requirements.txt
+python main.py
+```
+*Note: The AI engine will spin up on `http://127.0.0.1:8000`.*
+
+Ensure the required models are downloaded in Ollama:
+```bash
+ollama pull gemma3:1b
+ollama pull mistral:latest
+```
+
+### 4. React Frontend Setup
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+*Access the student/staff dashboards at `http://localhost:3051`.*
 
-### Python Service (Optional)
-```bash
-cd python_service
-pip install -r requirements.txt
-python main.py
+---
+
+## ⚙️ Unified Startup
+
+For easy execution, you can run the unified startup script from the root folder:
+```cmd
+# Windows Batch System Setup
+start.bat
 ```
+*This script will open MongoDB Compass, launch the Node.js backend, start the Vite frontend, run the FastAPI AI service, and launch the dashboard web views in Chrome.*
 
-## 🔧 Configuration
+---
 
-Create `.env` in the `backend` directory:
+## 🔒 Security & Integrity
 
-```env
-MONGODB_URI=mongodb://localhost:27017/aaes
-PORT=5000
-JWT_SECRET=your_secure_secret_key
-PYTHON_SERVICE_URL=http://localhost:8000
-```
+- **Dangerous Command Interceptors:** Automated Python grading sandbox inspects files for harmful imports/commands (`os.system`, `subprocess`, file writing outside temp directories, etc.) prior to execution.
+- **Identity Verification alternate challenges:** If the AI flags a student's submission with low confidence or possible plagiarism, it triggers a "challenge questions" cycle to verify their conceptual understanding.
+- **CORS & Rate Limiter:** Backend utilizes Express Rate Limiters and Helmet to secure APIs against payload abuse.
 
-## 📖 Documentation
-
-
-## 🎯 Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Prakash-Ramakrishnan110/AAES-Project.git
-   cd AAES-Project
-   ```
-
-2. **Install dependencies**
-   ```bash
-   cd backend && npm install
-   cd ../frontend && npm install
-   ```
-
-3. **Configure environment**
-   - Set up MongoDB (see DATABASE_SETUP.md)
-   - Create `.env` file in backend
-
-4. **Run the application**
-   ```bash
-   # Terminal 1 - Backend
-   cd backend && npm run dev
-   
-   # Terminal 2 - Frontend
-   cd frontend && npm run dev
-   ```
-
-5. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend: http://localhost:5000
-
-## 🔐 Security Features
-
-- Code validation (blocks dangerous imports and file operations)
-- JWT authentication with role-based authorization
-- Sandboxed Python execution (timeout & resource limits)
-- Input validation and sanitization
-- Graceful error handling
-
-## 📊 Key Capabilities
-
-- ✅ Automated Python code grading with test cases
-- ✅ AI-powered theory answer evaluation (OCR + LLM)
-- ✅ Bulk user import via CSV
-- ✅ Semester transition system
-- ✅ Department-scoped analytics
-- ✅ Real-time dashboards for all roles
-
-## 🤝 Contributing
-
-This is an academic project. For improvements or bug reports, please open an issue.
-
-## 📝 License
-
-This project is for educational purposes.
+---
 
 ## 👨‍💻 Author
 
 **Prakash Ramakrishnan**  
-GitHub: [@Prakash-Ramakrishnan110](https://github.com/Prakash-Ramakrishnan110)
+- **GitHub:** [@Prakash-Ramakrishnan110](https://github.com/Prakash-Ramakrishnan110)
+- **Repo:** [AAES Project](https://github.com/Prakash-Ramakrishnan110/AAES-Project.git)
 
 ---
-
-Made with ❤️ for automated academic excellence
+Made with ❤️ for automated academic excellence.

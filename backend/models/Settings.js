@@ -1,34 +1,30 @@
 const mongoose = require('mongoose');
 
 const settingsSchema = new mongoose.Schema({
-    // Singleton pattern - we'll only ever have one document
-    isInitialized: {
-        type: Boolean,
-        default: true,
-        unique: true
-    },
     currentAcademicYear: {
         type: String,
-        default: '2024-2025'
+        required: true,
+        default: '2024-25'
     },
     currentSemester: {
         type: String,
-        enum: ['Odd', 'Even'],
-        default: 'Odd'
+        required: true,
+        default: '1'
     },
     aiEngineUrl: {
         type: String,
         default: 'http://localhost:8000'
     },
-    institutionalGoals: [{
-        key: String,
-        target: Number,
-        current: { type: Number, default: 0 },
-        unit: String,
-        deadline: Date
-    }]
-}, { timestamps: true });
+    institutionName: {
+        type: String,
+        default: 'AAES CORE INSTITUTION'
+    },
+    updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }
+}, {
+    timestamps: true
+});
 
-const Settings = mongoose.model('Settings', settingsSchema);
-
-module.exports = Settings;
+module.exports = mongoose.model('Settings', settingsSchema);

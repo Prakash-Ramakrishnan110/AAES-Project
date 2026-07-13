@@ -44,6 +44,7 @@ const AdminLayout = () => {
                 { label: "System Audit Logs", to: "/admin/audit-logs" },
                 { label: "Global Settings & Data", to: "/admin/settings" },
                 { label: "Academic Transitions", to: "/admin/semester-transition" },
+                { label: "OCR Management", to: "/admin/ocr" }
             ]
         },
     ];

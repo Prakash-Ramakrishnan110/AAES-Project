@@ -41,7 +41,7 @@ const StaffCCM = () => {
             setStats(statsRes.data);
 
             if (statsRes.data?.department && statsRes.data?.academicYear) {
-                const ccmRes = await axios.get(`${API}/api/ccm?department=${statsRes.data.department}&academicYear=${statsRes.data.academicYear}`, config);
+                const ccmRes = await axios.get(`${API}/api/ccm?department=${encodeURIComponent(statsRes.data.department)}&academicYear=${statsRes.data.academicYear}`, config);
                 setCCMs(ccmRes.data);
             }
         } catch (err) {

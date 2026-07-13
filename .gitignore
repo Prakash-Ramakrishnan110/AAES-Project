@@ -42,6 +42,10 @@ env/
 uploads/
 temp_scripts/
 temp_uploads/
+ai_service/temp_*
+ai_service/proc_*
+ai_service/test_assignment.png
+ai_service/*.log
 
 # Database
 *.db

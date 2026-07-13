@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Plus, Search, Book, Hash, Calendar, Layers, Briefcase, UserPlus, Settings } from 'lucide-react';
+import { Plus, Search, Book, Hash, Calendar, Layers, Briefcase, UserPlus, Settings, Trash2 } from 'lucide-react';
 
 import StaffAssignmentModal from '../../components/ui/StaffAssignmentModal';
 
@@ -17,6 +17,8 @@ const HODSubjects = () => {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editSubjectId, setEditSubjectId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         code: '',
@@ -36,7 +38,7 @@ const HODSubjects = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const { data } = await axios.get(
-                `${API}/api/subjects?department=${user?.department}`,
+                `${API}/api/subjects?department=${encodeURIComponent(user?.department || '')}`,
                 config
             );
             setSubjects(data);
@@ -51,13 +53,50 @@ const HODSubjects = () => {
         e.preventDefault();
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post(`${API}/api/subjects`, formData, config);
+            if (isEditing && editSubjectId) {
+                await axios.put(`${API}/api/subjects/${editSubjectId}`, formData, config);
+                showToast('Subject updated successfully', 'success');
+                setIsEditing(false);
+                setEditSubjectId(null);
+            } else {
+                await axios.post(`${API}/api/subjects`, formData, config);
+                showToast('Subject added successfully', 'success');
+            }
             fetchSubjects();
             setFormData({ ...formData, name: '', code: '' });
-            showToast('Subject added successfully', 'success');
         } catch (error: any) {
-            showToast(error.response?.data?.message || 'Error adding subject', 'error');
+            showToast(error.response?.data?.message || 'Error processing subject', 'error');
         }
+    };
+
+    const handleDeleteSubject = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this subject?')) return;
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.delete(`${API}/api/subjects/${id}`, config);
+            showToast('Subject deleted successfully', 'success');
+            fetchSubjects();
+        } catch (error: any) {
+            showToast(error.response?.data?.message || 'Error deleting subject', 'error');
+        }
+    };
+
+    const handleEditClick = (s: any) => {
+        setIsEditing(true);
+        setEditSubjectId(s._id);
+        setFormData({
+            name: s.name,
+            code: s.code,
+            semester: s.semester.toString(),
+            academicYear: s.academicYear || '2023-2024'
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setIsEditing(false);
+        setEditSubjectId(null);
+        setFormData({ name: '', code: '', semester: '1', academicYear: '2023-2024' });
     };
 
     const showToast = (text: string, type: 'success' | 'error') => {
@@ -116,11 +155,14 @@ const HODSubjects = () => {
                     className="lg:col-span-1"
                 >
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                        <div className="bg-gradient-to-r from-teal-500 to-emerald-500 p-6">
+                        <div className={`p-6 bg-gradient-to-r transition-all duration-300 ${isEditing ? 'from-indigo-600 to-purple-600' : 'from-teal-500 to-emerald-500'}`}>
                             <h2 className="text-white text-xl font-bold flex items-center gap-2">
-                                <Plus size={24} /> Add New Subject
+                                {isEditing ? <Settings size={24} /> : <Plus size={24} />} 
+                                {isEditing ? 'Edit Subject' : 'Add New Subject'}
                             </h2>
-                            <p className="text-teal-50 text-sm mt-1">Create a new course</p>
+                            <p className="text-teal-50 text-sm mt-1">
+                                {isEditing ? `Modifying ${formData.code}` : 'Create a new course'}
+                            </p>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleAddSubject} className="space-y-4">
@@ -192,12 +234,26 @@ const HODSubjects = () => {
                                     <div className="text-xs text-gray-400 mt-1 ml-6">Auto-assigned based on your role</div>
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors shadow-lg shadow-teal-200 hover:shadow-xl transform active:scale-95 duration-200"
-                                >
-                                    Add Subject
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="submit"
+                                        className={`flex-grow text-white py-3 rounded-lg font-semibold transition-all shadow-lg transform active:scale-95 duration-200
+                                            ${isEditing 
+                                                ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' 
+                                                : 'bg-teal-600 hover:bg-teal-700 shadow-teal-200'}`}
+                                    >
+                                        {isEditing ? 'Update Subject' : 'Add Subject'}
+                                    </button>
+                                    {isEditing && (
+                                        <button
+                                            type="button"
+                                            onClick={cancelEdit}
+                                            className="px-4 bg-gray-100 text-gray-600 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -232,7 +288,7 @@ const HODSubjects = () => {
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Subject Details</th>
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Code</th>
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Semester</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Year</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Staff Assigned</th>
                                         <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -275,25 +331,47 @@ const HODSubjects = () => {
                                                         Sem {s.semester}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {s.academicYear}
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {s.staff && s.staff.length > 0 ? (
+                                                        <div className="flex -space-x-2">
+                                                            {s.staff.map((st: any) => (
+                                                                <div key={st._id} className="w-8 h-8 rounded-full bg-indigo-50 border-2 border-white flex items-center justify-center text-indigo-600 text-[10px] font-black" title={st.fullName || st.username}>
+                                                                    {st.username.substring(0, 2).toUpperCase()}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tighter italic">Pending mapping</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
-                                                            onClick={() => navigate(`/hod/internal-pattern/${s._id}`)}
-                                                            className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none flex items-center justify-center gap-1 transition-colors"
+                                                            onClick={() => handleEditClick(s)}
+                                                            className="text-amber-600 bg-amber-50 hover:bg-amber-100 font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none flex items-center justify-center gap-1 transition-colors"
+                                                            title="Edit Subject"
                                                         >
-                                                            <Settings size={14} /> Configure Assessment
+                                                            <Settings size={14} /> Edit
                                                         </button>
+                                                        
+                                                        {(!s.staff || s.staff.length === 0) && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedSubject(s);
+                                                                    setIsAssignModalOpen(true);
+                                                                }}
+                                                                className="text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none flex items-center justify-center gap-1 transition-colors shadow-sm"
+                                                            >
+                                                                <UserPlus size={14} /> Assign Staff
+                                                            </button>
+                                                        )}
+                                                        
                                                         <button
-                                                            onClick={() => {
-                                                                setSelectedSubject(s);
-                                                                setIsAssignModalOpen(true);
-                                                            }}
-                                                            className="text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none flex items-center justify-center gap-1 transition-colors shadow-sm"
+                                                            onClick={() => handleDeleteSubject(s._id)}
+                                                            className="text-red-600 bg-red-50 hover:bg-red-100 font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none flex items-center justify-center gap-1 transition-colors"
+                                                            title="Delete Subject"
                                                         >
-                                                            <UserPlus size={14} /> Assign Staff
+                                                            <Trash2 size={14} /> Delete
                                                         </button>
                                                     </div>
                                                 </td>

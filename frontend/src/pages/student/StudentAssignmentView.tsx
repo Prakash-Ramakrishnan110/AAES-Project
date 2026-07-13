@@ -91,7 +91,7 @@ const StudentAssignmentView = () => {
 
             // Get Existing Submission (if any)
             const subRes = await axios.get(`${API}/api/submissions/my`, config);
-            const mySub = subRes.data.find((s: any) => s.assignment._id === id);
+            const mySub = subRes.data.find((s: any) => (s.assignmentId?._id || s.assignmentId) === id);
 
             if (mySub) {
                 setSubmission(mySub);
@@ -213,12 +213,22 @@ const StudentAssignmentView = () => {
         const type = assignment.submissionType || assignment.type;
         const rawConfig = assignment.formatConfig || {};
 
-        // Normalize config to include questions from legacy locations if missing
+        // Extract questions from all possible locations and deduplicate/normalize
+        const baseQuestions = assignment.questions || [];
+        const configQuestions = rawConfig.questions || [];
+        
+        // Priority to config questions if they exist, fallback to base questions
+        const finalSource = (configQuestions.length > 0) ? configQuestions : baseQuestions;
+
         const config = {
             ...rawConfig,
-            questions: rawConfig.questions || (assignment.questions || []).map((q: any) => {
-                if (typeof q === 'string') return { questionText: q, marks: Math.round(assignment.maxMarks / (assignment.questions?.length || 1)) };
-                return q;
+            questions: finalSource.map((q: any) => {
+                if (typeof q === 'string') return { questionText: q, marks: Math.round(assignment.maxMarks / (finalSource.length || 1)) };
+                return {
+                    ...q,
+                    questionText: q.questionText || q.text || q.question || 'Untitled Question',
+                    marks: q.marks || Math.round(assignment.maxMarks / (finalSource.length || 1))
+                };
             })
         };
 

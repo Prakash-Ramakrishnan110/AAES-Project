@@ -7,7 +7,6 @@
 const Escalation = require('../models/Escalation');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
-const Notification = require('../models/Notification');
 
 /**
  * Triggered by riskEngine when consecutiveRedCount >= 2.
@@ -47,23 +46,6 @@ async function triggerEscalation(studentId, semester, academicYear, consecutiveR
             resolved: false
         });
 
-        // Notify Mentor
-        await Notification.create({
-            user: student.mentor,
-            title: 'Risk Escalation Triggered',
-            message: `A new risk escalation has been triggered for student ${student.fullName} (Level: Mentor).`,
-            type: 'Grading',
-            link: '/mentor/escalations'
-        });
-
-        // Notify Student
-        await Notification.create({
-            user: studentId,
-            title: 'Academic Support Linkage',
-            message: `Your academic progress has been escalated to your mentor for personalized support.`,
-            type: 'Alert',
-            link: '/student/dashboard'
-        });
 
         await AuditLog.create({
             action: 'ESCALATION_TRIGGERED',

@@ -431,13 +431,13 @@ const UnifiedAssignments = () => {
                 const remainder = formData.maxMarks % qCount;
 
                 const formattedQs = (res.data.questions || []).map((q: any, idx: number) => {
-                    const text = typeof q === 'string' ? q : q.question;
+                    const text = typeof q === 'string' ? q : (q.question || q.text || 'Untitled Question');
                     // Robustly strip prefixes like "1.", "1)", "Q1:", "Question 1:", etc.
-                    const cleanText = text.replace(/^(\d+[.:)]|Q\d+[.:)]|Question\s*\d+[.:)])\s*/i, '').trim();
+                    const cleanText = String(text).replace(/^(\d+[.:)]|Q\d+[.:)]|Question\s*\d+[.:)])\s*/i, '').trim();
                     return {
                         questionText: cleanText,
                         marks: baseMarks + (idx < remainder ? 1 : 0),
-                        modelAnswer: q.model_answer || ''
+                        modelAnswer: q.model_answer || q.modelAnswer || ''
                     };
                 });
 
@@ -519,6 +519,10 @@ const UnifiedAssignments = () => {
     };
 
     const handlePublish = async () => {
+        if (!formData.title || !formData.subjectId || !formData.deadline || !formData.maxMarks) {
+            showToast('Please ensure Title, Subject, Deadline, and Marks are filled.', 'error');
+            return;
+        }
         setIsLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -573,6 +577,12 @@ const UnifiedAssignments = () => {
                 submissionType: subType.toLowerCase(),
                 department: formData.department,
                 semester: formData.semester,
+                questions: (formData.questions || []).map((q: any) => ({
+                    ...q,
+                    text: q.text || q.questionText || q.question || 'Untitled Question',
+                    questionText: q.questionText || q.text || q.question || 'Untitled Question',
+                    marks: q.marks || 0
+                })),
                 formatConfig
             };
 

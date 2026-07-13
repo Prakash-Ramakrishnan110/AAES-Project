@@ -1,0 +1,13 @@
+opencv-python
+paddleocr
+paddlepaddle
+easyocr
+sentence-transformers
+pdf2image
+pillow
+requests
+fastapi
+uvicorn
+python-multipart
+torch
+PyMuPDF

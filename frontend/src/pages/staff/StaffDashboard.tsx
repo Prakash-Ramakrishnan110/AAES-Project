@@ -6,9 +6,9 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 
 import {
-    BookOpen, FileText, CheckSquare, Clock, ClipboardList,
-    BarChart2, Zap, ArrowRight, Users, TrendingUp, Star, 
-    Calendar, Download, HeartHandshake,
+    BookOpen, FileText, CheckSquare, Clock,
+    Zap, TrendingUp, 
+    Calendar, Download,
     Target, LayoutDashboard
 } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -157,11 +157,8 @@ const StaffDashboard = () => {
     }, [loading, user, setHeaderOptions, navigate]);
 
     const quickActions = [
-        { icon: ClipboardList, label: 'Attendance', desc: 'Log daily student presence', color: 'from-[#624BFF] to-[#4318FF]', link: '/staff/my-subjects' },
-        { icon: Users, label: 'Students', desc: 'Manage learner directories', color: 'from-[#1B2559] to-[#0B1437]', link: '/staff/students' },
         { icon: LayoutDashboard, label: 'Modules', desc: 'Sync tests & AI workloads', color: 'from-[#05CD99] to-[#04b084]', link: '/staff/assignments' },
         { icon: Target, label: 'Evaluate', desc: `${stats.pendingGrading} nodes pending`, color: 'from-[#FFB547] to-[#e6a33f]', link: '/staff/evaluation' },
-        { icon: HeartHandshake, label: 'Mentoring', desc: 'Sync cohort health logs', color: 'from-[#4318FF] to-[#1B2559]', link: '/staff/mentorship-governance' },
     ];
 
     return (
@@ -230,8 +227,7 @@ const StaffDashboard = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => navigate(`/staff/attendance/${subject._id}`)} className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] font-bold uppercase tracking-tight text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">Attendance</button>
-                                                    <button onClick={() => navigate(`/staff/attendance/${subject._id}/summary`)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"><BarChart2 size={16} /></button>
+                                                    <button onClick={() => navigate(`/staff/assignments`)} className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] font-bold uppercase tracking-tight text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">Assignments</button>
                                                 </div>
                                             </div>
                                         ))
@@ -276,23 +272,7 @@ const StaffDashboard = () => {
                                 </SectionCard>
                             </motion.div>
 
-                            {(user as any)?.isAdvisor && (
-                                <motion.div 
-                                    variants={itemVariants} initial="hidden" animate="visible"
-                                    className="bg-slate-900 rounded-3xl p-6 text-white hover:bg-slate-800 transition-all cursor-pointer shadow-xl relative overflow-hidden group"
-                                    onClick={() => navigate('/staff/advisor-dashboard')}
-                                >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-500" />
-                                    <div className="w-10 h-10 bg-blue-500/20 text-blue-400 rounded-xl flex items-center justify-center mb-4 border border-blue-500/20">
-                                        <Star size={20} />
-                                    </div>
-                                    <h4 className="text-[15px] font-bold mb-1">Advisor Portal</h4>
-                                    <p className="text-[11px] text-slate-400 font-medium mb-4 leading-relaxed">Authorized cohort oversight & academic governance.</p>
-                                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-blue-400">
-                                        Launch Hub <ArrowRight size={14} />
-                                    </div>
-                                </motion.div>
-                            )}
+
                         </div>
                     </div>
 

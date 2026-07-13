@@ -2,6 +2,47 @@ const User = require('../models/User');
 const ClassAdvisor = require('../models/ClassAdvisor');
 const jwt = require('jsonwebtoken');
 
+// Helper to find Class Advisor for a student
+const findClassAdvisor = async (user) => {
+    if (user.role !== 'student') return null;
+
+    let advisorId = user.classAdvisor;
+
+    // If not explicitly set, find by department and academic year
+    if (!advisorId) {
+        // Try to normalize academic year level
+        let yearLevel = user.academicYear;
+        
+        // If it's a session string like "2023-2024", use semester to infer year level
+        if (yearLevel && (yearLevel.includes('-') || !yearLevel.includes('Year'))) {
+            const sem = parseInt(user.semester);
+            if (sem <= 2) yearLevel = '1st Year';
+            else if (sem <= 4) yearLevel = '2nd Year';
+            else if (sem <= 6) yearLevel = '3rd Year';
+            else yearLevel = '4th Year';
+        }
+
+        const advisorRecord = await ClassAdvisor.findOne({
+            department: user.department,
+            academicYear: yearLevel
+        });
+        
+        if (advisorRecord) {
+            advisorId = advisorRecord.staff;
+        }
+    }
+
+    if (advisorId) {
+        const advisor = await User.findById(advisorId).select('fullName profileImage username');
+        return advisor ? {
+            _id: advisor._id,
+            fullName: advisor.fullName || advisor.username,
+            profileImage: advisor.profileImage
+        } : null;
+    }
+    return null;
+};
+
 // Generate JWT
 const generateToken = (id, role, department) => {
     return jwt.sign({ id, role, department }, process.env.JWT_SECRET, {
@@ -57,74 +98,93 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
+        const fs = require('fs');
+        const logPath = require('path').join(__dirname, '../login_debug.log');
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] Attempt for: ${email}\n`);
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ 
+            $or: [
+                { email: email?.toLowerCase() },
+                { username: email } 
+            ]
+        });
 
-        if (user && (await user.matchPassword(password))) {
-            // Governance: check if account is active
-            if (user.isActive === false) {
-                return res.status(403).json({ message: 'Your account is currently deactivated. Please contact administration.' });
-            }
-
-            // Update last login
-            user.lastLogin = Date.now();
-            await user.save();
-
-            try {
-                const AuditLog = require('../models/AuditLog');
-                await AuditLog.create({
-                    action: 'LOGIN',
-                    performedBy: user._id,
-                    targetModel: 'User',
-                    targetId: user._id,
-                    department: user.department,
-                    role: user.role,
-                    details: { status: 'SUCCESS' }
-                });
-            } catch (e) { }
-
-
-            // Check if this staff member is a class advisor
-            let isAdvisor = false;
-            let advisorYear = null;
-            let advisorDepartment = null;
-            if (user.role === 'staff') {
-                const advisorRecord = await ClassAdvisor.findOne({ staff: user._id });
-                if (advisorRecord) {
-                    isAdvisor = true;
-                    advisorYear = advisorRecord.academicYear;
-                    advisorDepartment = advisorRecord.department;
-                }
-            }
-
-            const token = generateToken(user._id, user.role, user.department);
-
-            res.json({
-                _id: user.id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-                department: user.department,
-                semester: user.semester,
-                academicYear: user.academicYear,
-                fullName: user.fullName,
-                phone: user.phone,
-                batch: user.batch,
-                section: user.section,
-                bloodGroup: user.bloodGroup,
-                schooling: user.schooling,
-                currentCgpa: user.currentCgpa,
-                historyOfArrears: user.historyOfArrears,
-                requiresPasswordChange: user.requiresPasswordChange,
-                isAdvisor,
-                advisorYear,
-                advisorDepartment,
-                token,
-            });
-        } else {
-            res.status(401).json({ message: 'Invalid email or password' });
+        if (!user) {
+            fs.appendFileSync(logPath, `[${new Date().toISOString()}] User NOT found: ${email}\n`);
+            return res.status(401).json({ message: 'Invalid email or password' });
         }
+
+        const isMatch = await user.matchPassword(password);
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] User: ${user.username}, Role: ${user.role}, Match: ${isMatch}\n`);
+
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid email or password' });
+        }
+
+        if (user.isActive === false) {
+            return res.status(403).json({ message: 'Your account is deactivated' });
+        }
+
+        // Update last login
+        user.lastLogin = Date.now();
+        await user.save();
+
+        // Audit Log (Optional)
+        try {
+            const AuditLog = require('../models/AuditLog');
+            await AuditLog.create({
+                action: 'LOGIN',
+                performedBy: user._id,
+                targetModel: 'User',
+                targetId: user._id,
+                department: user.department,
+                role: user.role,
+                details: { status: 'SUCCESS' }
+            });
+        } catch (e) {}
+
+        // Class Advisor check
+        let isAdvisor = false;
+        let advisorYear = null;
+        let advisorDepartment = null;
+        if (user.role === 'staff') {
+            const advisorRecord = await ClassAdvisor.findOne({ staff: user._id });
+            if (advisorRecord) {
+                isAdvisor = true;
+                advisorYear = advisorRecord.academicYear;
+                advisorDepartment = advisorRecord.department;
+            }
+        }
+
+        const token = generateToken(user._id, user.role, user.department);
+
+        res.json({
+            _id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            department: user.department,
+            semester: user.semester,
+            academicYear: user.academicYear,
+            fullName: user.fullName,
+            phone: user.phone,
+            batch: user.batch,
+            section: user.section,
+            bloodGroup: user.bloodGroup,
+            schooling: user.schooling,
+            currentCgpa: user.currentCgpa,
+            historyOfArrears: user.historyOfArrears,
+            requiresPasswordChange: user.requiresPasswordChange,
+            isAdvisor,
+            advisorYear,
+            advisorDepartment,
+            profileImage: user.profileImage,
+            classAdvisor: await findClassAdvisor(user),
+            token,
+        });
+
     } catch (error) {
+        console.error('LOGIN ERROR:', error);
         res.status(500).json({ message: 'Internal Server Error', error: error.message });
     }
 };
@@ -166,7 +226,9 @@ const getUserProfile = async (req, res) => {
             batch: user.batch,
             section: user.section,
             semester: user.semester,
-            academicYear: user.academicYear
+            academicYear: user.academicYear,
+            profileImage: user.profileImage,
+            classAdvisor: await findClassAdvisor(user)
         });
     } else {
         res.status(404).json({ message: 'User not found' });
@@ -223,6 +285,7 @@ const changePassword = async (req, res) => {
         currentCgpa: user.currentCgpa,
         historyOfArrears: user.historyOfArrears,
         requiresPasswordChange: user.requiresPasswordChange,
+        profileImage: user.profileImage,
         token: generateToken(user._id, user.role, user.department),
     });
 };
@@ -279,6 +342,7 @@ const updateUserSettings = async (req, res) => {
             schooling: user.schooling,
             currentCgpa: user.currentCgpa,
             historyOfArrears: user.historyOfArrears,
+            profileImage: user.profileImage,
             preferences: user.preferences
         });
     } catch (error) {

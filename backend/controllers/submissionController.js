@@ -1,497 +1,147 @@
-const fs = require('fs');
-const path = require('path');
-const FormData = require('form-data');
-const axios = require('axios');
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
-const Subject = require('../models/Subject');
 const User = require('../models/User');
-const Notification = require('../models/Notification');
-
-const { runAutoGrading, executeCode } = require('../utils/codeRunner');
-const { recalculateRiskForStudent } = require('../services/riskEngine');
-
+const Subject = require('../models/Subject');
 
 // @desc    Submit an assignment
 // @route   POST /api/submissions
 // @access  Private/Student
 const submitAssignment = async (req, res) => {
     try {
-        let { assignmentId, code, answers } = req.body;
-        // req.file is available if 'file' field is used
+        const { assignmentId, answers, extractedText, code } = req.body;
+        const studentId = req.user.id;
+        const finalStudentText = answers || extractedText || code || '';
 
         const assignment = await Assignment.findById(assignmentId);
         if (!assignment) {
             return res.status(404).json({ message: 'Assignment not found' });
         }
 
-        // Check availability (Deadline and Enable flag)
-        if (assignment.submissionsEnabled === false) {
-            return res.status(403).json({ message: 'Submissions are currently disabled for this assignment.' });
-        }
-        let isLate = false;
-        let latePenaltyPercent = 0;
-
-        console.log("SUBMISSION DEBUG:");
-        console.log("Current Time (UTC):", new Date().toISOString());
-        console.log("Deadline (UTC):", new Date(assignment.deadline).toISOString());
-        console.log("Is Late?", new Date() > new Date(assignment.deadline));
-
         if (new Date() > new Date(assignment.deadline)) {
-            const rules = assignment.formatConfig?.rules || {};
-            if (!rules.lateAllowed) {
-                return res.status(400).json({ message: 'Submission deadline passed' });
-            }
-            isLate = true;
-            latePenaltyPercent = rules.latePenalty || 0;
+            return res.status(400).json({ message: 'Submission deadline has passed.' });
         }
 
-        let marks = 0;
-        let testCaseResults = [];
-        let status = 'submitted';
-        let feedback = '';
-        let aiAnalysis = {};
-
-        // Plagiarism fields — initialized here so they're accessible for ALL submission types
-        let plagiarismScore = 0;
-        let isFlaggedForPlagiarism = false;
-        let flaggedSource = null;
-
-        // Define fileUrl if a file is uploaded
         let fileUrl = '';
         if (req.file) {
-            const identifier = req.user?.registerNumber || req.user?._id?.toString() || 'anonymous';
-            // Use consistent folder-based path
-            fileUrl = `/uploads/${identifier}/assignments/${req.file.filename}`;
-            console.log(`[SubmissionController] Assignment assigned path: ${fileUrl}`);
+            // Construct the same identifier as the upload middleware
+            const namePart = req.user?.fullName ? req.user.fullName.trim().replace(/[^a-zA-Z0-9]/g, '_') : 'Student';
+            const regPart = req.user?.registerNumber || req.user?._id?.toString() || 'ID';
+            const identifier = `${namePart}_${regPart}`.toLowerCase();
+            
+            // Subfolder is 'submissions' as defined in the route middleware
+            fileUrl = `uploads/${identifier}/submissions/${req.file.filename}`;
         }
 
-        // --- Generalized Auto-Grading (Python, C, Java) ---
-        if ((assignment.type === 'python' || assignment.submissionType === 'programming' || assignment.submissionType === 'code') && code) {
-            const lang = assignment.formatConfig?.language || 'python';
-            const gradingResult = await runAutoGrading(lang, code, assignment.formatConfig?.testCases || assignment.testCases);
-            marks = gradingResult.totalMarks;
-            testCaseResults = gradingResult.results;
-            status = 'graded';
-        }
-
-        // --- Quiz Auto-Grading ---
-        if (assignment.submissionType === 'quiz' && answers) {
+        // 1. Trigger AI Evaluation (Only for Manual Builder/Handwritten/Document types)
+        let aiEvaluation = null;
+        if (req.file || finalStudentText) {
             try {
-                const parsedAnswers = JSON.parse(answers);
-                const questions = assignment.formatConfig?.questions || [];
-                let totalMarks = 0;
-                let feedbackArr = [];
+                const axios = require('axios');
+                const fs = require('fs');
+                const FormData = require('form-data');
+                const path = require('path');
 
-                questions.forEach((q, idx) => {
-                    const studentAns = parsedAnswers[idx];
-                    let isCorrect = false;
+                const formData = new FormData();
+                if (req.file) {
+                    const filePath = path.join(__dirname, '..', fileUrl);
+                    formData.append('file', fs.createReadStream(filePath));
+                }
+                
+                formData.append('student_answer', finalStudentText);
+                formData.append('assignment_data', JSON.stringify({
+                    title: assignment.title,
+                    questions: (assignment.questions || []).map(q => ({
+                        text: q.text || q.questionText || q.question || 'Untitled Question',
+                        marks: q.marks || 0,
+                        modelAnswer: q.modelAnswer || ''
+                    })),
+                    maxMarks: assignment.maxMarks,
+                    rubric: assignment.formatConfig?.rubric || {}
+                }));
 
-                    // Support various property names generated by AI
-                    const cAns = q.correctAnswer || q.correct_answer || q.true_answer || q.answer;
-
-                    if (!cAns) {
-                        feedbackArr.push(`Q${idx + 1}: Error (No correct answer defined in assignment schema)`);
-                        return; // Skip grading this question
-                    }
-
-                    // Support both array of answers (MultipleCorrect) and single string (MCQ, True/False)
-                    if (Array.isArray(cAns)) {
-                        // Check if arrays match (ignoring order and case)
-                        if (Array.isArray(studentAns) && studentAns.length === cAns.length) {
-                            const sortedStudent = [...studentAns].map(s => String(s).toLowerCase().trim()).sort();
-                            const sortedCorrect = [...cAns].map(c => String(c).toLowerCase().trim()).sort();
-                            isCorrect = sortedStudent.every((val, index) => val === sortedCorrect[index]);
-                        }
-                    } else {
-                        // Normalize strings for robust matching
-                        isCorrect = String(studentAns).toLowerCase().trim() === String(cAns).toLowerCase().trim();
-                    }
-
-                    if (isCorrect) {
-                        totalMarks += q.marks || 1;
-                        feedbackArr.push(`Q${idx + 1}: Correct (+${q.marks || 1})`);
-                    } else {
-                        feedbackArr.push(`Q${idx + 1}: Incorrect (0) - Correct answer was: ${Array.isArray(cAns) ? cAns.join(', ') : cAns}`);
-                    }
+                console.log(`[AI] Attempting evaluation at: http://127.0.0.1:8000/evaluate`);
+                const aiRes = await axios.post('http://127.0.0.1:8000/evaluate', formData, {
+                    headers: { ...formData.getHeaders() },
+                    timeout: 120000 // Increased timeout for heavier OCR
                 });
 
-                marks = totalMarks;
-                status = 'graded';
-                feedback = feedbackArr.join('\n');
-            } catch (error) {
-                console.error('Quiz Evaluation Failed:', error.message);
+                if (aiRes.data && aiRes.data.success) {
+                    console.log(`[AI] Evaluation Successful: ${aiRes.data.total_score} points`);
+                    aiEvaluation = aiRes.data;
+                }
+            } catch (err) {
+                console.error('[AI] Connector Error:', err.response?.data || err.message);
             }
         }
 
-        // --- Theory AI Evaluation ---
-        if ((assignment.submissionType === 'handwritten' || assignment.submissionType === 'document' || assignment.submissionType === 'ppt' || assignment.submissionType === 'seminar') && (req.file || answers)) {
-            try {
-                const pythonBaseUrl = 'http://localhost:8000';
-                let studentAnswerText = answers || ''; // Start with user-provided text if any
+        // 2. Upsert Submission Record
+        let submission = await Submission.findOne({ studentId, assignmentId });
 
-                // Phase 1: Extract Text if a file was uploaded
-                if (req.file) {
-                    const extractFormData = new FormData();
-                    extractFormData.append('file', fs.createReadStream(req.file.path));
-
-                    const extractRes = await axios.post(`${pythonBaseUrl}/extract_text`, extractFormData, {
-                        headers: { ...extractFormData.getHeaders() },
-                        timeout: 20000 // 20s timeout for heavy OCR
-                    });
-
-                    // Add extracted text to existing text (if the user provided both)
-                    studentAnswerText = studentAnswerText ? `${studentAnswerText}\n\n[Extracted from attached document]\n${extractRes.data.text}` : extractRes.data.text;
-
-                    // CRITICAL FIX: Save the extracted text so the teacher can view it!
-                    if (!answers || answers.trim() === '') {
-                        answers = extractRes.data.text || "No text extracted from document.";
-                    }
-                }
-
-                // ==========================================
-                // Feature: Plagiarism Detection (Cosine Similarity)
-                // ==========================================
-                // Reset plagiarism fields for this evaluation (already initialized at top scope)
-
-                if (studentAnswerText && studentAnswerText.trim() !== '') {
-                    try {
-                        // 1. Fetch all other submissions for this assignment that have text
-                        const peerSubmissions = await Submission.find({
-                            assignment: assignmentId,
-                            student: { $ne: req.user.id }, // Exclude current student
-                            $or: [
-                                { answers: { $exists: true, $ne: '' } },
-                                { 'aiAnalysis.rawOutput': { $exists: true } } // OCR'd text is sometimes saved in answers
-                            ]
-                        }).select('_id answers student');
-
-                        // 2. Format peers into JSON array
-                        const referenceTexts = peerSubmissions.map(sub => ({
-                            id: sub._id.toString(),
-                            text: sub.answers || ""
-                        })).filter(ref => ref.text.trim() !== "");
-
-                        // 3. Ping Python if there are peers to compare against
-                        if (referenceTexts.length > 0) {
-                            const plagFormData = new FormData();
-                            plagFormData.append('target_text', studentAnswerText);
-                            plagFormData.append('reference_texts', JSON.stringify(referenceTexts));
-
-                            const plagRes = await axios.post(`${pythonBaseUrl}/evaluate/plagiarism`, plagFormData, {
-                                headers: { ...plagFormData.getHeaders() },
-                                timeout: 15000 // 15s timeout
-                            });
-
-                            if (plagRes.data && plagRes.data.plagiarismScore > 0) {
-                                plagiarismScore = plagRes.data.plagiarismScore;
-                                // Flag if similarity is > 80%
-                                if (plagiarismScore > 80) {
-                                    isFlaggedForPlagiarism = true;
-                                    flaggedSource = plagRes.data.flaggedSource;
-                                }
-                            }
-                        }
-                    } catch (plagErr) {
-                        console.error('Plagiarism Detection Failed (Non-Fatal):', plagErr.message);
-                    }
-                }
-                // ==========================================
-
-                if (!studentAnswerText || studentAnswerText.trim() === '') {
-                    marks = 0;
-                    feedback = "Could not extract text from document. Please ensure handwriting is clear.";
-                    status = 'graded';
-                    aiAnalysis = {
-                        rawOutput: "OCR Failed",
-                        metrics: { clarity: 0, relevance: 0, completeness: 0 }
-                    };
-                } else {
-                    // Phase 2: Per-Question Evaluation Loop
-                    const questions = assignment.formatConfig?.questions || [];
-
-                    if (questions.length === 0) {
-                        throw new Error("No questions configured for this assignment.");
-                    }
-
-                    let totalMarksAccumulated = 0;
-                    let aggregatedFeedback = [];
-                    let evaluationBreakdown = [];
-
-                    // Evaluate concurrently
-                    const evaluationPromises = questions.map(async (q, index) => {
-                        // Support both structured objects and AI-generated string arrays
-                        const isString = typeof q === 'string';
-                        const questionMaxMarks = isString ? Math.round(assignment.maxMarks / questions.length) : (q.marks || Math.round(assignment.maxMarks / questions.length));
-                        const questionText = isString ? q : (q.questionText || q.question || 'Unknown Question');
-
-                        // Pass the scaling factor/rubric for this assignment
-                        const rubric = assignment.formatConfig?.rubric || {};
-
-                        // Fallback to generic assignment-level model answer if question is just a string, 
-                        // as AI theory generation often puts modelAnswer at the root level.
-                        const modelAnswer = isString ? (assignment.formatConfig?.modelAnswer || 'No model answer provided.') : (q.modelAnswer || assignment.formatConfig?.modelAnswer || 'No model answer provided.');
-
-                        const evalFormData = new FormData();
-                        evalFormData.append('student_answer_text', studentAnswerText);
-                        evalFormData.append('model_answer', modelAnswer);
-                        evalFormData.append('question', questionText);
-                        evalFormData.append('max_marks', String(questionMaxMarks));
-                        evalFormData.append('rubric', JSON.stringify(rubric));
-
-                        // Extract keywords if defined by teacher
-                        const keywords = assignment.formatConfig?.keywords || assignment.keywords || '';
-                        evalFormData.append('keywords', keywords);
-
-                        try {
-                            const res = await axios.post(`${pythonBaseUrl}/evaluate/question`, evalFormData, {
-                                headers: { ...evalFormData.getHeaders() },
-                                timeout: 30000 // 30s per question LLM timeout
-                            });
-
-                            const achievedMarks = res.data.marks || 0;
-                            const questionFeedback = res.data.feedback || "No feedback generated.";
-
-                            totalMarksAccumulated += achievedMarks;
-                            aggregatedFeedback.push(`Q${index + 1} (${achievedMarks}/${questionMaxMarks} Marks): ${questionFeedback}`);
-
-                            evaluationBreakdown.push({
-                                questionIndex: index + 1,
-                                questionId: q.id || `q${index + 1}`,
-                                allocatedMarks: questionMaxMarks,
-                                achievedMarks,
-                                feedback: questionFeedback
-                            });
-
-                            return res.data;
-                        } catch (err) {
-                            console.error(`Error evaluating Q${index + 1}:`, err.message);
-                            aggregatedFeedback.push(`Q${index + 1}: AI Evaluation failed (0/${questionMaxMarks} Marks).`);
-                            return null;
-                        }
-                    });
-
-                    await Promise.all(evaluationPromises);
-
-                    // Phase 3: Aggregation
-                    marks = totalMarksAccumulated;
-                    feedback = aggregatedFeedback.join('\n\n');
-                    status = 'graded';
-                    aiAnalysis = {
-                        rawOutput: "Per-Question Breakdown Computed",
-                        breakdown: evaluationBreakdown,
-                        metrics: {
-                            clarity: 0, // Placeholder
-                            relevance: marks / (assignment.maxMarks || 100) * 10,
-                            completeness: marks / (assignment.maxMarks || 100) * 10
-                        }
-                    };
-                }
-            } catch (error) {
-                console.error('AI Evaluation Pipeline Failed:', error.message);
-                // Graceful degradation: Mark as pending instead of failing
-                feedback = 'AI Evaluation service is currently unavailable or failed processing. Your submission has been saved and will be manually reviewed by staff.';
-                status = 'submitted'; // Keep as submitted, not graded
-            }
-        }
-
-        // Check if submitting or re-submitting
-        let submission = await Submission.findOne({
-            student: req.user.id,
-            assignment: assignmentId
-        });
+        const submissionData = {
+            studentId,
+            assignmentId,
+            fileUrl: fileUrl || (submission ? submission.fileUrl : ''),
+            extractedText: aiEvaluation ? (aiEvaluation.extracted_text || finalStudentText) : finalStudentText,
+            marks: aiEvaluation ? aiEvaluation.total_score : (submission ? submission.marks : 0),
+            feedback: aiEvaluation ? aiEvaluation.feedback : (submission ? submission.feedback : 'Pending evaluation...'),
+            status: aiEvaluation ? 'graded' : 'submitted',
+            aiResultStatus: aiEvaluation ? 'graded' : 'pending',
+            learningFeedback: aiEvaluation ? aiEvaluation.feedback : '',
+            submittedAt: Date.now()
+        };
 
         if (submission) {
-            // New logic: Only allow if resubmission is approved
-            if (submission.resubmissionStatus !== 'approved') {
-                // Cleanup uploaded file if it was rejected
-                if (req.file) {
-                    fs.unlink(req.file.path, (err) => { if (err) console.error(err); });
-                }
-                return res.status(403).json({
-                    message: 'You have already submitted this assignment. You must request a resubmission if you wish to try again.'
-                });
-            }
-
-            // Resubmission is approved, allow overwrite
-            submission.code = code || submission.code;
-            submission.answers = answers || submission.answers; // Store text if typed
-            submission.fileUrl = fileUrl || submission.fileUrl; // Store new file if uploaded
-            submission.submittedAt = Date.now();
-
-            // Reset resubmission status upon successful new submission
-            submission.resubmissionStatus = 'none';
-            submission.resubmissionReason = '';
-
-            // Update plagiarism fields
-            submission.plagiarismScore = plagiarismScore;
-            submission.isFlaggedForPlagiarism = isFlaggedForPlagiarism;
-            submission.flaggedSource = flaggedSource;
-
-            // Update marks/status if new grading happened
-            if (status === 'graded') {
-                // Apply penalty if late
-                if (isLate && latePenaltyPercent > 0) {
-                    const penaltyAmount = Math.round((marks * latePenaltyPercent) / 100);
-                    marks = Math.max(0, marks - penaltyAmount);
-                    feedback += `\n[NOTE] A late penalty of ${latePenaltyPercent}% was applied (-${penaltyAmount} marks).`;
-                }
-
-                submission.marks = marks;
-                submission.testCaseResults = testCaseResults;
-                submission.status = status;
-                submission.feedback = feedback;
-                submission.aiAnalysis = aiAnalysis;
-            } else {
-                submission.status = 'submitted';
-                submission.marks = 0;
-            }
-
-            // Also flag as late if resubmitting late
-            if (isLate) {
-                submission.isLate = true;
-            }
-
+            Object.assign(submission, submissionData);
             await submission.save();
-
-            // Notify Staff of Resubmission
-            const assignmentRecord = await Assignment.findById(assignmentId);
-            if (assignmentRecord) {
-                await Notification.create({
-                    user: assignmentRecord.createdBy,
-                    title: 'Assignment Resubmitted',
-                    message: `${req.user.username} resubmitted: ${assignmentRecord.title}`,
-                    type: 'Grading',
-                    link: `/staff/assignments/${assignmentId}`
-                });
-            }
-
-            // Trigger Risk Recalculation if graded
-            if (status === 'graded') {
-                recalculateRiskForStudent(req.user.id);
-            }
-
-            return res.json(submission);
-
+            return res.status(200).json(submission);
         }
 
-        // Apply penalty if late for brand new submission
-        if (status === 'graded' && isLate && latePenaltyPercent > 0) {
-            const penaltyAmount = Math.round((marks * latePenaltyPercent) / 100);
-            marks = Math.max(0, marks - penaltyAmount);
-            feedback += `\n[NOTE] A late penalty of ${latePenaltyPercent}% was applied (-${penaltyAmount} marks).`;
-        }
-
-        // First time submission
-        const newSubmission = new Submission({
-            student: req.user.id,
-            assignment: assignmentId,
-            code: code || '',
-            answers: answers || '', // Save explicitly
-            fileUrl: fileUrl || '', // Ensure the cloud URL gets saved!!
-            marks: marks,
-            status: status,
-            feedback: feedback,
-            aiAnalysis: aiAnalysis,
-            testCaseResults: testCaseResults,
-            plagiarismScore: plagiarismScore, // Ensure variable is accessible (it might be undefined if not declared)
-            isFlaggedForPlagiarism: isFlaggedForPlagiarism,
-            flaggedSource: flaggedSource,
-            isLate: isLate
-        });
-
-        await newSubmission.save();
-
-        // Notify Staff of New Submission
-        const assignmentRecordNew = await Assignment.findById(assignmentId);
-        if (assignmentRecordNew) {
-            await Notification.create({
-                user: assignmentRecordNew.createdBy,
-                title: 'New Assignment Submission',
-                message: `${req.user.username} submitted: ${assignmentRecordNew.title}`,
-                type: 'Grading',
-                link: `/staff/assignments/${assignmentId}`
-            });
-        }
-
-        // Trigger Risk Recalculation if graded
-        if (status === 'graded') {
-            recalculateRiskForStudent(req.user.id);
-        }
-
-        res.status(201).json(newSubmission);
-
+        submission = await Submission.create(submissionData);
+        res.status(201).json(submission);
     } catch (error) {
+        console.error('Submit Error:', error);
         res.status(500).json({ message: error.message });
     }
 };
 
 // @desc    Get my submissions
-// @route   GET /api/submissions/my
-// @access  Private/Student
 const getMySubmissions = async (req, res) => {
-    const submissions = await Submission.find({ student: req.user.id })
-        .populate('assignment', 'title type maxMarks deadline')
-        .sort({ submittedAt: -1 });
-    res.json(submissions);
-};
-
-// @desc    Get all submissions for an assignment (Staff view)
-// @route   GET /api/submissions/assignment/:id
-// @access  Private/Staff
-const getSubmissionsForAssignment = async (req, res) => {
     try {
-        const assignment = await Assignment.findById(req.params.id);
-        if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
-
-        // Allow access if: user is admin/hod, OR created the assignment, OR is in subject.staff
-        const isAssignmentCreator = assignment.createdBy && assignment.createdBy.toString() === req.user.id;
-        const isAdminOrHod = req.user.role === 'admin' || req.user.role === 'hod';
-
-        if (!isAdminOrHod && !isAssignmentCreator) {
-            const Subject = require('../models/Subject');
-            const subject = await Subject.findById(assignment.subject);
-            const isSubjectStaff = subject && subject.staff.some(staffId => staffId.toString() === req.user.id);
-            if (!isSubjectStaff) {
-                return res.status(403).json({ message: 'Access Denied: You are not assigned to this subject' });
-            }
-        }
-
-        const submissions = await Submission.find({ assignment: req.params.id })
-            .populate('student', 'username fullName email academicYear semester');
+        const submissions = await Submission.find({ studentId: req.user.id })
+            .populate({
+                path: 'assignmentId',
+                select: 'title maxMarks totalMarks type submissionType subjectId',
+                populate: {
+                    path: 'subjectId',
+                    select: 'name description'
+                }
+            })
+            .sort({ submittedAt: -1 });
         res.json(submissions);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Grade submission (Manual override or initial placeholder)
-// @route   PUT /api/submissions/:id/grade
-// @access  Private/Staff
+// @desc    Get all submissions for an assignment
+const getSubmissionsForAssignment = async (req, res) => {
+    try {
+        const submissions = await Submission.find({ assignmentId: req.params.id })
+            .populate('studentId', 'fullName email');
+        res.json(submissions);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Grade submission
 const gradeSubmission = async (req, res) => {
     try {
         const { marks, feedback } = req.body;
-        const submission = await Submission.findById(req.params.id).populate('assignment');
+        const submission = await Submission.findById(req.params.id);
 
         if (!submission) {
             return res.status(404).json({ message: 'Submission not found' });
-        }
-
-        // Prevent editing if marks are locked
-        if (submission.marksLocked) {
-            return res.status(403).json({ message: 'Marks are locked and cannot be edited. Only HOD can unlock.' });
-        }
-
-        const isAssignmentCreator = submission.assignment.createdBy && submission.assignment.createdBy.toString() === req.user.id;
-        const isAdminOrHod = req.user.role === 'admin' || req.user.role === 'hod';
-
-        if (!isAdminOrHod && !isAssignmentCreator) {
-            const Subject = require('../models/Subject');
-            const subject = await Subject.findById(submission.assignment.subject);
-            const isSubjectStaff = subject && subject.staff.some(staffId => staffId.toString() === req.user.id);
-            if (!isSubjectStaff) {
-                return res.status(403).json({ message: 'Access Denied: You are not assigned to this subject' });
-            }
         }
 
         submission.marks = marks;
@@ -499,229 +149,101 @@ const gradeSubmission = async (req, res) => {
         submission.status = 'graded';
         await submission.save();
 
-        // Notify Student of Grade
-        await Notification.create({
-            user: submission.student,
-            title: 'Assignment Graded',
-            message: `Your assignment "${submission.assignment.title}" has been graded. Score: ${marks}`,
-            type: 'Grading',
-            link: `/student/assignments/${submission.assignment._id}`
-        });
-
-        // Trigger Risk Recalculation
-        recalculateRiskForStudent(submission.student);
-
         res.json(submission);
-
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Lock marks for a submission (prevents further editing)
-// @route   PUT /api/submissions/:id/lock
-// @access  Private/Staff
-const lockMarks = async (req, res) => {
-    try {
-        const submission = await Submission.findById(req.params.id).populate('assignment');
-        if (!submission) return res.status(404).json({ message: 'Submission not found' });
-
-        if (submission.marksLocked) {
-            return res.status(400).json({ message: 'Marks are already locked' });
-        }
-
-        const Subject = require('../models/Subject');
-        const subject = await Subject.findById(submission.assignment.subject);
-        if (!subject || !subject.staff.includes(req.user.id)) {
-            return res.status(403).json({ message: 'Access Denied: You are not assigned to this subject' });
-        }
-
-        submission.marksLocked = true;
-        submission.lockedBy = req.user.id;
-        submission.lockedAt = new Date();
-        // Prevent student resubmission once locked
-        submission.resubmissionStatus = 'rejected';
-        await submission.save();
-
-        res.json({ message: 'Marks locked successfully', submission });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Unlock marks (HOD only)
-// @route   PUT /api/submissions/:id/unlock
-// @access  Private/HOD
-const unlockMarks = async (req, res) => {
-    try {
-        if (req.user.role !== 'hod') {
-            return res.status(403).json({ message: 'Only HOD can unlock marks' });
-        }
-
-        const submission = await Submission.findById(req.params.id);
-        if (!submission) return res.status(404).json({ message: 'Submission not found' });
-
-        if (!submission.marksLocked) {
-            return res.status(400).json({ message: 'Marks are not locked' });
-        }
-
-        submission.marksLocked = false;
-        submission.lockedBy = null;
-        submission.lockedAt = null;
-        await submission.save();
-
-        res.json({ message: 'Marks unlocked successfully', submission });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Get student statistics
-// @route   GET /api/submissions/stats/student
-// @access  Private/Student
+// @desc    Get student stats
 const getStudentStats = async (req, res) => {
     try {
         const studentId = req.user.id;
-
-        // 1. Total Assignments Assigned (Approximation based on Subject enrollment)
-        // ideally matches enrollment logic. For now, matching Dept + Sem
-        const subjects = await require('../models/Subject').find({
-            department: req.user.department,
-            semester: req.user.semester // Assuming user has this field populated
+        const student = await User.findById(studentId);
+        
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+        
+        const subjects = await Subject.find({
+            department: { $regex: new RegExp(`^${student.department}$`, 'i') },
+            semester: student.semester || 'Unknown'
         });
         const subjectIds = subjects.map(s => s._id);
-
-        const totalAssignments = await Assignment.countDocuments({
-            subject: { $in: subjectIds }
+        
+        // Fetch relevant assignments for this student
+        const assignments = await Assignment.find({
+            $or: [
+                { subjectId: { $in: subjectIds } },
+                { 
+                    department: { $regex: new RegExp(`^${student.department}$`, 'i') }, 
+                    semester: student.semester 
+                }
+            ]
         });
-
-        // 2. Submissions Stats
-        const submissions = await Submission.find({ student: studentId });
+        const submissions = await Submission.find({ studentId });
 
         const submittedCount = submissions.length;
+        const totalAssignments = assignments.length;
         const pendingCount = Math.max(0, totalAssignments - submittedCount);
-
-        const gradedSubmissions = submissions.filter(s => s.status === 'graded');
-        const avgMarks = gradedSubmissions.length > 0
-            ? gradedSubmissions.reduce((acc, curr) => acc + curr.marks, 0) / gradedSubmissions.length
+        
+        const gradedSubmissions = submissions.filter(s => s.marks > 0);
+        const avgMarks = gradedSubmissions.length > 0 
+            ? gradedSubmissions.reduce((acc, curr) => acc + curr.marks, 0) / gradedSubmissions.length 
             : 0;
 
         res.json({
             totalAssignments,
             submittedCount,
             pendingCount,
-            avgMarks: Math.round(avgMarks * 10) / 10 // 1 decimal place
+            avgMarks: Math.round(avgMarks)
         });
-
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Request a resubmission
-// @route   POST /api/submissions/:id/request-resubmit
-// @access  Private/Student
-const requestResubmission = async (req, res) => {
+// @desc    Request resubmission (Student)
+const requestResubmit = async (req, res) => {
     try {
         const { reason } = req.body;
         const submission = await Submission.findById(req.params.id);
 
-        if (!submission) {
-            return res.status(404).json({ message: 'Submission not found' });
-        }
-
-        if (submission.student.toString() !== req.user.id) {
-            return res.status(403).json({ message: 'Not authorized' });
-        }
-
-        if (submission.resubmissionStatus === 'requested') {
-            return res.status(400).json({ message: 'Resubmission request is already pending' });
+        if (!submission) return res.status(404).json({ message: 'Submission not found' });
+        
+        if (submission.studentId.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'Not authorized' });
         }
 
         submission.resubmissionStatus = 'requested';
-        submission.resubmissionReason = reason || 'No reason provided';
+        submission.resubmissionReason = reason;
         await submission.save();
 
-        res.json(submission);
+        res.json({ message: 'Resubmission request sent', submission });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Approve or Reject a resubmission request
-// @route   PUT /api/submissions/:id/resubmit-status
-// @access  Private/Staff
-const updateResubmissionStatus = async (req, res) => {
+// @desc    Handle resubmission request (Staff)
+const handleResubmissionStatus = async (req, res) => {
     try {
-        const { status } = req.body; // 'approved' or 'rejected'
-        const submission = await Submission.findById(req.params.id).populate('assignment');
+        const { status } = req.body;
+        const submission = await Submission.findById(req.params.id);
 
-        if (!submission) {
-            return res.status(404).json({ message: 'Submission not found' });
-        }
-
-        if (status !== 'approved' && status !== 'rejected') {
-            return res.status(400).json({ message: 'Invalid status' });
-        }
-
-        const Subject = require('../models/Subject');
-        const subject = await Subject.findById(submission.assignment.subject);
-
-        if (!subject || !subject.staff.includes(req.user.id)) {
-            return res.status(403).json({ message: 'Access Denied: You are not assigned to this subject' });
-        }
+        if (!submission) return res.status(404).json({ message: 'Submission not found' });
 
         submission.resubmissionStatus = status;
+        
+        // If approved, we can also update the main status to reflect that a new attempt is awaited
+        if (status === 'approved') {
+            submission.status = 're-eval-approved';
+        } else {
+            submission.status = 're-eval-rejected';
+        }
+
         await submission.save();
-
-        res.json(submission);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Run student code against sample test cases
-// @route   POST /api/submissions/run-samples
-// @access  Private/Student
-const runSampleTests = async (req, res) => {
-    try {
-        const { assignmentId, code, language } = req.body;
-        const assignment = await Assignment.findById(assignmentId);
-
-        if (!assignment) {
-            return res.status(404).json({ message: 'Assignment not found' });
-        }
-
-        // Only run visible sample test cases
-        const sampleCases = (assignment.formatConfig?.testCases || assignment.testCases || [])
-            .filter(tc => !tc.isHidden);
-
-        if (sampleCases.length === 0) {
-            // If no test cases are marked as visibile, use the sample input/output from config
-            const config = assignment.programmingConfig || {};
-            if (config.sampleInput && config.sampleOutput) {
-                sampleCases.push({
-                    input: config.sampleInput,
-                    output: config.sampleOutput,
-                    marks: 0
-                });
-            }
-        }
-
-        const results = [];
-        for (const tc of sampleCases) {
-            const output = await executeCode(language || 'python', code, tc.input);
-            const expected = (tc.output || tc.expectedOutput || '').trim();
-            const actual = output.trim();
-            results.push({
-                input: tc.input,
-                expected: expected,
-                actual: actual,
-                passed: expected === actual
-            });
-        }
-
-        res.json({ results });
+        res.json({ message: `Resubmission ${status}`, submission });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -732,10 +254,7 @@ module.exports = {
     getMySubmissions,
     getSubmissionsForAssignment,
     gradeSubmission,
-    lockMarks,
-    unlockMarks,
     getStudentStats,
-    requestResubmission,
-    updateResubmissionStatus,
-    runSampleTests
+    requestResubmit,
+    handleResubmissionStatus
 };

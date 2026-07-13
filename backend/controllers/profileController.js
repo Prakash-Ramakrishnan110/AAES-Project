@@ -171,10 +171,16 @@ const updateMyProfile = async (req, res) => {
         if (req.body.schooling) user.schooling = req.body.schooling;
         if (req.body.currentCgpa) user.currentCgpa = req.body.currentCgpa;
         if (req.body.historyOfArrears) user.historyOfArrears = req.body.historyOfArrears;
+        if (req.body.preferences) {
+            user.preferences = { ...user.preferences, ...req.body.preferences };
+        }
 
         // Handle profile image upload
         if (req.file) {
-            const identifier = req.user?.registerNumber || req.user?._id?.toString() || 'anonymous';
+            const namePart = req.user?.fullName ? req.user.fullName.trim().replace(/[^a-zA-Z0-9]/g, '_') : 'Student';
+            const regPart = req.user?.registerNumber || req.user?._id?.toString() || 'ID';
+            const identifier = `${namePart}_${regPart}`.toLowerCase();
+            
             user.profileImage = `/uploads/${identifier}/${req.file.filename}`;
             console.log(`[ProfileController] Profile image assigned path: ${user.profileImage}`);
         }
@@ -198,7 +204,8 @@ const updateMyProfile = async (req, res) => {
             currentCgpa: updatedUser.currentCgpa,
             historyOfArrears: updatedUser.historyOfArrears,
             profileImage: updatedUser.profileImage,
-            department: updatedUser.department
+            department: updatedUser.department,
+            preferences: updatedUser.preferences
         });
     } catch (error) {
         console.error(error);

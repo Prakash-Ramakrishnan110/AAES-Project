@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import DashboardLayout, { type HeaderOptions } from './DashboardLayout';
-import { LayoutDashboard, Users, BookOpen, Settings, CheckSquare, CalendarDays, FileText, FileBadge, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Settings, FileText } from 'lucide-react';
 
 const HODLayout = () => {
     const [headerOptions, setHeaderOptions] = useState<HeaderOptions>({
@@ -15,10 +15,7 @@ const HODLayout = () => {
             to: "/hod/subjects",
             items: [
                 { label: "Subject Management", to: "/hod/subjects" },
-                { label: "Attendance Tracker", to: "/hod/attendance" },
-                { label: "Internal Assessments", to: "/hod/internal-marks" },
-
-                { label: "Governance Hub", to: "/hod/governance" },
+                { label: "Internal Marks", to: "/hod/internal-marks" }
             ]
         },
         {
@@ -27,8 +24,7 @@ const HODLayout = () => {
             to: "/hod/staff",
             items: [
                 { label: "Faculty Directory", to: "/hod/staff" },
-                { label: "Student Directory", to: "/hod/students" },
-                { label: "Class Advisors", to: "/hod/class-advisors" },
+                { label: "Student Directory", to: "/hod/students" }
             ]
         },
         {
@@ -36,34 +32,8 @@ const HODLayout = () => {
             label: "Insights",
             to: "/hod/analytics",
             items: [
-                { label: "Academic Analytics", to: "/hod/analytics" },
-                { label: "Department Map", to: "/hod/directory" },
+                { label: "Academic Analytics", to: "/hod/analytics" }
             ]
-        },
-        {
-            icon: <Bell className="w-5 h-5" />,
-            label: "Communications",
-            to: "/hod/communications"
-        },
-        {
-            icon: <CheckSquare className="w-5 h-5" />,
-            label: "Work Assignments",
-            to: "/hod/work-assignments"
-        },
-        {
-            icon: <CalendarDays className="w-5 h-5" />,
-            label: "Class Timetables",
-            to: "/hod/timetables"
-        },
-        {
-            icon: <FileText className="w-5 h-5" />,
-            label: "Student Leaves",
-            to: "/hod/leaves"
-        },
-        {
-            icon: <FileBadge className="w-5 h-5" />,
-            label: "Document Vault",
-            to: "/hod/documents"
         },
         { icon: <Settings className="w-5 h-5" />, label: "Settings", to: "/settings" },
     ];

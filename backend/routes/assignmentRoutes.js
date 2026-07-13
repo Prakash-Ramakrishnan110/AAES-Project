@@ -11,10 +11,10 @@ const {
     getStaffStats,
     getStudentAssignments
 } = require('../controllers/assignmentController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, protectPastSemesters } = require('../middleware/authMiddleware');
 
 router.route('/')
-    .post(protect, authorize('staff'), createAssignment)
+    .post(protect, authorize('staff'), protectPastSemesters, createAssignment)
     .get(protect, getAssignments);
 
 router.get('/my-created', protect, authorize('staff'), getMyCreatedAssignments);
@@ -23,9 +23,9 @@ router.get('/stats/staff', protect, authorize('staff'), getStaffStats);
 
 router.route('/:id')
     .get(protect, getAssignmentById)
-    .put(protect, authorize('staff'), updateAssignment)
-    .delete(protect, authorize('staff'), deleteAssignment);
+    .put(protect, authorize('staff'), protectPastSemesters, updateAssignment)
+    .delete(protect, authorize('staff'), protectPastSemesters, deleteAssignment);
 
-router.get('/:id/gradebook', protect, authorize('staff'), getAssignmentGradebook);
+router.get('/:id/gradebook', protect, authorize('staff', 'hod'), getAssignmentGradebook);
 
 module.exports = router;

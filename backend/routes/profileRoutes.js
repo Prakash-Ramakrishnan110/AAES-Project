@@ -17,11 +17,11 @@ router.route('/me')
     .get(getMyProfile)
     .put(profileUpload, updateMyProfile);
 
-// HOD Directory Routes
-router.get('/dept/staff', authorize('hod', 'admin'), getDepartmentStaff);
-router.get('/dept/students', authorize('hod', 'admin'), getDepartmentStudents);
+// HOD/Admin Directory Routes
+router.get('/dept/staff', authorize('admin', 'hod'), getDepartmentStaff);
+router.get('/dept/students', authorize('admin', 'hod'), getDepartmentStudents);
 
 // Specific User Profile (Admin/HOD/Staff/Principal)
-router.get('/user/:id', authorize('hod', 'admin', 'staff', 'principal'), getUserProfile);
+router.get('/user/:id', authorize('admin', 'hod', 'staff'), getUserProfile);
 
 module.exports = router;

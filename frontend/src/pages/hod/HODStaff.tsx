@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Plus, Search, User, Mail, Calendar, Trash2, RotateCcw, CheckCircle, XCircle, Camera } from 'lucide-react';
+import { Plus, Search, User, Mail, Calendar, Trash2, RotateCcw, CheckCircle, XCircle, Camera, Settings } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -27,6 +27,8 @@ const HODStaff = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [profileImage, setProfileImage] = useState<File | null>(null);
     const [showInactive, setShowInactive] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editStaffId, setEditStaffId] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
     const [formData, setFormData] = useState({
@@ -49,9 +51,10 @@ const HODStaff = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             // HOD sees only their department faculty (Staff & HODs)
+            const dept = encodeURIComponent(user?.department || '');
             const [staffRes, hodRes] = await Promise.all([
-                axios.get(`${API}/api/users?role=staff&status=all`, config),
-                axios.get(`${API}/api/users?role=hod&status=all`, config)
+                axios.get(`${API}/api/users?role=staff&status=all&department=${dept}`, config),
+                axios.get(`${API}/api/users?role=hod&status=all&department=${dept}`, config)
             ]);
             setStaff([...staffRes.data, ...hodRes.data]);
         } catch (error) {
@@ -69,34 +72,59 @@ const HODStaff = () => {
             data.append('username', formData.username);
             data.append('fullName', formData.fullName);
             data.append('email', formData.email);
-            data.append('password', formData.password);
+            if (!isEditing) data.append('password', formData.password);
             data.append('role', formData.role);
             data.append('academicYear', formData.academicYear);
-            if (user?.department) {
-                data.append('department', user.department);
-            }
-            if (profileImage) {
-                data.append('profileImage', profileImage);
+            if (user?.department) data.append('department', user.department);
+            if (profileImage) data.append('profileImage', profileImage);
+
+            if (isEditing && editStaffId) {
+                await axios.put(`${API}/api/users/${editStaffId}`, data, config);
+                setToastMessage({ text: 'Staff updated successfully!', type: 'success' });
+                setIsEditing(false);
+                setEditStaffId(null);
+            } else {
+                await axios.post(`${API}/api/users`, data, config);
+                setToastMessage({ text: 'Staff added successfully!', type: 'success' });
             }
 
-            await axios.post(`${API}/api/users`, data, config);
             fetchStaff();
             setFormData({
-                username: '',
-                fullName: '',
-                email: '',
-                password: 'password123',
-                role: 'staff',
+                username: '', fullName: '', email: '',
+                password: 'password123', role: 'staff',
                 academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString()
             });
             setProfileImage(null);
-
-            setToastMessage({ text: 'Staff added successfully!', type: 'success' });
             setTimeout(() => setToastMessage(null), 3000);
         } catch (error: any) {
-            setToastMessage({ text: error.response?.data?.message || 'Error adding staff', type: 'error' });
+            setToastMessage({ text: error.response?.data?.message || 'Error processing faculty records', type: 'error' });
             setTimeout(() => setToastMessage(null), 3000);
         }
+    };
+
+    const handleEditClick = (s: User) => {
+        setIsEditing(true);
+        setEditStaffId(s._id);
+        setFormData({
+            username: s.username,
+            fullName: s.fullName || '',
+            email: s.email,
+            password: '', 
+            role: s.role,
+            academicYear: s.academicYear || (new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString())
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setIsEditing(false);
+        setEditStaffId(null);
+        setFormData({
+            username: '', fullName: '', email: '',
+            password: 'password123', role: 'staff',
+            academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString()
+        });
+        setProfileImage(null);
     };
 
     const handleDelete = async (id: string) => {
@@ -182,11 +210,14 @@ const HODStaff = () => {
                 {/* Add Staff Form */}
                 <div className="xl:col-span-1">
                     <div className="bg-white rounded-md shadow-sm overflow-hidden border border-slate-200 sticky top-6">
-                        <div className="bg-slate-900 p-6">
+                        <div className={`p-6 transition-all duration-300 ${isEditing ? 'bg-indigo-600' : 'bg-slate-900'}`}>
                             <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                                <Plus size={20} /> Add Staff
+                                {isEditing ? <Settings size={20} /> : <Plus size={20} />} 
+                                {isEditing ? 'Edit Faculty' : 'Add Staff'}
                             </h2>
-                            <p className="text-slate-400 text-xs mt-1 font-medium">Create new faculty account</p>
+                            <p className="text-slate-400 text-xs mt-1 font-medium">
+                                {isEditing ? `Modifying @${formData.username}` : 'Create new faculty account'}
+                            </p>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleAddStaff} className="space-y-4">
@@ -209,9 +240,10 @@ const HODStaff = () => {
                                         <User className="absolute left-3 top-3 text-gray-400" size={18} />
                                         <input
                                             type="text"
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:bg-slate-50 disabled:text-slate-500"
                                             placeholder="Enter username"
                                             required
+                                            disabled={isEditing}
                                             value={formData.username}
                                             onChange={e => setFormData({ ...formData, username: e.target.value })}
                                         />
@@ -268,12 +300,24 @@ const HODStaff = () => {
                                     </div>
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    className="w-full bg-slate-900 text-white py-2.5 rounded-md font-bold hover:bg-slate-800 transition-colors shadow-sm text-sm mt-2"
-                                >
-                                    Add Faculty
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="submit"
+                                        className={`flex-grow text-white py-2.5 rounded-md font-bold transition-all shadow-sm text-sm mt-2
+                                            ${isEditing ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-900 hover:bg-slate-800'}`}
+                                    >
+                                        {isEditing ? 'Update Records' : 'Add Faculty'}
+                                    </button>
+                                    {isEditing && (
+                                        <button
+                                            type="button"
+                                            onClick={cancelEdit}
+                                            className="px-4 bg-slate-100 border border-slate-200 text-slate-600 py-2.5 rounded-md font-bold text-sm mt-2 hover:bg-slate-200"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -370,8 +414,15 @@ const HODStaff = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-5 py-4 whitespace-nowrap text-right text-xs font-bold">
+                                                <td className="px-5 py-4 whitespace-nowrap text-right text-xs font-bold" onClick={e => e.stopPropagation()}>
                                                     <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleEditClick(s)}
+                                                            className="text-amber-700 hover:text-amber-900 flex items-center gap-1 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-2.5 py-1 rounded transition-colors"
+                                                            title="Edit Details"
+                                                        >
+                                                            <Settings size={12} /> Edit
+                                                        </button>
                                                         {s.isActive ? (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleDelete(s._id); }}

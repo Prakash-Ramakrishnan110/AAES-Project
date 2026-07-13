@@ -7,7 +7,7 @@ const { protect: authMiddleware } = require('../middleware/authMiddleware');
 
 // Using basic fetch for local Ollama, avoiding extra heavy langchain dependencies 
 // unless user specifies otherwise. Assuming local Ollama running on default 11434.
-const OLLAMA_URL = 'http://localhost:11434/api/generate';
+const OLLAMA_URL = 'http://127.0.0.1:11434/api/generate';
 const AI_MODEL = 'gemma3:1b'; // Match the installed model in Ollama
 
 /**
@@ -25,7 +25,7 @@ function chunkText(text, size = 1000, overlap = 200) {
     return chunks;
 }
 
-const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://127.0.0.1:8000';
 
 // @route   POST /api/ai-chat/ask
 // @desc    Ask a question about a specific study material

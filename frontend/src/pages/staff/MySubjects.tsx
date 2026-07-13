@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { BookOpen, Users, Clock, Search, Filter, ClipboardList, BarChart2, Calculator } from 'lucide-react';
+import { BookOpen, Users, Clock, Search, Filter, Calculator } from 'lucide-react';
 
 import { Card } from '../../components/ui/Card';
 import { useNavigate } from 'react-router-dom';
@@ -48,7 +48,7 @@ const MySubjects = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold font-display text-gray-900">My Subjects</h1>
-                    <p className="text-gray-500">Manage your courses, attendance, and materials</p>
+                    <p className="text-gray-500">Manage your courses and materials</p>
                 </div>
             </div>
 
@@ -101,17 +101,11 @@ const MySubjects = () => {
                             </div>
                         </div>
 
-                        {/* Assessment & Attendance Action Buttons */}
+                        {/* Assessment Action Buttons */}
                         <div className="border-t border-gray-100 pt-4 mt-2 grid grid-cols-2 gap-2">
                             <button
-                                onClick={() => navigate(`/staff/attendance/${subject._id}`)}
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition-colors"
-                            >
-                                <ClipboardList className="w-3.5 h-3.5" /> Attendance
-                            </button>
-                            <button
                                 onClick={() => navigate(`/staff/internal-marks/${subject._id}`)}
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
+                                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
                             >
                                 <Calculator className="w-3.5 h-3.5" /> Internal Marks
                             </button>
@@ -120,12 +114,6 @@ const MySubjects = () => {
                                 className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 transition-colors"
                             >
                                 <BookOpen className="w-3.5 h-3.5" /> Study Resources
-                            </button>
-                            <button
-                                onClick={() => navigate(`/staff/attendance/${subject._id}/summary`)}
-                                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-xl border border-gray-200 transition-colors"
-                            >
-                                <BarChart2 className="w-3.5 h-3.5" /> View Subject Analytics
                             </button>
                         </div>
                     </Card>

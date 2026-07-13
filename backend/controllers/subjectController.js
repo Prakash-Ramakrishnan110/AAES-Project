@@ -3,17 +3,22 @@ const User = require('../models/User');
 const Assignment = require('../models/Assignment');
 const Submission = require('../models/Submission');
 const AuditLog = require('../models/AuditLog');
-const StaffAssignmentRequest = require('../models/StaffAssignmentRequest');
 
 // @desc    Create a new subject
 // @route   POST /api/subjects
 // @access  Private/Admin/HOD
 const createSubject = async (req, res) => {
-    let { name, code, department, semester, academicYear } = req.body;
+    let { name, code, department, semester, academicYear, credits, type, contactHours } = req.body;
+
+    // Default contact hours based on type if not provided
+    if (!contactHours) {
+        if (type === 'Lab') contactHours = 4;
+        else if (type === 'Theory') contactHours = 3;
+        else if (type === 'Project') contactHours = 2;
+    }
 
     // Governance: HOD Restrictions
     if (req.user.role === 'hod') {
-        // Force department to be HODs department
         department = req.user.department;
     } else if (!department && req.user.role === 'admin') {
         return res.status(400).json({ message: 'Please provide department' });
@@ -24,7 +29,10 @@ const createSubject = async (req, res) => {
         code,
         department,
         semester,
-        academicYear
+        academicYear,
+        credits: credits || 3,
+        type: type || 'Theory',
+        contactHours: contactHours || 3
     });
 
     if (subject) {
@@ -44,17 +52,17 @@ const getSubjects = async (req, res) => {
     if (academicYear) queryFilters.push({ academicYear });
 
     if (department && staffId) {
-        queryFilters.push({ $or: [{ department }, { staff: staffId }] });
+        queryFilters.push({ $or: [{ department }, { staff: staffId }, { staffId: staffId }] });
     } else if (department) {
         queryFilters.push({ department });
     } else if (staffId) {
-        queryFilters.push({ staff: staffId });
+        queryFilters.push({ $or: [{ staff: staffId }, { staffId: staffId }] });
     }
 
     const query = queryFilters.length > 0 ? { $and: queryFilters } : {};
 
     console.log("getSubjects Query:", query);
-    const subjects = await Subject.find(query).populate('staff', 'username email');
+    const subjects = await Subject.find(query).populate('staff', 'username fullName email');
     console.log(`Found ${subjects.length} subjects for query`);
     res.json(subjects);
 };
@@ -78,75 +86,35 @@ const assignStaff = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or inactive staff user' });
         }
 
-        // Cross-Department Workflow Logic
-        if (req.user.role === 'hod' && staffUser.department !== req.user.department) {
-            // Check if there is an existing pending request for this staff and subject
-            const existingRequest = await StaffAssignmentRequest.findOne({
-                subject: subject._id,
-                staff: staffId,
-                status: 'PENDING'
-            });
 
-            if (existingRequest) {
-                return res.status(400).json({ message: 'An assignment request is already pending for this staff and subject' });
-            }
-
-            // Create a pending request
-            await StaffAssignmentRequest.create({
-                subject: subject._id,
-                staff: staffId,
-                requestedBy: req.user.id,
-                requestingDepartment: req.user.department,
-                staffPrimaryDepartment: staffUser.department,
-                academicYear: subject.academicYear,
-                status: 'PENDING'
-            });
-
-            // Log Audit
-            try {
-                await AuditLog.create({
-                    action: 'CREATE_ASSIGNMENT_REQUEST',
-                    performedBy: req.user.id,
-                    targetId: subject._id,
-                    targetModel: 'Subject',
-                    department: subject.department,
-                    details: {
-                        staffId: staffId,
-                        staffName: staffUser.username,
-                        staffDepartment: staffUser.department,
-                        academicYear: subject.academicYear,
-                        assignedByRole: req.user.role
-                    }
-                });
-            } catch (err) { console.error('Audit log failed during request creation:', err); }
-
-            return res.status(202).json({ message: 'Assignment request sent to staff\'s primary department HOD for approval.', status: 'pending' });
+        console.log(`Assigning staff ${staffId} to subject ${subject.code}`);
+        // Standardize: Set both legacy and array fields for backward compatibility
+        subject.staffId = staffId;
+        if (!subject.staff.some(id => id.toString() === staffId.toString())) {
+            subject.staff.push(staffId);
         }
 
-        // Direct Assignment (Admin or HOD within own department)
-        if (!subject.staff.includes(staffId)) {
-            subject.staff.push(staffId);
-            await subject.save();
+        await subject.save();
+        console.log(`Saved subject ${subject.code} with staff ${staffId}`);
 
-            // Create Immutable Audit Log
-            try {
-                await AuditLog.create({
-                    action: 'ASSIGN_SUBJECT_STAFF',
-                    performedBy: req.user.id,
-                    targetId: subject._id,
-                    targetModel: 'Subject',
-                    department: subject.department,
-                    details: {
-                        staffId: staffId,
-                        staffName: staffUser.username,
-                        staffDepartment: staffUser.department,
-                        academicYear: subject.academicYear,
-                        assignedByRole: req.user.role
-                    }
-                });
-            } catch (err) {
-                console.error('Audit log failed during subject assignment:', err);
-            }
+        // Create Immutable Audit Log
+        try {
+            await AuditLog.create({
+                action: 'ASSIGN_SUBJECT_STAFF',
+                performedBy: req.user.id,
+                targetId: subject._id,
+                targetModel: 'Subject',
+                department: subject.department,
+                details: {
+                    staffId: staffId,
+                    staffName: staffUser.username,
+                    staffDepartment: staffUser.department,
+                    academicYear: subject.academicYear,
+                    assignedByRole: req.user.role
+                }
+            });
+        } catch (err) {
+            console.error('Audit log failed during subject assignment:', err);
         }
 
         res.json({ subject, status: 'assigned' });
@@ -155,17 +123,83 @@ const assignStaff = async (req, res) => {
     }
 };
 
-// @desc    Delete subject
-// @route   DELETE /api/subjects/:id
-// @access  Private/Admin
-const deleteSubject = async (req, res) => {
+// @desc    Update a subject
+// @route   PUT /api/subjects/:id
+// @access  Private/Admin/HOD
+const updateSubject = async (req, res) => {
+    const { name, code, semester, academicYear, credits, type, contactHours } = req.body;
     const subject = await Subject.findById(req.params.id);
 
     if (subject) {
-        await subject.deleteOne();
-        res.json({ message: 'Subject removed' });
+        // Governance: Check if user is HOD, they can only update within their department
+        if (req.user.role === 'hod' && subject.department !== req.user.department) {
+            return res.status(403).json({ message: 'Not authorized to update subject for other departments' });
+        }
+
+        subject.name = name || subject.name;
+        subject.code = code || subject.code;
+        subject.semester = semester || subject.semester;
+        subject.academicYear = academicYear || subject.academicYear;
+        subject.credits = credits || subject.credits;
+        subject.type = type || subject.type;
+        subject.contactHours = contactHours || subject.contactHours;
+
+        const updatedSubject = await subject.save();
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                action: 'UPDATE_SUBJECT',
+                performedBy: req.user.id,
+                targetId: subject._id,
+                targetModel: 'Subject',
+                department: subject.department,
+                details: {
+                    updatedFields: Object.keys(req.body),
+                    semester: subject.semester,
+                    academicYear: subject.academicYear
+                }
+            });
+        } catch (e) {}
+
+        res.json(updatedSubject);
     } else {
         res.status(404).json({ message: 'Subject not found' });
+    }
+};
+
+// @desc    Delete a subject (Soft Delete)
+// @route   DELETE /api/subjects/:id
+// @access  Private/Admin/HOD
+const deleteSubject = async (req, res) => {
+    try {
+        const subject = await Subject.findById(req.params.id);
+        if (!subject) return res.status(404).json({ message: 'Subject not found' });
+
+        // Governance check
+        if (req.user.role === 'hod' && subject.department !== req.user.department) {
+            return res.status(403).json({ message: 'Not authorized to delete subject for other departments' });
+        }
+
+        // We use soft delete (archiving) rather than permanent delete to preserve historical data
+        subject.isArchived = true;
+        await subject.save();
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                action: 'DELETE_SUBJECT',
+                performedBy: req.user.id,
+                targetId: subject._id,
+                targetModel: 'Subject',
+                department: subject.department || req.user.department,
+                details: { name: subject.name, code: subject.code }
+            });
+        } catch (e) {}
+
+        res.json({ message: 'Subject archived successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -235,7 +269,9 @@ const getEligibleStaffForSubject = async (req, res) => {
                     pendingEvaluations,
                     averagePerformance,
                     passPercentage,
-                    evaluationCompletionRate
+                    evaluationCompletionRate,
+                    weeklyHours: staffSubjects.reduce((acc, s) => acc + (s.contactHours || 0), 0),
+                    utilization: Math.round((staffSubjects.reduce((acc, s) => acc + (s.contactHours || 0), 0) / 18) * 100)
                 }
             };
         }));
@@ -247,147 +283,90 @@ const getEligibleStaffForSubject = async (req, res) => {
     }
 };
 
-const getPendingAssignmentRequests = async (req, res) => {
+
+// @desc    Get workload statistics for all staff in department
+// @route   GET /api/subjects/workload/stats
+// @access  Private/HOD
+const getStaffWorkload = async (req, res) => {
     try {
-        const requests = await StaffAssignmentRequest.find({
-            staffPrimaryDepartment: req.user.department,
-            status: 'PENDING'
-        })
-            .populate('subject', 'name code semester')
-            .populate('staff', 'username email department')
-            .populate('requestedBy', 'username email department')
-            .sort({ createdAt: -1 });
+        const department = req.user.role === 'admin' ? req.query.department : req.user.department;
+        if (!department) return res.status(400).json({ message: 'Department is required' });
 
-        // Calculate Workload Intelligence for each staff in the requests
-        const intelligenceData = await Promise.all(requests.map(async (request) => {
-            const staffId = request.staff._id;
+        const staffList = await User.find({ role: 'staff', department, isActive: true }).select('username fullName email');
+        const subjects = await Subject.find({ department });
 
-            // 1. Subjects Assigned
-            const assignedSubjects = await Subject.find({ staff: staffId });
-            const totalSubjectsAssigned = assignedSubjects.length;
+        const MAX_HOURS = 18; // Standard max hours per week
 
-            // 2. Pending Evaluations
-            let pendingEvaluations = 0;
-            const assignments = await Assignment.find({ createdBy: staffId });
-            if (assignments.length > 0) {
-                const assignmentIds = assignments.map(a => a._id);
-                pendingEvaluations = await Submission.countDocuments({
-                    assignment: { $in: assignmentIds },
-                    status: 'submitted'
-                });
-            }
+        const workloadStats = staffList.map(staff => {
+            const assignedSubjects = subjects.filter(s => s.staff.some(id => id.toString() === staff._id.toString()));
+            const totalHours = assignedSubjects.reduce((acc, s) => acc + (s.contactHours || 0), 0);
+            const totalCredits = assignedSubjects.reduce((acc, s) => acc + (s.credits || 0), 0);
 
-            // 3. Total Students Load (estimate based on enrolled students in subjects)
-            let totalStudentsLoad = 0;
-            for (const subj of assignedSubjects) {
-                const enrolled = await User.countDocuments({
-                    role: 'student',
-                    department: subj.department,
-                    semester: subj.semester,
-                    academicYear: subj.academicYear
-                });
-                totalStudentsLoad += enrolled;
+            let status = 'Low';
+            let color = 'emerald'; // Green
+            if (totalHours > MAX_HOURS) {
+                status = 'Overloaded';
+                color = 'red';
+            } else if (totalHours >= 14) {
+                status = 'High';
+                color = 'orange';
+            } else if (totalHours >= 8) {
+                status = 'Medium';
+                color = 'amber';
             }
 
             return {
-                ...request.toObject(),
-                workload: {
-                    totalSubjectsAssigned,
-                    totalStudentsLoad,
-                    pendingEvaluations
-                }
+                staffId: staff._id,
+                name: staff.fullName || staff.username,
+                email: staff.email,
+                totalSubjects: assignedSubjects.length,
+                totalHours,
+                totalCredits,
+                utilization: Math.round((totalHours / MAX_HOURS) * 100),
+                status,
+                color,
+                subjects: assignedSubjects.map(s => ({ name: s.name, code: s.code, hours: s.contactHours }))
             };
-        }));
+        });
 
-        res.json(intelligenceData);
+        res.json(workloadStats);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Approve staff assignment request
-// @route   PUT /api/subjects/assignment-requests/:id/approve
-// @access  Private/HOD
-const approveAssignmentRequest = async (req, res) => {
+// @desc    Get subjects for currently logged in student based on dept/sem
+// @route   GET /api/subjects/my-enrolled
+// @access  Private/Student
+const getMyEnrolledSubjects = async (req, res) => {
     try {
-        const request = await StaffAssignmentRequest.findById(req.params.id);
-
-        if (!request) {
-            return res.status(404).json({ message: 'Request not found' });
+        if (req.user.role !== 'student') {
+            return res.status(403).json({ message: 'Only students can view enrolled subjects' });
         }
 
-        if (request.status !== 'PENDING') {
-            return res.status(400).json({ message: 'Request is already processed' });
-        }
-
-        if (req.user.department !== request.staffPrimaryDepartment) {
-            return res.status(403).json({ message: 'Not authorized to approve for this department' });
-        }
-
-        const subject = await Subject.findById(request.subject);
-        if (!subject) {
-            return res.status(404).json({ message: 'Subject not found' });
-        }
-
-        // Apply mapping
-        if (!subject.staff.includes(request.staff)) {
-            subject.staff.push(request.staff);
-            await subject.save();
-        }
-
-        // Update Request
-        request.status = 'APPROVED';
-        await request.save();
-
-        // Audit Log
-        await AuditLog.create({
-            action: 'APPROVE_ASSIGNMENT_REQUEST',
-            performedBy: req.user.id,
-            targetId: request._id,
-            targetModel: 'StaffAssignmentRequest',
+        const subjects = await Subject.find({
             department: req.user.department,
-            details: { staffId: request.staff, subjectId: request.subject }
-        });
+            semester: req.user.semester,
+            isArchived: false
+        }).populate('staff', 'username fullName profileImage');
 
-        res.json({ message: 'Request approved successfully', request });
+        res.json(subjects);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Reject staff assignment request
-// @route   PUT /api/subjects/assignment-requests/:id/reject
-// @access  Private/HOD
-const rejectAssignmentRequest = async (req, res) => {
+// @desc    Get subjects assigned to currently logged in staff
+// @route   GET /api/subjects/my-assigned
+// @access  Private/Staff
+const getMyAssignedSubjects = async (req, res) => {
     try {
-        const request = await StaffAssignmentRequest.findById(req.params.id);
+        const subjects = await Subject.find({
+            staff: req.user.id,
+            isArchived: false
+        }).populate('staff', 'username fullName profileImage');
 
-        if (!request) {
-            return res.status(404).json({ message: 'Request not found' });
-        }
-
-        if (request.status !== 'PENDING') {
-            return res.status(400).json({ message: 'Request is already processed' });
-        }
-
-        if (req.user.department !== request.staffPrimaryDepartment) {
-            return res.status(403).json({ message: 'Not authorized to reject for this department' });
-        }
-
-        request.status = 'REJECTED';
-        await request.save();
-
-        // Audit Log
-        await AuditLog.create({
-            action: 'REJECT_ASSIGNMENT_REQUEST',
-            performedBy: req.user.id,
-            targetId: request._id,
-            targetModel: 'StaffAssignmentRequest',
-            department: req.user.department,
-            details: { staffId: request.staff, subjectId: request.subject }
-        });
-
-        res.json({ message: 'Request rejected successfully', request });
+        res.json(subjects);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -396,10 +375,11 @@ const rejectAssignmentRequest = async (req, res) => {
 module.exports = {
     createSubject,
     getSubjects,
+    updateSubject,
     assignStaff,
     deleteSubject,
     getEligibleStaffForSubject,
-    getPendingAssignmentRequests,
-    approveAssignmentRequest,
-    rejectAssignmentRequest
+    getStaffWorkload,
+    getMyEnrolledSubjects,
+    getMyAssignedSubjects
 };

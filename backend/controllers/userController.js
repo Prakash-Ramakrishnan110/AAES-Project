@@ -2,6 +2,9 @@ const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const fs = require('fs');
 const path = require('path');
+const csv = require('csv-parser');
+
+// ... (existing getDirectorySize and createAuditLog)
 
 const getDirectorySize = (dirPath) => {
     let size = 0;
@@ -202,7 +205,11 @@ const createUser = async (req, res) => {
         return res.status(400).json({ message: 'User already exists' });
     }
 
-    const profileImage = req.file ? `/uploads/${req.file.filename}` : '';
+    const namePart = fullName ? fullName.trim().replace(/[^a-zA-Z0-9]/g, '_') : 'Student';
+    const regPart = registerNumber || staffId || 'ID';
+    const identifier = `${namePart}_${regPart}`.toLowerCase();
+    
+    const profileImage = req.file ? `/uploads/${identifier}/${req.file.filename}` : '';
 
     const isStudentWithDefaultPassword = role === 'student' && password === 'password123';
 
@@ -288,7 +295,11 @@ const updateUser = async (req, res) => {
         }
 
         if (req.file) {
-            user.profileImage = `/uploads/${req.file.filename}`;
+            const namePart = user.fullName ? user.fullName.trim().replace(/[^a-zA-Z0-9]/g, '_') : 'Student';
+            const regPart = user.registerNumber || user.staffId || user._id.toString();
+            const identifier = `${namePart}_${regPart}`.toLowerCase();
+            
+            user.profileImage = `/uploads/${identifier}/${req.file.filename}`;
         }
 
         const updatedUser = await user.save();
@@ -425,7 +436,7 @@ const getSystemStats = async (req, res) => {
             // AI Engine (Ping Python service)
             try {
                 const Settings = require('../models/Settings');
-                const settings = await Settings.findOne({ isInitialized: true }) || { aiEngineUrl: 'http://localhost:8000' };
+                const settings = await Settings.findOne({ isInitialized: true }) || { aiEngineUrl: 'http://127.0.0.1:8000' };
                 const aiEndpointBase = settings.aiEngineUrl.endsWith('/') ? settings.aiEngineUrl.slice(0, -1) : settings.aiEngineUrl;
 
                 const start = Date.now();
@@ -666,6 +677,101 @@ const getStaffStudents = async (req, res) => {
     }
 };
 
+// @desc    Bulk upload users via CSV
+// @route   POST /api/users/bulk-upload
+// @access  Private/Admin/HOD
+const bulkUploadUsers = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'Please upload a CSV file' });
+    }
+
+    const results = [];
+    const failed = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    const stream = fs.createReadStream(req.file.path).pipe(csv());
+
+    stream.on('data', (data) => results.push(data));
+    stream.on('error', (error) => {
+        res.status(500).json({ message: 'Error parsing CSV', error: error.message });
+    });
+
+    stream.on('end', async () => {
+        for (const row of results) {
+            try {
+                let { username, email, password, role, department, academicYear, semester, fullName, registerNumber, staffId } = row;
+
+                // Basic validation
+                if (!email || !role) {
+                    failed.push({ user: email || 'Unknown', error: 'Email and role are required' });
+                    failedCount++;
+                    continue;
+                }
+
+                // HOD Restrictions
+                if (req.user.role === 'hod') {
+                    // Force department
+                    department = req.user.department;
+                    // Restricted roles
+                    if (role !== 'student' && role !== 'staff') {
+                        failed.push({ user: email, error: 'HODs can only upload students or staff' });
+                        failedCount++;
+                        continue;
+                    }
+                }
+
+                // Admin check
+                if (req.user.role === 'admin' && !department) {
+                    failed.push({ user: email, error: 'Department is required for admin upload' });
+                    failedCount++;
+                    continue;
+                }
+
+                const userExists = await User.findOne({ email });
+                if (userExists) {
+                    failed.push({ user: email, error: 'User already exists' });
+                    failedCount++;
+                    continue;
+                }
+
+                await User.create({
+                    username: username || email.split('@')[0],
+                    email,
+                    password: password || 'password123',
+                    role,
+                    department,
+                    academicYear,
+                    semester,
+                    fullName: fullName || username,
+                    registerNumber,
+                    staffId,
+                    createdBy: req.user.id
+                });
+
+                successCount++;
+            } catch (err) {
+                failed.push({ user: row.email || 'Unknown', error: err.message });
+                failedCount++;
+            }
+        }
+
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+
+        // Audit Log
+        const deptLog = req.user.role === 'hod' ? req.user.department : 'SYSTEM';
+        await createAuditLog('BULK_UPLOAD_USERS', req.user.id, null, deptLog, { successCount, failedCount });
+
+        res.json({
+            message: 'Bulk upload completed',
+            successCount,
+            failedCount,
+            failed
+        });
+    });
+};
+
 module.exports = {
     getUsers,
     createUser,
@@ -676,5 +782,6 @@ module.exports = {
     getStaffProfile,
     bulkUpdateStudents,
     getAuditLogs,
-    getStaffStudents
+    getStaffStudents,
+    bulkUploadUsers
 };

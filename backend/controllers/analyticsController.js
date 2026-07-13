@@ -717,7 +717,11 @@ const getAcademicForecast = async (req, res) => {
     }
 };
 
+
+
+
 module.exports = {
+    getStaffPerformance,
     getDepartmentPerformance,
     getSemesterTrends,
     getSubjectPerformance,

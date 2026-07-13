@@ -1,19 +1,55 @@
 const express = require('express');
 const router = express.Router();
-const { getNotifications, markRead, markAllRead, sendAnnouncement, sendEmergencyBroadcast, getAllNotificationsForPrincipal } = require('../controllers/notificationController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const Notification = require('../models/Notification');
+const { protect } = require('../middleware/authMiddleware');
 
-router.route('/')
-    .get(protect, getNotifications);
+// @desc    Get all user notifications
+// @route   GET /api/notifications
+// @access  Private
+router.get('/', protect, async (req, res) => {
+    try {
+        const notifications = await Notification.find({ recipient: req.user.id })
+            .sort({ createdAt: -1 })
+            .limit(20);
+        res.json(notifications);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
-router.route('/read-all')
-    .put(protect, markAllRead);
+// @desc    Mark notification as read
+// @route   PUT /api/notifications/:id/read
+// @access  Private
+router.put('/:id/read', protect, async (req, res) => {
+    try {
+        const notification = await Notification.findById(req.params.id);
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+        if (notification.recipient.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+        notification.isRead = true;
+        await notification.save();
+        res.json(notification);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
-router.route('/:id/read')
-    .put(protect, markRead);
-
-router.post('/send', protect, authorize('admin', 'hod', 'staff', 'principal'), sendAnnouncement);
-router.post('/emergency', protect, authorize('admin', 'principal'), sendEmergencyBroadcast);
-router.get('/principal/all', protect, authorize('principal', 'admin'), getAllNotificationsForPrincipal);
+// @desc    Mark all notifications as read
+// @route   PUT /api/notifications/read-all
+// @access  Private
+router.put('/read-all', protect, async (req, res) => {
+    try {
+        await Notification.updateMany(
+            { recipient: req.user.id, isRead: false },
+            { isRead: true }
+        );
+        res.json({ message: 'All notifications marked as read' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 module.exports = router;

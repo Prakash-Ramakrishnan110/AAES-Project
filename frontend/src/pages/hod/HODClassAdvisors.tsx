@@ -32,7 +32,7 @@ const HODClassAdvisors = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const [staffRes, advisorRes] = await Promise.all([
-                axios.get(`${API}/api/users?role=staff&status=all`, config),
+                axios.get(`${API}/api/users?role=staff&status=all&department=${encodeURIComponent(user?.department || '')}`, config),
                 axios.get(`${API}/api/advisor/assignments`, config)
             ]);
             setStaffList(staffRes.data);

@@ -1,54 +1,51 @@
 const mongoose = require('mongoose');
 
 const reEvaluationRequestSchema = new mongoose.Schema({
-    student: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+    submissionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Submission', 
+        required: true 
     },
-    assignment: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Assignment',
-        required: true
+    assignmentId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Assignment', 
+        required: true 
     },
-    submission: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Submission',
-        required: true
+    subjectId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Subject', 
+        required: true 
     },
-    subject: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Subject',
-        required: true
+    studentId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true 
     },
-    originalScore: {
-        type: Number,
-        required: true
+    originalScore: { 
+        type: Number, 
+        required: true 
     },
-    reason: {
-        type: String,
-        required: true,
-        trim: true
+    reason: { 
+        type: String, 
+        required: true 
     },
-    status: {
-        type: String,
-        enum: ['Pending', 'Approved', 'Rejected'],
-        default: 'Pending'
+    ocrCorrection: { 
+        type: String 
     },
-    reviewedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+    status: { 
+        type: String, 
+        enum: ['pending', 'reviewed', 'completed', 'rejected'], 
+        default: 'pending' 
     },
-    updatedScore: {
-        type: Number
+    reviewedBy: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User' 
     },
-    reviewerComment: {
-        type: String,
-        trim: true
-    },
-    reviewedAt: {
-        type: Date
+    remarks: { 
+        type: String 
     }
-}, { timestamps: true });
+}, {
+    timestamps: true
+});
 
 module.exports = mongoose.model('ReEvaluationRequest', reEvaluationRequestSchema);

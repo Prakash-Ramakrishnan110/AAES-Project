@@ -16,27 +16,56 @@ const protect = async (req, res, next) => {
             }
 
             req.user = user;
-            next();
+            return next();
         } catch (error) {
             console.error(error);
-            res.status(401).json({ message: 'Not authorized, token failed' });
+            return res.status(401).json({ message: 'Not authorized, token failed' });
         }
     }
 
     if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+        return res.status(401).json({ message: 'Not authorized, no token' });
     }
 };
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
+        if (!req.user || !roles.includes(req.user.role)) {
             return res.status(403).json({
-                message: `User role ${req.user.role} is not authorized into this route`
+                message: `User role ${req?.user?.role || 'Guest'} is not authorized into this route`
             });
         }
         next();
     };
 };
 
-module.exports = { protect, authorize };
+// Check if the request is for a past semester and block write operations
+const protectPastSemesters = (req, res, next) => {
+    // Skip protection for GET requests (Read-Only allows viewing)
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+        return next();
+    }
+
+    if (!req.user) {
+        return next(); // Fail safe: proceed if user context isn't available to this middleware
+    }
+
+    // Safely extract requested semester with fallback
+    const semesterFromQuery = req.query?.semester;
+    const semesterFromBody = req.body?.semester;
+    const requestedSemester = parseInt(semesterFromQuery || semesterFromBody);
+    
+    // Staff/Admin/HOD may not have a semester property on their User object
+    const currentSemester = req.user?.semester ? parseInt(req.user.semester) : null;
+
+    if (requestedSemester && currentSemester && requestedSemester < currentSemester) {
+        return res.status(403).json({
+            message: 'Read-Only Mode: Historical data from past semesters cannot be modified.',
+            isReadOnly: true
+        });
+    }
+
+    next();
+};
+
+module.exports = { protect, authorize, protectPastSemesters };

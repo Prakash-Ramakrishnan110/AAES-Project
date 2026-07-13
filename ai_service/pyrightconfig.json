@@ -1,0 +1,15 @@
+{
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "C:/Users/praka/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/site-packages",
+        "."
+      ]
+    }
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false
+}

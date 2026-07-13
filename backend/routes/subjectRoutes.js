@@ -3,31 +3,33 @@ const router = express.Router();
 const {
     createSubject,
     getSubjects,
+    updateSubject,
     assignStaff,
     deleteSubject,
     getEligibleStaffForSubject,
-    getPendingAssignmentRequests,
-    approveAssignmentRequest,
-    rejectAssignmentRequest
+    getStaffWorkload,
+    getMyEnrolledSubjects,
+    getMyAssignedSubjects
 } = require('../controllers/subjectController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+router.get('/my-enrolled', protect, authorize('student'), getMyEnrolledSubjects);
+router.get('/my-assigned', protect, authorize('staff', 'hod'), getMyAssignedSubjects);
+
 router.route('/')
-    .post(protect, authorize('admin', 'hod'), createSubject) // HODs allowed
+    .post(protect, authorize('admin', 'hod'), createSubject)
     .get(protect, getSubjects);
 
 router.route('/:id/assign')
-    .put(protect, authorize('admin', 'hod'), assignStaff); // HODs allowed to assign staff
+    .put(protect, authorize('admin', 'hod'), assignStaff);
 
 router.route('/:id/eligible-staff')
     .get(protect, authorize('admin', 'hod'), getEligibleStaffForSubject);
 
-// Assignment Request Routes (Must be before /:id)
-router.get('/assignment-requests/pending', protect, authorize('hod'), getPendingAssignmentRequests);
-router.put('/assignment-requests/:id/approve', protect, authorize('hod'), approveAssignmentRequest);
-router.put('/assignment-requests/:id/reject', protect, authorize('hod'), rejectAssignmentRequest);
+router.get('/workload/stats', protect, authorize('hod'), getStaffWorkload);
 
 router.route('/:id')
-    .delete(protect, authorize('admin', 'hod'), deleteSubject); // HODs allowed to delete subjects (their own, handled in logic if needed, but strict governance usually allows HOD to manage their dept subjects)
+    .put(protect, authorize('admin', 'hod'), updateSubject)
+    .delete(protect, authorize('admin', 'hod'), deleteSubject);
 
 module.exports = router;

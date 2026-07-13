@@ -1,15 +1,15 @@
-const Settings = require('../models/Settings');
 const mongoose = require('mongoose');
-const AuditLog = require('../models/AuditLog');
+const fs = require('fs');
+const path = require('path');
 
-// @desc    Get global settings
+// @desc    Get system settings
 // @route   GET /api/settings
 // @access  Private/Admin
-const getSettings = async (req, res) => {
+exports.getSettings = async (req, res) => {
     try {
-        let settings = await Settings.findOne({ isInitialized: true });
+        let settings = await Settings.findOne();
         if (!settings) {
-            settings = await Settings.create({ isInitialized: true });
+            settings = await Settings.create({});
         }
         res.json(settings);
     } catch (error) {
@@ -17,154 +17,74 @@ const getSettings = async (req, res) => {
     }
 };
 
-// @desc    Update global settings
+// @desc    Update system settings
 // @route   PUT /api/settings
 // @access  Private/Admin
-const updateSettings = async (req, res) => {
+exports.updateSettings = async (req, res) => {
     try {
-        const { currentAcademicYear, currentSemester, aiEngineUrl } = req.body;
-        let settings = await Settings.findOne({ isInitialized: true });
+        let settings = await Settings.findOne();
         if (!settings) {
-            settings = new Settings({ isInitialized: true });
+            settings = new Settings(req.body);
+        } else {
+            Object.assign(settings, req.body);
         }
-
-        const updatedFields = {};
-        if (currentAcademicYear) {
-            settings.currentAcademicYear = currentAcademicYear;
-            updatedFields.currentAcademicYear = currentAcademicYear;
-        }
-        if (currentSemester) {
-            settings.currentSemester = currentSemester;
-            updatedFields.currentSemester = currentSemester;
-        }
-        if (aiEngineUrl) {
-            settings.aiEngineUrl = aiEngineUrl;
-            updatedFields.aiEngineUrl = aiEngineUrl;
-        }
-
+        
+        settings.updatedBy = req.user.id;
         await settings.save();
-
-        await AuditLog.create({
-            action: 'UPDATE_GLOBAL_SETTINGS',
-            performedBy: req.user._id,
-            targetModel: 'Settings',
-            details: { updatedFields }
-        });
-
+        
         res.json(settings);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Backup full database to JSON
+// @desc    Backup Database
 // @route   GET /api/settings/backup
 // @access  Private/Admin
-const backupDatabase = async (req, res) => {
+exports.backupDatabase = async (req, res) => {
     try {
-        const collections = Object.keys(mongoose.models);
-        const backupData = {};
-
-        for (const modelName of collections) {
-            const Model = mongoose.models[modelName];
-            backupData[modelName] = await Model.find({});
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const backup = {};
+        
+        for (const col of collections) {
+            const data = await mongoose.connection.db.collection(col.name).find().toArray();
+            backup[col.name] = data;
         }
-
-        await AuditLog.create({
-            action: 'DB_BACKUP',
-            performedBy: req.user._id,
-            targetModel: 'Database',
-            details: { collections: collections.length }
-        });
-
+        
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', 'attachment; filename=database_backup.json');
-        res.send(JSON.stringify(backupData));
+        res.setHeader('Content-Disposition', `attachment; filename=backup_${Date.now()}.json`);
+        res.send(JSON.stringify(backup, null, 2));
     } catch (error) {
         res.status(500).json({ message: 'Backup failed: ' + error.message });
     }
 };
 
-// @desc    Restore full database from JSON
+// @desc    Restore Database
 // @route   POST /api/settings/restore
 // @access  Private/Admin
-const restoreDatabase = async (req, res) => {
+exports.restoreDatabase = async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ message: 'No backup file provided' });
+            return res.status(400).json({ message: 'Please upload a backup file' });
         }
 
-        const backupData = JSON.parse(req.file.buffer.toString());
-
-        for (const modelName of Object.keys(backupData)) {
-            if (mongoose.models[modelName]) {
-                const Model = mongoose.models[modelName];
-                await Model.deleteMany({}); // Warning: Replaces everything
-                const dataToInsert = backupData[modelName];
-                if (dataToInsert && dataToInsert.length > 0) {
-                    await Model.insertMany(dataToInsert);
-                }
+        const backupData = JSON.parse(fs.readFileSync(req.file.path, 'utf8'));
+        
+        // Caution: This wipes current data
+        for (const colName in backupData) {
+            await mongoose.connection.db.collection(colName).deleteMany({});
+            if (backupData[colName].length > 0) {
+                // Remove _id from objects to avoid duplication or keep them? 
+                // Restore usually keeps them.
+                await mongoose.connection.db.collection(colName).insertMany(backupData[colName]);
             }
         }
-
-        await AuditLog.create({
-            action: 'DB_RESTORE',
-            performedBy: req.user._id,
-            targetModel: 'Database',
-            details: { collectionsRestored: Object.keys(backupData).length }
-        });
-
-        res.json({ message: 'Database restored successfully' });
+        
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+        
+        res.json({ message: 'Restored successfully' });
     } catch (error) {
-        console.error("Restore Error:", error);
         res.status(500).json({ message: 'Restore failed: ' + error.message });
     }
-};
-
-// @desc    Update global institutional goals
-// @route   PUT /api/settings/goals
-// @access  Private/Admin/Principal
-const updateInstitutionalGoals = async (req, res) => {
-    try {
-        const { goals } = req.body;
-        let settings = await Settings.findOne({ isInitialized: true });
-        if (!settings) {
-            settings = new Settings({ isInitialized: true });
-        }
-
-        settings.institutionalGoals = goals;
-        await settings.save();
-
-        await AuditLog.create({
-            action: 'UPDATE_INSTITUTIONAL_GOALS',
-            performedBy: req.user._id,
-            targetModel: 'Settings',
-            details: { goalCount: goals.length }
-        });
-
-        res.json(settings);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Get global institutional goals
-// @route   GET /api/settings/goals
-// @access  Private/Admin/Principal
-const getInstitutionalGoals = async (req, res) => {
-    try {
-        const settings = await Settings.findOne({ isInitialized: true });
-        res.json(settings ? settings.institutionalGoals : []);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-module.exports = {
-    getSettings,
-    updateSettings,
-    backupDatabase,
-    restoreDatabase,
-    updateInstitutionalGoals,
-    getInstitutionalGoals
 };

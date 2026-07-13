@@ -109,12 +109,10 @@ const Login = () => {
     };
 
     const roles = [
-        { id: 'admin', label: 'Admin', full: 'Administrator', icon: <Shield className="w-4 h-4" /> },
+        { id: 'admin', label: 'Admin', full: 'System Control', icon: <Shield className="w-4 h-4" /> },
         { id: 'hod', label: 'HOD', full: 'Dept Head', icon: <Users className="w-4 h-4" /> },
-        { id: 'principal', label: 'Principal', full: 'Institutional', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'staff', label: 'Faculty', full: 'Academic Staff', icon: <User className="w-4 h-4" /> },
-        { id: 'student', label: 'Student', full: 'Portal Access', icon: <User className="w-4 h-4" /> },
-        { id: 'lab-assistant', label: 'Lab Asst', full: 'Lab Assistant', icon: <LayoutDashboard className="w-4 h-4" /> },
+        { id: 'student', label: 'Student', full: 'Portal Access', icon: <User className="w-4 h-4" /> }
     ];
 
     return (

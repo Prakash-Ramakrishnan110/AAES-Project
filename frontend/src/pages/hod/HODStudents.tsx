@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Search, Mail, Trash2, RotateCcw,
-    Upload, Download, FileText, CheckCircle, AlertTriangle, X, Users, XCircle
+    Upload, Download, FileText, CheckCircle, AlertTriangle, X, Users, XCircle, Settings
 } from 'lucide-react';
 
 interface Student {
@@ -54,6 +54,8 @@ const HODStudents = () => {
     });
     const [bulkUpdating, setBulkUpdating] = useState(false);
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editStudentId, setEditStudentId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
     const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -93,7 +95,7 @@ const HODStudents = () => {
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            let url = `${API}/api/users?role=student&department=${user?.department}&status=all`;
+            let url = `${API}/api/users?role=student&department=${encodeURIComponent(user?.department || '')}&status=all`;
             if (batchFilter) url += `&batch=${batchFilter}`;
             if (sectionFilter) url += `&section=${sectionFilter}`;
 
@@ -160,16 +162,23 @@ const HODStudents = () => {
         }
     };
 
-    // --- Single Add ---
+    // --- Single Add/Update ---
     const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            const configWithMultipart = {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            };
+
             const formDataToSubmit = new FormData();
             formDataToSubmit.append('username', formData.username);
             formDataToSubmit.append('fullName', formData.fullName);
             formDataToSubmit.append('email', formData.email);
-            formDataToSubmit.append('password', formData.password);
+            if (!isEditing) formDataToSubmit.append('password', formData.password);
             formDataToSubmit.append('role', 'student');
             formDataToSubmit.append('semester', formData.semester);
             formDataToSubmit.append('academicYear', formData.academicYear);
@@ -181,14 +190,16 @@ const HODStudents = () => {
                 formDataToSubmit.append('profileImage', formData.profileImage);
             }
 
-            await axios.post(`${API}/api/users`, formDataToSubmit, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            if (isEditing && editStudentId) {
+                await axios.put(`${API}/api/users/${editStudentId}`, formDataToSubmit, configWithMultipart);
+                showToast('Student updated successfully!', 'success');
+                setIsEditing(false);
+                setEditStudentId(null);
+            } else {
+                await axios.post(`${API}/api/users`, formDataToSubmit, configWithMultipart);
+                showToast('Student enrolled successfully!', 'success');
+            }
 
-            setToast({ text: 'Student enrolled successfully!', type: 'success' });
             setFormData({
                 username: '', fullName: '', email: '',
                 password: 'password123', registerNumber: '',
@@ -198,13 +209,41 @@ const HODStudents = () => {
             });
             fetchStudents();
         } catch (err: any) {
-            setToast({
-                text: err.response?.data?.message || 'Error enrolling student. Please check fields.',
-                type: 'error'
-            });
+            showToast(err.response?.data?.message || 'Error processing student details.', 'error');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleEditClick = (s: Student) => {
+        setIsEditing(true);
+        setEditStudentId(s._id);
+        setActiveTab('single');
+        setFormData({
+            username: s.username,
+            fullName: s.fullName || '',
+            email: s.email,
+            password: '', // Password not editable here for security
+            registerNumber: s.registerNumber || '',
+            semester: s.semester || '1',
+            academicYear: s.academicYear || '1st Year',
+            batch: s.batch || '',
+            section: s.section || '',
+            profileImage: null // Don't pre-fill file
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setIsEditing(false);
+        setEditStudentId(null);
+        setFormData({
+            username: '', fullName: '', email: '',
+            password: 'password123', registerNumber: '',
+            semester: '1', academicYear: '1st Year',
+            batch: '', section: '',
+            profileImage: null
+        });
     };
 
     // --- Bulk CSV Upload ---
@@ -430,7 +469,7 @@ const HODStudents = () => {
                                 onClick={() => setActiveTab('single')}
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors ${activeTab === 'single' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
                             >
-                                <Plus className="w-4 h-4" /> Single Add
+                                <Plus className="w-4 h-4" /> {isEditing ? 'Editing Student' : 'Single Add'}
                             </button>
                             <button
                                 onClick={() => setActiveTab('bulk')}
@@ -455,9 +494,10 @@ const HODStudents = () => {
                                     <div>
                                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Username</label>
                                         <input type="text" placeholder="e.g. ravi_kumar" required
+                                            disabled={isEditing}
                                             value={formData.username}
                                             onChange={e => setFormData({ ...formData, username: e.target.value })}
-                                            className="w-full border border-slate-300 rounded-md px-3.5 py-2 text-sm focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-colors"
+                                            className="w-full border border-slate-300 rounded-md px-3.5 py-2 text-sm focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-500"
                                         />
                                     </div>
                                     <div>
@@ -549,11 +589,18 @@ const HODStudents = () => {
                                         className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-md font-bold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 mt-4 shadow-sm"
                                     >
                                         {submitting ? (
-                                            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Enrolling...</>
+                                            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</>
                                         ) : (
-                                            <><Plus className="w-4 h-4" /> Enroll Student</>
+                                            <>{isEditing ? 'Update Records' : 'Enroll Student'}</>
                                         )}
                                     </button>
+                                    {isEditing && (
+                                        <button type="button" onClick={cancelEdit}
+                                            className="w-full bg-slate-100 border border-slate-200 text-slate-600 py-2.5 rounded-md font-bold text-sm hover:bg-slate-200 transition-colors mt-2"
+                                        >
+                                            Cancel Editing
+                                        </button>
+                                    )}
                                     <p className="text-xs text-center text-slate-500 font-medium pb-2">Default password: <span className="font-mono bg-slate-100 px-1 rounded">password123</span></p>
                                 </form>
                             </div>
@@ -770,6 +817,12 @@ const HODStudents = () => {
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right" onClick={e => e.stopPropagation()}>
                                                     <div className="flex justify-end gap-2">
+                                                        <button onClick={() => handleEditClick(s)}
+                                                            className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-1.5 rounded-md transition-colors"
+                                                            title="Edit Details"
+                                                        >
+                                                            <Settings size={12} /> Edit
+                                                        </button>
                                                         {s.isActive ? (
                                                             <button onClick={() => handleDelete(s._id)}
                                                                 className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-md transition-colors"

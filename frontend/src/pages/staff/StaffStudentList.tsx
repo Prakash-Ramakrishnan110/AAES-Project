@@ -53,7 +53,8 @@ const StaffStudentList = () => {
             'Email Address': student.email,
             'Batch': student.batch || '—',
             'Section': student.section || '—',
-            'Academic Year': student.academicYear || '—'
+            'Academic Year': student.academicYear || '—',
+            'Semester': student.semester || '—'
         }));
 
         const ws = XLSX.utils.json_to_sheet(exportData);
@@ -68,7 +69,8 @@ const StaffStudentList = () => {
             { wch: 30 }, // Email
             { wch: 15 }, // Batch
             { wch: 8 },  // Section
-            { wch: 15 }  // Year
+            { wch: 15 }, // Year
+            { wch: 10 }  // Semester
         ];
         ws['!cols'] = wscols;
 
@@ -183,6 +185,11 @@ const StaffStudentList = () => {
                                                     <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg border border-indigo-100 font-bold uppercase tracking-wider">
                                                         {student.academicYear || 'Year'}
                                                     </span>
+                                                    {student.semester && (
+                                                        <span className="text-[10px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded-lg border border-purple-100 font-bold uppercase">
+                                                            Sem {student.semester}
+                                                        </span>
+                                                    )}
                                                     {student.section && (
                                                         <span className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-lg border border-gray-100 font-bold uppercase">
                                                             Sec {student.section}

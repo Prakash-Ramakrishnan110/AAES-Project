@@ -82,12 +82,12 @@ const StudentAssignmentList = () => {
                                 <p className="text-sm font-medium text-slate-500 mt-1">Your academic queue is currently synchronized and clear.</p>
                             </div>
                         ) : assignments.map(ass => {
-                            const sub = submissions.find(s => s.assignment?._id === ass._id || s.assignment === ass._id);
+                            const sub = submissions.find(s => s.assignmentId?._id === ass._id || s.assignmentId === ass._id);
                             return (
                                 <ListItem
                                     key={ass._id}
                                     title={ass.title}
-                                    subtitle={`${ass.subject?.name || 'Academic Domain'} • ${ass.subject?.code || 'CORE'}`}
+                                    subtitle={`${ass.subjectId?.name || 'Academic Domain'} • ${ass.subjectId?.code || 'CORE'}`}
                                     badges={[
                                         { 
                                             label: (sub ? sub.status : 'Awaiting').toUpperCase(),
@@ -116,7 +116,7 @@ const StudentAssignmentList = () => {
                                         <div className="flex items-center gap-3">
                                             {sub?.status === 'graded' && (
                                                 <button
-                                                    onClick={() => setSelectedSubForReEval({ ...sub, assignment: ass })}
+                                                    onClick={() => setSelectedSubForReEval({ ...sub, assignmentId: ass })}
                                                     className="px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors border border-amber-200 shadow-sm"
                                                 >
                                                     Audit Request
