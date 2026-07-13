@@ -1,42 +1,74 @@
 @echo off
 setlocal enabledelayedexpansion
+title AAES Project - Starting...
+color 0B
 
-echo ==========================================
-echo    AAES PROJECT UNIFIED STARTUP SYSTEM
-echo    (C) 2026 SYSTEM ARCHITECTURE
-echo ==========================================
-echo.
-
-:: 1. Start MongoDB Compass
-echo [0/3] Opening MongoDB Compass Interface...
-start "" "C:\Users\praka\AppData\Local\MongoDBCompass\app-1.49.4\MongoDBCompass.exe" --no-sandbox --disable-gpu
-echo.
-
-:: 2. Start Backend
-echo [1/3] Initializing Node KERNEL (Backend)...
-start "AAES Backend" cmd /k "cd backend && npm run dev"
-
-:: 3. Start Frontend
-echo [2/3] Launching Neural Interface (Frontend)...
-start "AAES Frontend" cmd /k "cd frontend && npm run dev"
-
-:: 4. Start AI Service
-echo [3/3] Activating Intelligence Layer (Python)...
-start "AAES AI Service" cmd /k "call .venv\Scripts\activate && cd ai_service && python main.py"
-
-echo.
-echo Waiting for services to warm up (10s)...
-timeout /t 10 /nobreak > nul
-
-:: 5. Open Chrome with all dashboards
-echo Opening dynamic dashboards in Chrome...
-:: Note: Removed port 8081 as it was for the Docker dashboard.
-:: Added port 5000 for backend home page (shows system stats)
-start chrome "http://localhost:3051" "http://localhost:5000" "http://localhost:8000/docs"
+:: Get the directory of this batch file (works from any location)
+set "ROOT=%~dp0"
+cd /d "%ROOT%"
 
 echo.
 echo ==========================================
-echo    ALL SYSTEMS ARE OPERATIONAL
+echo     AAES PROJECT - STARTUP SYSTEM
+echo     Academic Assessment & Evaluation
 echo ==========================================
 echo.
-pause
+
+:: ─── Check if setup has been run ──────────────────────────────
+if not exist "backend\node_modules" (
+    echo [!] Backend not set up yet. Running setup first...
+    call setup.bat
+)
+
+if not exist "frontend\node_modules" (
+    echo [!] Frontend not set up yet. Running setup first...
+    call setup.bat
+)
+
+:: ─── Start MongoDB (if installed as a service, it auto-starts) ─
+echo [0/3] Starting MongoDB...
+net start MongoDB >nul 2>&1
+if %errorlevel% neq 0 (
+    echo        MongoDB service not found - trying to start manually...
+    start "" mongod --dbpath "%ROOT%data\db" >nul 2>&1
+)
+echo        MongoDB ready!
+echo.
+
+:: ─── Start Backend ────────────────────────────────────────────
+echo [1/3] Starting Backend (Node.js on port 5000)...
+start "AAES Backend" cmd /k "cd /d "%ROOT%backend" && npm run dev"
+echo        Backend starting...
+echo.
+
+:: ─── Start Frontend ───────────────────────────────────────────
+echo [2/3] Starting Frontend (Vite on port 3051)...
+start "AAES Frontend" cmd /k "cd /d "%ROOT%frontend" && npm run dev"
+echo        Frontend starting...
+echo.
+
+:: ─── Start AI Service ─────────────────────────────────────────
+echo [3/3] Starting AI Service (Python on port 8000)...
+start "AAES AI Service" cmd /k "cd /d "%ROOT%" && ai_service\.venv\Scripts\python.exe ai_service\main.py"
+echo        AI Service starting...
+echo.
+
+:: ─── Wait and open browser ────────────────────────────────────
+echo Waiting 12 seconds for all services to start...
+timeout /t 12 /nobreak >nul
+
+echo Opening application in browser...
+start "" "http://localhost:3051"
+
+echo.
+echo ==========================================
+echo     ALL SYSTEMS RUNNING!
+echo.
+echo     App:      http://localhost:3051
+echo     Backend:  http://localhost:5000
+echo     AI Docs:  http://localhost:8000/docs
+echo ==========================================
+echo.
+echo Press any key to exit this window...
+echo (Services will keep running in their own windows)
+pause >nul
