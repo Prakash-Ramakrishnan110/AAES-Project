@@ -1,0 +1,116 @@
+=============================================================
+   AAES PROJECT - STAFF INSTALLATION GUIDE
+   Academic Assessment & Evaluation System
+=============================================================
+
+WHAT IS THIS?
+-------------
+This is a web-based college management system with AI features.
+It runs locally on your laptop - no internet needed after setup.
+
+
+=============================================================
+STEP 1: INSTALL REQUIRED SOFTWARE
+=============================================================
+
+Install these 4 programs from the "Installers" folder
+in the pendrive (in this order):
+
+  1. node-v20-x64.msi       → Double-click, click Next > Next > Finish
+  2. python-3.11.exe         → Check "Add Python to PATH" ✓ then Install
+  3. mongodb-installer.msi   → Click Next > Next > Install
+  4. OllamaSetup.exe         → Double-click, wait for install
+
+
+=============================================================
+STEP 2: COPY PROJECT TO LAPTOP
+=============================================================
+
+  1. Open the pendrive
+  2. Copy the "AAES-Project" folder
+  3. Paste it on the Desktop of the staff laptop
+
+
+=============================================================
+STEP 3: FIRST-TIME SETUP (Do this ONLY ONCE)
+=============================================================
+
+  1. Open the "AAES-Project" folder on Desktop
+  2. Double-click "setup.bat"
+  3. If Windows shows a warning → Click "More info" → "Run anyway"
+  4. A black window will open and install everything automatically
+  5. Wait until you see "SETUP COMPLETE!"
+  6. Press any key to close
+
+
+=============================================================
+STEP 4: START THE PROJECT
+=============================================================
+
+  1. Open the "AAES-Project" folder on Desktop
+  2. Double-click "start.bat"
+  3. If Windows shows a warning → Click "More info" → "Run anyway"
+  4. Wait 15-20 seconds...
+  5. Browser will open automatically at:
+
+           http://localhost:3051
+
+  Done! The project is running.
+
+
+=============================================================
+LOGIN DETAILS (Demo Accounts)
+=============================================================
+
+  ADMIN LOGIN:
+    Email   : admin@aaes.edu
+    Password : admin123
+
+  STAFF LOGIN:
+    Email   : staff@aaes.edu
+    Password : staff123
+
+  STUDENT LOGIN:
+    Email   : student@aaes.edu
+    Password : student123
+
+
+=============================================================
+IMPORTANT NOTES
+=============================================================
+
+  ✓ Keep all the black command windows OPEN while using the app
+    (Closing them will stop the project)
+
+  ✓ To stop the project: Close all black windows
+
+  ✓ To restart next time: Just double-click "start.bat" again
+    (No need to run setup.bat again)
+
+  ✓ The app works OFFLINE - no internet needed
+
+  ✓ Browser: Use Google Chrome for best experience
+
+
+=============================================================
+TROUBLESHOOTING
+=============================================================
+
+  Problem : Browser shows "This site can't be reached"
+  Solution: Wait 30 seconds and refresh the page (F5)
+
+  Problem : Black window shows an error
+  Solution: Close everything, restart laptop, run start.bat again
+
+  Problem : "node is not recognized" error
+  Solution: Node.js was not installed correctly.
+            Reinstall node-v20-x64.msi and restart laptop.
+
+  Problem : "python is not recognized" error
+  Solution: Reinstall python-3.11.exe and make sure to check
+            "Add Python to PATH" during installation.
+
+
+=============================================================
+  For help contact: Prakash Ramakrishnan
+=============================================================
