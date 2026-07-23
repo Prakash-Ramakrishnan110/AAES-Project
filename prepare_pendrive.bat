@@ -28,7 +28,7 @@ echo [1/4] Copying AAES-Project (excluding node_modules and .venv)...
 echo       This may take a minute...
 
 :: Use robocopy to exclude heavy folders
-robocopy "%ROOT%" "%OUTPUT%\AAES-Project" /E /XD node_modules .venv .git __pycache__ dist build /XF *.pyc *.pyo *.log /NFL /NDL /NJH /NJS /nc /ns /np
+robocopy "%ROOT:~0,-1%" "%OUTPUT%\AAES-Project" /E /XD node_modules .venv .git __pycache__ dist build /XF *.pyc *.pyo *.log /NFL /NDL /NJH /NJS /nc /ns /np
 
 echo       Project copied!
 echo.

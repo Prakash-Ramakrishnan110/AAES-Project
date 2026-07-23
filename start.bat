@@ -30,7 +30,22 @@ echo [0/3] Starting MongoDB...
 net start MongoDB >nul 2>&1
 if %errorlevel% neq 0 (
     echo        MongoDB service not found - trying to start manually...
-    start "" mongod --dbpath "%ROOT%data\db" >nul 2>&1
+    where mongod >nul 2>&1
+    if !errorlevel! equ 0 (
+        start "" mongod --dbpath "%ROOT%data\db" >nul 2>&1
+    ) else (
+        set "MONGOD_FOUND=0"
+        for /d %%I in ("C:\Program Files\MongoDB\Server\*") do (
+            if exist "%%I\bin\mongod.exe" (
+                start "" "%%I\bin\mongod.exe" --dbpath "%ROOT%data\db" >nul 2>&1
+                set "MONGOD_FOUND=1"
+                goto :mongodb_started
+            )
+        )
+        if "!MONGOD_FOUND!"=="0" echo        [ERROR] mongod.exe not found in PATH or standard installation directories.
+        :mongodb_started
+        echo. >nul
+    )
 )
 echo        MongoDB ready!
 echo.
@@ -49,7 +64,7 @@ echo.
 
 :: ─── Start AI Service ─────────────────────────────────────────
 echo [3/3] Starting AI Service (Python on port 8000)...
-start "AAES AI Service" cmd /k "cd /d "%ROOT%" && ai_service\.venv\Scripts\python.exe ai_service\main.py"
+start "AAES AI Service" cmd /k "cd /d "%ROOT%" && .venv\Scripts\python.exe ai_service\main.py"
 echo        AI Service starting...
 echo.
 
